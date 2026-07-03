@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interview Prep — Future Steps Services</title>
+  <meta name="description" content="Practice common immigration interview questions for marriage-based green cards, naturalization, asylum, and F-1 student visas — bilingual English/Vietnamese.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a href="#" class="topbar__logo">
+        <svg width="36" height="36" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="42" height="42" rx="12" fill="url(#logoGrad)"/>
+          <path d="M13 28C13 28 15.5 22 21 22C26.5 22 29 28 29 28" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M10 24C10 24 13.5 16 21 16C28.5 16 32 24 32 24" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity=".6"/>
+          <circle cx="21" cy="28" r="2.5" fill="white"/>
+          <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="42" y2="42"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#0891b2"/></linearGradient></defs>
+        </svg>
+        <span class="topbar__logo-text">Future<strong>Steps</strong> <span data-i18n="header.subtitle">Interview Prep</span></span>
+      </a>
+      <button class="lang-toggle" id="langToggle" aria-label="Switch language">
+        <span class="lang-toggle__flag" id="langFlag">🇻🇳</span>
+        <span class="lang-toggle__label" id="langLabel">Tiếng Việt</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="intro">
+      <p class="intro__tag" data-i18n="intro.tag">Interview Practice</p>
+      <h1 data-i18n="intro.title">Get Ready For Your <em>Immigration Interview</em></h1>
+      <p class="intro__desc" data-i18n="intro.desc">Practice with real questions officers commonly ask. Pick a category, quiz yourself, and reveal tips or answers when you're ready.</p>
+    </div>
+
+    <!-- ═══ CATEGORY SELECTOR ═══ -->
+    <div class="categories" id="categories">
+      <button class="pill pill--active" data-category="all" data-i18n="cat.all">All Categories</button>
+      <button class="pill" data-category="marriage" data-i18n="cat.marriage">Marriage-Based Green Card</button>
+      <button class="pill" data-category="naturalization" data-i18n="cat.naturalization">Naturalization</button>
+      <button class="pill" data-category="asylum" data-i18n="cat.asylum">Asylum</button>
+      <button class="pill" data-category="f1" data-i18n="cat.f1">F-1 Student Visa</button>
+      <button class="pill pill--flag" data-category="flagged" id="flaggedPill">
+        <i class="fa-solid fa-star"></i> <span data-i18n="cat.flagged">Flagged</span>
+      </button>
+    </div>
+
+    <!-- ═══ QUIZ CARD ═══ -->
+    <section class="quiz" id="quiz">
+      <div class="quiz__state" id="quizLoading">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span data-i18n="state.loading">Loading questions…</span>
+      </div>
+
+      <div class="quiz__state quiz__state--error" id="quizError" hidden>
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <p data-i18n="state.error">Couldn't load the question bank. Make sure the Supabase URL and key are set in <code>script.js</code>, and that the database has been seeded.</p>
+      </div>
+
+      <div class="quiz__card" id="quizCard" hidden>
+        <div class="quiz__meta">
+          <span class="quiz__badge" id="quizBadge"></span>
+          <span class="quiz__progress" id="quizProgress"></span>
+          <button class="flag-btn" id="flagBtn" aria-label="Flag for review">
+            <i class="fa-regular fa-star"></i>
+          </button>
+        </div>
+        <p class="quiz__question" id="quizQuestion"></p>
+
+        <div class="quiz__answer" id="quizAnswer" hidden>
+          <p class="quiz__answer-label" id="quizAnswerLabel"></p>
+          <p class="quiz__answer-text" id="quizAnswerText"></p>
+        </div>
+
+        <div class="quiz__actions">
+          <button class="btn btn--outline" id="revealBtn" data-i18n="btn.reveal">Reveal Answer</button>
+          <button class="btn btn--primary" id="nextBtn" data-i18n="btn.next">Next Question <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <div class="quiz__state" id="quizDone" hidden>
+        <i class="fa-solid fa-circle-check" id="quizDoneIcon"></i>
+        <p id="quizDoneText" data-i18n="state.done">You've gone through every question in this round. Great work!</p>
+        <button class="btn btn--primary" id="restartBtn" data-i18n="btn.restart"><i class="fa-solid fa-rotate-right"></i> Start Over</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p data-i18n="footer.note">This is practice material only and not legal advice. For guidance specific to your case, consult with Future Steps Services directly.</p>
+  </footer>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
+</body>
+</html>
