@@ -721,4 +721,12 @@ insert into questions (category, question_en, question_vi, answer_en, answer_vi)
 
 ('f1', 'What will you do if your visa application is denied today?', 'Anh/chị sẽ làm gì nếu đơn xin visa bị từ chối hôm nay?',
  'Stay calm and answer briefly and honestly — you can say you would review the reason for denial and consider reapplying once circumstances change. Do not argue with the officer or become emotional; this can hurt future applications more than the denial itself.',
- 'Hãy giữ bình tĩnh và trả lời ngắn gọn, trung thực — có thể nói rằng anh/chị sẽ xem xét lý do bị từ chối và cân nhắc nộp đơn lại khi hoàn cảnh thay đổi. Không nên tranh cãi với viên chức hay tỏ ra xúc động, vì điều này có thể ảnh hưởng xấu đến các lần nộp đơn sau còn hơn cả việc bị từ chối lần này.');
+ 'Hãy giữ bình tĩnh và trả lời ngắn gọn, trung thực — có thể nói rằng anh/chị sẽ xem xét lý do bị từ chối và cân nhắc nộp đơn lại khi hoàn cảnh thay đổi. Không nên tranh cãi với viên chức hay tỏ ra xúc động, vì điều này có thể ảnh hưởng xấu đến các lần nộp đơn sau còn hơn cả việc bị từ chối lần này.'),
+
+('f1', 'Do you have your I-20, SEVIS fee receipt, and acceptance letter with you today?', 'Anh/chị có mang theo mẫu I-20, biên nhận phí SEVIS, và thư chấp nhận nhập học hôm nay không?',
+ 'Have all three ready and organized — the I-20 signed by both you and the school official, proof of SEVIS I-901 fee payment, and the admission letter. Missing or disorganized paperwork can create an unnecessary bad impression even if your case is strong.',
+ 'Hãy chuẩn bị sẵn và sắp xếp gọn gàng cả ba giấy tờ — mẫu I-20 đã có chữ ký của anh/chị và của viên chức nhà trường, biên nhận đã đóng phí SEVIS I-901, và thư chấp nhận nhập học. Hồ sơ thiếu hoặc lộn xộn có thể tạo ấn tượng không tốt dù hồ sơ của anh/chị vốn vững chắc.'),
+
+('f1', 'Do you have any relatives who have overstayed a visa or lived in the United States without legal status?', 'Anh/chị có người thân nào từng ở quá hạn visa hoặc cư trú tại Hoa Kỳ mà không có tình trạng hợp pháp không?',
+ 'Answer honestly — officers may already know from prior records. If a relative has an unlawful status history, be ready to explain that this doesn''t reflect your own intentions and emphasize your own independent ties and plan to return to Vietnam.',
+ 'Hãy trả lời trung thực — viên chức có thể đã biết thông tin này từ hồ sơ trước đó. Nếu người thân từng cư trú bất hợp pháp, hãy chuẩn bị giải thích rằng điều đó không phản ánh ý định của bản thân anh/chị, đồng thời nhấn mạnh những ràng buộc độc lập và kế hoạch quay về Việt Nam của chính anh/chị.');
