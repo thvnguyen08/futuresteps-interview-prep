@@ -41,7 +41,7 @@ const translations = {
     "btn.gotIt": '<i class="fa-solid fa-check"></i> Tôi Biết Đáp Án',
     "btn.missed": '<i class="fa-solid fa-xmark"></i> Tôi Trả Lời Sai',
     "btn.playSentence": "Phát Câu",
-    "footer.note": "Đây chỉ là tài liệu luyện tập, không phải tư vấn pháp lý. Để được hướng dẫn cụ thể cho trường hợp của bạn, hãy liên hệ trực tiếp với Future Steps Services.",
+    "footer.note": 'Đây chỉ là tài liệu luyện tập, không phải tư vấn pháp lý. Để được hướng dẫn cụ thể cho trường hợp của bạn, hãy liên hệ trực tiếp với Future Steps Services, hoặc gửi email đến <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>.',
     "badge.marriage": "Thẻ Xanh Diện Hôn Nhân",
     "badge.naturalization": "Thi Quốc Tịch",
     "badge.asylum": "Phỏng Vấn Tị Nạn",
@@ -85,6 +85,10 @@ const translations = {
     "account.logout": "Đăng Xuất",
     "account.recentResults": "Kết Quả Gần Đây",
     "account.noResults": "Chưa có kết quả luyện tập nào.",
+    "account.phonePlaceholder": "Số điện thoại (không bắt buộc)",
+    "account.savePhone": "Lưu Số Điện Thoại",
+    "account.phoneSaved": "Đã lưu!",
+    "account.help": 'Cần hỗ trợ? Liên hệ chúng tôi qua <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>',
   }
 };
 
@@ -167,7 +171,7 @@ function initAuth() {
   });
 }
 
-async function signInWithEmail(email) {
+async function signInWithEmail(email, phone) {
   const sentMsg = document.getElementById("accountSentMsg");
   const errorMsg = document.getElementById("accountErrorMsg");
   sentMsg.hidden = true;
@@ -175,10 +179,9 @@ async function signInWithEmail(email) {
   if (!supabaseClient) return;
 
   try {
-    const { error } = await supabaseClient.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
-    });
+    const options = { emailRedirectTo: window.location.origin + window.location.pathname };
+    if (phone) options.data = { phone };
+    const { error } = await supabaseClient.auth.signInWithOtp({ email, options });
     if (error) throw error;
     sentMsg.hidden = false;
   } catch (err) {
@@ -194,17 +197,37 @@ async function signOutUser() {
   document.getElementById("accountPanel").hidden = true;
 }
 
+async function savePhoneNumber(phone) {
+  if (!currentUser || !supabaseClient) return;
+  const savedMsg = document.getElementById("accountPhoneSavedMsg");
+  try {
+    const { data, error } = await supabaseClient.auth.updateUser({ data: { phone } });
+    if (error) throw error;
+    currentUser = data.user;
+    savedMsg.hidden = false;
+    setTimeout(() => { savedMsg.hidden = true; }, 3000);
+  } catch (err) {
+    console.error("Failed to save phone number:", err);
+  }
+}
+
 function renderAccountUI() {
   const btnLabel = document.getElementById("accountBtnLabel");
   const loggedOutEl = document.getElementById("accountLoggedOut");
   const loggedInEl = document.getElementById("accountLoggedIn");
   const emailDisplay = document.getElementById("accountEmailDisplay");
+  const phoneInput = document.getElementById("accountPhoneInput");
+  const phoneInputLoggedIn = document.getElementById("accountPhoneInputLoggedIn");
+  const phonePlaceholder = currentLang === "vi" ? translations.vi["account.phonePlaceholder"] : "Phone number (optional)";
+  phoneInput.placeholder = phonePlaceholder;
+  phoneInputLoggedIn.placeholder = phonePlaceholder;
 
   if (currentUser) {
     btnLabel.textContent = currentUser.email;
     loggedOutEl.hidden = true;
     loggedInEl.hidden = false;
     emailDisplay.textContent = currentUser.email;
+    phoneInputLoggedIn.value = (currentUser.user_metadata && currentUser.user_metadata.phone) || "";
   } else {
     btnLabel.textContent = currentLang === "vi" ? translations.vi["account.login"] : "Log In";
     loggedOutEl.hidden = false;
@@ -725,10 +748,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("accountSendLinkBtn").addEventListener("click", () => {
     const email = document.getElementById("accountEmailInput").value.trim();
-    if (email) signInWithEmail(email);
+    const phone = document.getElementById("accountPhoneInput").value.trim();
+    if (email) signInWithEmail(email, phone);
   });
   document.getElementById("accountEmailInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") document.getElementById("accountSendLinkBtn").click();
+  });
+  document.getElementById("accountPhoneInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("accountSendLinkBtn").click();
+  });
+  document.getElementById("accountSavePhoneBtn").addEventListener("click", () => {
+    const phone = document.getElementById("accountPhoneInputLoggedIn").value.trim();
+    savePhoneNumber(phone);
+  });
+  document.getElementById("accountPhoneInputLoggedIn").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("accountSavePhoneBtn").click();
   });
   document.getElementById("accountLogoutBtn").addEventListener("click", signOutUser);
 

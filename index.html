@@ -37,14 +37,20 @@
             <div id="accountLoggedOut">
               <p class="account-panel__prompt" data-i18n="account.prompt">Log in with your email to save your flagged questions and quiz results across devices.</p>
               <input type="email" class="account-panel__input" id="accountEmailInput" placeholder="you@example.com" autocomplete="email">
+              <input type="tel" class="account-panel__input" id="accountPhoneInput" placeholder="Phone number (optional)" autocomplete="tel">
               <button class="btn btn--primary account-panel__btn" id="accountSendLinkBtn" data-i18n="account.sendLink">Send Magic Link</button>
               <p class="account-panel__msg account-panel__msg--ok" id="accountSentMsg" data-i18n="account.sentMsg" hidden>Check your email for a login link!</p>
               <p class="account-panel__msg account-panel__msg--error" id="accountErrorMsg" hidden></p>
+              <p class="account-panel__help" data-i18n="account.help">Need help? Contact us at <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a></p>
             </div>
             <div id="accountLoggedIn" hidden>
               <p class="account-panel__email" id="accountEmailDisplay"></p>
               <div class="account-panel__results" id="accountResults"></div>
+              <input type="tel" class="account-panel__input" id="accountPhoneInputLoggedIn" placeholder="Phone number (optional)" autocomplete="tel">
+              <button class="btn btn--outline account-panel__btn" id="accountSavePhoneBtn" data-i18n="account.savePhone">Save Phone Number</button>
+              <p class="account-panel__msg account-panel__msg--ok" id="accountPhoneSavedMsg" data-i18n="account.phoneSaved" hidden>Saved!</p>
               <button class="btn btn--outline account-panel__btn" id="accountLogoutBtn" data-i18n="account.logout">Log Out</button>
+              <p class="account-panel__help" data-i18n="account.help">Need help? Contact us at <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a></p>
             </div>
           </div>
         </div>
@@ -163,7 +169,7 @@
   </main>
 
   <footer class="footer">
-    <p data-i18n="footer.note">This is practice material only and not legal advice. For guidance specific to your case, consult with Future Steps Services directly.</p>
+    <p data-i18n="footer.note">This is practice material only and not legal advice. For guidance specific to your case, consult with Future Steps Services directly, or email <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>.</p>
   </footer>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>

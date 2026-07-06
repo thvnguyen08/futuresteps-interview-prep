@@ -164,6 +164,19 @@ body {
 .account-panel__btn {
   width: 100%;
   justify-content: center;
+  margin-top: 4px;
+}
+
+.account-panel__help {
+  font-size: .75rem;
+  color: var(--clr-muted);
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--clr-surface2);
+}
+
+.account-panel__help a {
+  color: var(--clr-primary);
 }
 
 .account-panel__msg {
