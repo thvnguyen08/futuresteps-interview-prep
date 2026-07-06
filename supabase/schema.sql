@@ -3,7 +3,10 @@
 
 create table if not exists questions (
   id bigint generated always as identity primary key,
-  category text not null check (category in ('marriage', 'naturalization', 'asylum', 'f1')),
+  category text not null check (category in (
+    'marriage', 'naturalization', 'asylum', 'f1', 'b1b2',
+    'eng_speaking', 'eng_reading', 'eng_writing'
+  )),
   question_en text not null,
   question_vi text not null,
   answer_en text not null,
