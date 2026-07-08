@@ -25,6 +25,9 @@ const translations = {
     "intro.tag": "Luyện Tập Phỏng Vấn",
     "intro.title": 'Chuẩn Bị Cho <em>Buổi Phỏng Vấn Di Trú</em> Của Bạn',
     "intro.desc": "Luyện tập với các câu hỏi mà viên chức thường hỏi. Chọn một danh mục, tự kiểm tra, và xem gợi ý hoặc đáp án khi bạn sẵn sàng.",
+    "cta.title": "Tiếp tục ngay từ chỗ bạn đã dừng",
+    "cta.sub": "Đăng nhập bằng email để lưu tiến trình và đồng bộ câu hỏi đã đánh dấu cùng kết quả trên mọi thiết bị của bạn.",
+    "cta.btn": '<i class="fa-regular fa-envelope"></i> Đăng Nhập',
     "cat.marriage": "Thẻ Xanh Diện Hôn Nhân",
     "cat.naturalization": "Thi Quốc Tịch",
     "cat.asylum": "Phỏng Vấn Tị Nạn",
@@ -222,16 +225,20 @@ function renderAccountUI() {
   phoneInput.placeholder = phonePlaceholder;
   phoneInputLoggedIn.placeholder = phonePlaceholder;
 
+  const ctaLogin = document.getElementById("ctaLogin");
+
   if (currentUser) {
     btnLabel.textContent = currentUser.email;
     loggedOutEl.hidden = true;
     loggedInEl.hidden = false;
     emailDisplay.textContent = currentUser.email;
     phoneInputLoggedIn.value = (currentUser.user_metadata && currentUser.user_metadata.phone) || "";
+    if (ctaLogin) ctaLogin.hidden = true;
   } else {
     btnLabel.textContent = currentLang === "vi" ? translations.vi["account.login"] : "Log In";
     loggedOutEl.hidden = false;
     loggedInEl.hidden = true;
+    if (ctaLogin) ctaLogin.hidden = false;
   }
 }
 
@@ -740,6 +747,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("accountBtn").addEventListener("click", (e) => {
     e.stopPropagation();
     document.getElementById("accountPanel").hidden = !document.getElementById("accountPanel").hidden;
+  });
+  document.getElementById("ctaLoginBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("accountPanel").hidden = false;
+    const emailInput = document.getElementById("accountEmailInput");
+    if (emailInput) emailInput.focus();
   });
   document.addEventListener("click", (e) => {
     const panel = document.getElementById("accountPanel");
