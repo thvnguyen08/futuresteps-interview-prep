@@ -25,6 +25,7 @@ security definer
 as $$
 declare
   admin_emails text[] := array[
+    'thvnguyen08@gmail.com',
     'futuresteps.dallas@gmail.com'
   ];
   caller_email text;
