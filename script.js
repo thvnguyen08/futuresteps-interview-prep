@@ -189,7 +189,8 @@ async function signInWithEmail(email, phone) {
     sentMsg.hidden = false;
   } catch (err) {
     console.error("Failed to send magic link:", err);
-    errorMsg.textContent = currentLang === "vi" ? translations.vi["account.error"] : ACCOUNT_ERROR_EN;
+    const fallback = currentLang === "vi" ? translations.vi["account.error"] : ACCOUNT_ERROR_EN;
+    errorMsg.textContent = err.message || fallback;
     errorMsg.hidden = false;
   }
 }
