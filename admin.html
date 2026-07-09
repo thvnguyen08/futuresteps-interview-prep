@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Future Steps Interview Prep</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --clr-bg:       #f8fafc;
+      --clr-surface:  #ffffff;
+      --clr-surface2: #f1f5f9;
+      --clr-border:   #e2e8f0;
+      --clr-text:     #334155;
+      --clr-muted:    #64748b;
+      --clr-dark:     #0f172a;
+      --clr-primary:  #2563eb;
+      --clr-primary-dk:#1d4ed8;
+      --clr-green:    #059669;
+      --clr-red:      #dc2626;
+      --ff:           "DM Sans", -apple-system, sans-serif;
+      --radius:       12px;
+      --shadow:       0 4px 16px rgba(0,0,0,.06);
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: var(--ff); background: var(--clr-bg); color: var(--clr-text); line-height: 1.6; min-height: 100vh; }
+
+    .topbar {
+      background: var(--clr-surface);
+      border-bottom: 1px solid var(--clr-border);
+      border-top: 4px solid transparent;
+      border-image: linear-gradient(90deg, #b22234 0 33.33%, #fff 33.33% 66.66%, #3c3b6e 66.66% 100%) 1;
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar__title { font-size: 1.1rem; font-weight: 700; color: var(--clr-dark); }
+    .topbar__title span { color: var(--clr-primary); }
+    .topbar__right { display: flex; align-items: center; gap: 12px; font-size: .85rem; }
+    .topbar__email { color: var(--clr-muted); }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+
+    /* Login gate */
+    .login-gate {
+      max-width: 400px; margin: 80px auto; text-align: center;
+      background: var(--clr-surface); padding: 40px; border-radius: var(--radius); box-shadow: var(--shadow);
+    }
+    .login-gate i { font-size: 2.5rem; color: var(--clr-primary); margin-bottom: 16px; }
+    .login-gate h2 { font-size: 1.2rem; color: var(--clr-dark); margin-bottom: 8px; }
+    .login-gate p { font-size: .85rem; color: var(--clr-muted); margin-bottom: 20px; }
+    .login-gate input {
+      width: 100%; font-family: var(--ff); font-size: .9rem;
+      padding: 10px 14px; border: 1.5px solid var(--clr-border); border-radius: 8px; margin-bottom: 10px;
+    }
+    .login-gate input:focus { outline: none; border-color: var(--clr-primary); }
+
+    .btn {
+      font-family: var(--ff); font-size: .85rem; font-weight: 700;
+      padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px; transition: all .15s;
+    }
+    .btn--primary { background: var(--clr-primary); color: #fff; }
+    .btn--primary:hover { background: var(--clr-primary-dk); }
+    .btn--outline { background: transparent; color: var(--clr-primary); border: 1.5px solid var(--clr-primary); }
+    .btn--outline:hover { background: var(--clr-surface2); }
+    .btn--green { background: var(--clr-green); color: #fff; }
+    .btn--green:hover { opacity: .9; }
+    .btn--full { width: 100%; justify-content: center; }
+
+    .msg { font-size: .8rem; margin-top: 10px; }
+    .msg--ok { color: var(--clr-green); }
+    .msg--err { color: var(--clr-red); }
+
+    /* Dashboard */
+    .dashboard { display: none; }
+    .dashboard.is-visible { display: block; }
+
+    .stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+    .stat-card {
+      flex: 1; min-width: 140px;
+      background: var(--clr-surface); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow);
+    }
+    .stat-card__label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--clr-muted); margin-bottom: 4px; }
+    .stat-card__value { font-size: 1.6rem; font-weight: 800; color: var(--clr-dark); }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .toolbar__search {
+      font-family: var(--ff); font-size: .85rem;
+      padding: 8px 14px; border: 1.5px solid var(--clr-border); border-radius: 8px; width: 260px;
+    }
+    .toolbar__search:focus { outline: none; border-color: var(--clr-primary); }
+
+    .table-wrap {
+      background: var(--clr-surface); border-radius: var(--radius); box-shadow: var(--shadow); overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    thead th {
+      text-align: left; padding: 14px 16px; font-size: .7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em; color: var(--clr-muted);
+      border-bottom: 2px solid var(--clr-border); cursor: pointer; white-space: nowrap; user-select: none;
+    }
+    thead th:hover { color: var(--clr-primary); }
+    thead th .sort-arrow { margin-left: 4px; font-size: .65rem; }
+    tbody td { padding: 12px 16px; border-bottom: 1px solid var(--clr-surface2); }
+    tbody tr:hover { background: var(--clr-surface2); }
+    .td-email { font-weight: 600; color: var(--clr-dark); }
+    .td-phone { white-space: nowrap; }
+    .td-date { white-space: nowrap; color: var(--clr-muted); }
+    .td-num { text-align: center; font-weight: 700; }
+    .empty-state { text-align: center; padding: 48px; color: var(--clr-muted); }
+
+    @media (max-width: 600px) {
+      .stats { flex-direction: column; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toolbar__search { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar__title">Future<span>Steps</span> — Admin</div>
+    <div class="topbar__right" id="topbarRight"></div>
+  </div>
+
+  <!-- LOGIN GATE -->
+  <div class="login-gate" id="loginGate">
+    <i class="fa-solid fa-lock"></i>
+    <h2>Admin Access</h2>
+    <p>Log in with your authorized admin email to view customer data.</p>
+    <input type="email" id="adminEmail" placeholder="you@example.com" autocomplete="email">
+    <button class="btn btn--primary btn--full" id="adminSendLink">
+      <i class="fa-solid fa-paper-plane"></i> Send Magic Link
+    </button>
+    <p class="msg" id="loginMsg" hidden></p>
+  </div>
+
+  <!-- DASHBOARD (hidden until authenticated) -->
+  <div class="wrap">
+    <div class="dashboard" id="dashboard">
+      <div class="stats" id="statsRow"></div>
+
+      <div class="toolbar">
+        <input type="text" class="toolbar__search" id="searchInput" placeholder="Search by email or phone…">
+        <button class="btn btn--green" id="exportBtn">
+          <i class="fa-solid fa-file-csv"></i> Export CSV
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="tableHead"></tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://ltxvztppdwbptmsqavty.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_n-QM-NEws8MJZ6JXqv6_qQ_F32avzuE";
+
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let crmData = [];
+    let sortCol = "signed_up";
+    let sortAsc = false;
+
+    const columns = [
+      { key: "email",             label: "Email",            cls: "td-email" },
+      { key: "phone",             label: "Phone",            cls: "td-phone" },
+      { key: "signed_up",         label: "Signed Up",        cls: "td-date"  },
+      { key: "last_active",       label: "Last Active",      cls: "td-date"  },
+      { key: "rounds_completed",  label: "Rounds",           cls: "td-num"   },
+      { key: "questions_flagged", label: "Flagged",           cls: "td-num"   },
+    ];
+
+    function fmtDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function renderStats() {
+      const total = crmData.length;
+      const weekAgo = Date.now() - 7 * 86400000;
+      const active7d = crmData.filter(r => r.last_active && new Date(r.last_active).getTime() > weekAgo).length;
+      const totalRounds = crmData.reduce((s, r) => s + Number(r.rounds_completed || 0), 0);
+      const withPhone = crmData.filter(r => r.phone).length;
+
+      document.getElementById("statsRow").innerHTML = [
+        { label: "Total Customers",  value: total },
+        { label: "Active (7 days)",  value: active7d },
+        { label: "Total Rounds",     value: totalRounds },
+        { label: "Have Phone #",     value: withPhone },
+      ].map(s => `
+        <div class="stat-card">
+          <div class="stat-card__label">${s.label}</div>
+          <div class="stat-card__value">${s.value}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderHead() {
+      document.getElementById("tableHead").innerHTML = columns.map(c => {
+        const arrow = sortCol === c.key ? (sortAsc ? "▲" : "▼") : "";
+        return `<th data-col="${c.key}">${c.label}<span class="sort-arrow">${arrow}</span></th>`;
+      }).join("");
+    }
+
+    function renderTable(filter) {
+      let rows = [...crmData];
+      if (filter) {
+        const q = filter.toLowerCase();
+        rows = rows.filter(r =>
+          (r.email && r.email.toLowerCase().includes(q)) ||
+          (r.phone && r.phone.includes(q))
+        );
+      }
+      rows.sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (va == null) va = "";
+        if (vb == null) vb = "";
+        if (typeof va === "number" || typeof vb === "number") {
+          return sortAsc ? (Number(va) - Number(vb)) : (Number(vb) - Number(va));
+        }
+        return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+      });
+
+      const tbody = document.getElementById("tableBody");
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${columns.length}" class="empty-state">No customers found.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>${columns.map(c => {
+        let val = r[c.key];
+        if (c.key === "signed_up" || c.key === "last_active") val = fmtDate(val);
+        if (val == null || val === "") val = "—";
+        return `<td class="${c.cls}">${val}</td>`;
+      }).join("")}</tr>`).join("");
+    }
+
+    function exportCSV() {
+      const header = columns.map(c => c.label).join(",");
+      const rows = crmData.map(r => columns.map(c => {
+        let v = r[c.key];
+        if (c.key === "signed_up" || c.key === "last_active") v = v ? new Date(v).toISOString() : "";
+        if (v == null) v = "";
+        return `"${String(v).replace(/"/g, '""')}"`;
+      }).join(","));
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `futuresteps_customers_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function loadCRM() {
+      const { data, error } = await sb.rpc("get_crm_data");
+      if (error) {
+        console.error("CRM load error:", error);
+        document.getElementById("tableBody").innerHTML =
+          `<tr><td colspan="${columns.length}" class="empty-state" style="color:var(--clr-red)">
+            Failed to load data. Make sure you've run <code>supabase/crm_view.sql</code> and your email is in the admin list.
+          </td></tr>`;
+        return;
+      }
+      crmData = data || [];
+      renderStats();
+      renderHead();
+      renderTable();
+    }
+
+    function showDashboard(user) {
+      document.getElementById("loginGate").style.display = "none";
+      document.getElementById("dashboard").classList.add("is-visible");
+      document.getElementById("topbarRight").innerHTML = `
+        <span class="topbar__email">${user.email}</span>
+        <button class="btn btn--outline" id="logoutBtn"><i class="fa-solid fa-right-from-bracket"></i> Log Out</button>
+      `;
+      document.getElementById("logoutBtn").addEventListener("click", async () => {
+        await sb.auth.signOut();
+        location.reload();
+      });
+      loadCRM();
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) showDashboard(session.user);
+
+      sb.auth.onAuthStateChange((event, session) => {
+        if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+          showDashboard(session.user);
+        }
+      });
+
+      document.getElementById("adminSendLink").addEventListener("click", async () => {
+        const email = document.getElementById("adminEmail").value.trim();
+        const msg = document.getElementById("loginMsg");
+        if (!email) return;
+        const { error } = await sb.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: location.href }
+        });
+        msg.hidden = false;
+        if (error) {
+          msg.className = "msg msg--err";
+          msg.textContent = error.message;
+        } else {
+          msg.className = "msg msg--ok";
+          msg.textContent = "Check your email for a login link!";
+        }
+      });
+
+      document.getElementById("adminEmail").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("adminSendLink").click();
+      });
+
+      document.getElementById("tableHead").addEventListener("click", (e) => {
+        const th = e.target.closest("th");
+        if (!th) return;
+        const col = th.dataset.col;
+        if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = true; }
+        renderHead();
+        renderTable(document.getElementById("searchInput").value);
+      });
+
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        renderTable(e.target.value);
+      });
+
+      document.getElementById("exportBtn").addEventListener("click", exportCSV);
+    });
+  </script>
+</body>
+</html>

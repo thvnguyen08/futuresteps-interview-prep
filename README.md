@@ -36,8 +36,9 @@ free Supabase (Postgres) database and is queried directly from the browser.
 4. **Add the B1/B2 category.** Open a new query, paste the contents of `supabase/add_b1b2.sql`, and run it once. This widens the category constraint and seeds starter B1/B2 visitor visa questions.
 5. **Add the English Test categories.** Open a new query, paste the contents of `supabase/add_english_test.sql`, and run it once. This widens the category constraint again and seeds Speaking/Reading/Writing practice content.
 6. **Add customer login.** Open a new query, paste the contents of `supabase/add_customer_login.sql`, and run it once. This adds the `flagged_questions` and `quiz_results` tables (both scoped to the signed-in user via row-level security) so logged-in customers' progress syncs across devices. Requires the **Email** auth provider, which is enabled by default under **Authentication → Providers** — no extra SMS/email provider or cost needed.
-7. **Get your API credentials.** Go to **Project Settings → API**. Copy the **Project URL** and the **`anon` public key**.
-8. **Configure the app.** Open `script.js` and replace:
+7. **Add the admin CRM view.** Open a new query, paste the contents of `supabase/crm_view.sql`, and run it once. This creates a `get_crm_data()` function that powers the admin page. Edit the `admin_emails` array in the SQL to list the email addresses that should have admin access.
+8. **Get your API credentials.** Go to **Project Settings → API**. Copy the **Project URL** and the **`anon` public key**.
+9. **Configure the app.** Open `script.js` and replace:
    ```js
    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
