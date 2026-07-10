@@ -175,6 +175,7 @@
     const columns = [
       { key: "email",             label: "Email",            cls: "td-email" },
       { key: "phone",             label: "Phone",            cls: "td-phone" },
+      { key: "state",             label: "State",            cls: "td-state" },
       { key: "signed_up",         label: "Signed Up",        cls: "td-date"  },
       { key: "last_active",       label: "Last Active",      cls: "td-date"  },
       { key: "rounds_completed",  label: "Rounds",           cls: "td-num"   },
@@ -193,12 +194,14 @@
       const active7d = crmData.filter(r => r.last_active && new Date(r.last_active).getTime() > weekAgo).length;
       const totalRounds = crmData.reduce((s, r) => s + Number(r.rounds_completed || 0), 0);
       const withPhone = crmData.filter(r => r.phone).length;
+      const withState = crmData.filter(r => r.state).length;
 
       document.getElementById("statsRow").innerHTML = [
         { label: "Total Customers",  value: total },
         { label: "Active (7 days)",  value: active7d },
         { label: "Total Rounds",     value: totalRounds },
         { label: "Have Phone #",     value: withPhone },
+        { label: "Have State",       value: withState },
       ].map(s => `
         <div class="stat-card">
           <div class="stat-card__label">${s.label}</div>
@@ -220,7 +223,8 @@
         const q = filter.toLowerCase();
         rows = rows.filter(r =>
           (r.email && r.email.toLowerCase().includes(q)) ||
-          (r.phone && r.phone.includes(q))
+          (r.phone && r.phone.includes(q)) ||
+          (r.state && r.state.toLowerCase().includes(q))
         );
       }
       rows.sort((a, b) => {

@@ -2,7 +2,7 @@
 -- Run this once in the Supabase SQL editor (Project → SQL Editor → New query).
 --
 -- Creates a SECURITY DEFINER function that returns a one-row-per-customer
--- CRM view (email, phone, signup, last active, quiz stats). Because it uses
+-- CRM view (email, phone, state, signup, last active, quiz stats). Because it uses
 -- SECURITY DEFINER it bypasses row-level security, but it checks the
 -- caller's email against an admin allowlist first and returns nothing if
 -- the caller is not an admin.
@@ -15,6 +15,7 @@ returns table (
   user_id       uuid,
   email         text,
   phone         text,
+  state         text,
   signed_up     timestamptz,
   last_active   timestamptz,
   rounds_completed bigint,
@@ -40,6 +41,7 @@ begin
     u.id                                       as user_id,
     u.email::text                              as email,
     (u.raw_user_meta_data->>'phone')::text     as phone,
+    (u.raw_user_meta_data->>'state')::text     as state,
     u.created_at                               as signed_up,
     u.last_sign_in_at                          as last_active,
     coalesce(qr.cnt, 0)                        as rounds_completed,

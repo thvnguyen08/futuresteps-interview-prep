@@ -10,11 +10,20 @@ flagged questions and quiz/test results across devices.
 Naturalization splits into two parts, matching the real N-400 interview:
 
 - **Civics Test** — **Study All 128 Questions** (practice the full civics
-  question bank) or **Simulate Real Test** (a random 20-question round with
+  question bank), **Simulate Real Test** (a random 20-question round with
   a live per-question stopwatch, self-scored "I Knew It" / "I Missed It"
   buttons, and a pass/fail result requiring 12/20 correct, mirroring the real
-  test). The result screen also shows total time and average time per
-  question.
+  test), or **Spoken Test (Auto-Scored)** — the officer's question is read
+  aloud, you answer **out loud**, and the browser's speech recognition
+  transcribes it and **auto-grades** the answer against the official USCIS
+  answer (with a one-tap confirm/override for edge cases). It feeds the same
+  20-question, 12/20 pass result. The 8 civics questions whose answer depends
+  on a lookup (the current President, your Senator, your Governor, etc.) can't
+  be auto-graded and fall back to self-scoring. Spoken mode uses the browser
+  Web Speech API — best in Chrome/Edge; if a browser doesn't support it, the
+  button is hidden and Simulate Real Test is used instead. No AI/backend and
+  no extra cost — the grading is keyword matching in the browser. The result
+  screen also shows total time and average time per question.
 - **English Test** — three self-scored practice sections: **Speaking**
   (common biographic questions asked in English during the interview),
   **Reading** (practice sentences built from the official USCIS reading
@@ -36,9 +45,15 @@ free Supabase (Postgres) database and is queried directly from the browser.
 4. **Add the B1/B2 category.** Open a new query, paste the contents of `supabase/add_b1b2.sql`, and run it once. This widens the category constraint and seeds starter B1/B2 visitor visa questions.
 5. **Add the English Test categories.** Open a new query, paste the contents of `supabase/add_english_test.sql`, and run it once. This widens the category constraint again and seeds Speaking/Reading/Writing practice content.
 6. **Add customer login.** Open a new query, paste the contents of `supabase/add_customer_login.sql`, and run it once. This adds the `flagged_questions` and `quiz_results` tables (both scoped to the signed-in user via row-level security) so logged-in customers' progress syncs across devices. Requires the **Email** auth provider, which is enabled by default under **Authentication → Providers** — no extra SMS/email provider or cost needed.
-7. **Add the admin CRM view.** Open a new query, paste the contents of `supabase/crm_view.sql`, and run it once. This creates a `get_crm_data()` function that powers the admin page. Edit the `admin_emails` array in the SQL to list the email addresses that should have admin access.
-8. **Get your API credentials.** Go to **Project Settings → API**. Copy the **Project URL** and the **`anon` public key**.
-9. **Configure the app.** Open `script.js` and replace:
+7. **Add the admin CRM view.** Open a new query, paste the contents of `supabase/crm_view.sql`, and run it once. This creates a `get_crm_data()` function that powers the admin page. Edit the `admin_emails` array in the SQL to list the email addresses that should have admin access. (If you added the state officials table below after already running this, re-run `crm_view.sql` — it now also returns each customer's saved state.)
+8. **Add the state officials lookup.** Open a new query, paste the contents of `supabase/add_state_officials.sql`, and run it once. This adds a `state_officials` table (public read-only) mapping each state/territory to its capital, Governor, and U.S. Senators. When a signed-in customer saves their state on the account panel, the app fills in the correct answer for the three state-specific civics questions (Governor, one of your Senators, state capital) instead of a generic "look it up" pointer. **Governors and Senators change with elections — update rows in this table over time** (e.g. `update state_officials set governor = 'New Name' where code = 'TX';`, no redeploy needed).
+9. **Expand the question banks and add Red Flags / Documents.** These migrations add a `content_type` column to the `questions` table (`question` | `red_flag` | `checklist`) and seed the fuller content for the "open field" categories: ~55 practice questions each plus a set of **red flags** (common mistakes officers watch for) and a **document checklist** (what to bring). In the app they appear as a per-category sub-toggle — **Practice Questions / Red Flags / Documents** — that shows automatically for any category with this content. Run each of these **exactly once** (the `content_type` column part is idempotent, but the `INSERT`s duplicate rows if re-run):
+   - `supabase/add_marriage_expansion.sql`
+   - `supabase/add_asylum_expansion.sql`
+   - `supabase/add_f1_expansion.sql`
+   - `supabase/add_b1b2_expansion.sql`
+10. **Get your API credentials.** Go to **Project Settings → API**. Copy the **Project URL** and the **`anon` public key**.
+11. **Configure the app.** Open `script.js` and replace:
    ```js
    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";

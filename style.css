@@ -172,6 +172,13 @@ body {
   border-color: var(--clr-primary);
 }
 
+.account-panel__hint {
+  font-size: .75rem;
+  color: var(--clr-muted);
+  margin: -2px 0 12px;
+  line-height: 1.45;
+}
+
 .account-panel__btn {
   width: 100%;
   justify-content: center;
@@ -606,6 +613,63 @@ body {
   background: #fffbeb;
   color: #d97706;
 }
+
+/* ── Spoken (auto-scored) mode ── */
+.quiz__spoken { margin-top: 8px; }
+
+.quiz__spoken-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn--mic {
+  font-size: 1rem;
+}
+
+.quiz__listening {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: .9rem;
+}
+
+.quiz__listening i {
+  font-size: .6rem;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+
+.quiz__transcript {
+  background: var(--clr-surface2);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: .95rem;
+  color: var(--clr-text);
+}
+
+.quiz__transcript em { font-style: normal; font-weight: 600; }
+
+.quiz__verdict {
+  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+}
+
+.quiz__verdict--pass { background: #ecfdf5; color: var(--clr-green); }
+.quiz__verdict--fail { background: #fef2f2; color: #dc2626; }
+.quiz__verdict--neutral { background: #fffbeb; color: #d97706; }
+
+.quiz__spoken-confirm { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* The auto-detected verdict is pre-highlighted so the user just confirms. */
+.btn--suggested { box-shadow: 0 0 0 3px rgba(37, 99, 235, .35); }
 
 .sim-result-timing {
   color: var(--clr-muted);

@@ -47,7 +47,9 @@
               <p class="account-panel__email" id="accountEmailDisplay"></p>
               <div class="account-panel__results" id="accountResults"></div>
               <input type="tel" class="account-panel__input" id="accountPhoneInputLoggedIn" placeholder="Phone number (optional)" autocomplete="tel">
-              <button class="btn btn--outline account-panel__btn" id="accountSavePhoneBtn" data-i18n="account.savePhone">Save Phone Number</button>
+              <select class="account-panel__input" id="accountStateInput" aria-label="State"></select>
+              <p class="account-panel__hint" id="accountStateHint" data-i18n="account.stateHint">Set your state to see the correct answers for your Governor, Senators, and state capital in the Civics Test.</p>
+              <button class="btn btn--outline account-panel__btn" id="accountSavePhoneBtn" data-i18n="account.saveProfile">Save</button>
               <p class="account-panel__msg account-panel__msg--ok" id="accountPhoneSavedMsg" data-i18n="account.phoneSaved" hidden>Saved!</p>
               <button class="btn btn--outline account-panel__btn" id="accountLogoutBtn" data-i18n="account.logout">Log Out</button>
               <p class="account-panel__help" data-i18n="account.help">Need help? Contact us at <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a></p>
@@ -92,6 +94,21 @@
       </button>
     </div>
 
+    <!-- ═══ CONTENT-TYPE TOGGLE (Practice Questions / Red Flags / Documents) ═══
+         Shown for the "open field" categories (marriage/asylum/F-1/B1B2) that
+         have red-flag or document content seeded. -->
+    <div class="sim-toggle" id="contentTypeToggle" hidden>
+      <button class="sim-toggle__btn sim-toggle__btn--active" id="questionsTabBtn" data-i18n="content.questions">
+        <i class="fa-solid fa-comments"></i> Practice Questions
+      </button>
+      <button class="sim-toggle__btn" id="redFlagsTabBtn" data-i18n="content.redFlags">
+        <i class="fa-solid fa-triangle-exclamation"></i> Red Flags
+      </button>
+      <button class="sim-toggle__btn" id="documentsTabBtn" data-i18n="content.documents">
+        <i class="fa-solid fa-folder-open"></i> Documents
+      </button>
+    </div>
+
     <!-- ═══ NATURALIZATION TEST-TYPE TOGGLE (Civics / English) ═══ -->
     <div class="sim-toggle" id="natTestTypeToggle" hidden>
       <button class="sim-toggle__btn sim-toggle__btn--active" id="civicsTestBtn" data-i18n="nat.civicsTest">
@@ -109,6 +126,9 @@
       </button>
       <button class="sim-toggle__btn" id="simModeBtn" data-i18n="sim.test">
         <i class="fa-solid fa-stopwatch"></i> Simulate Real Test (20 Random)
+      </button>
+      <button class="sim-toggle__btn" id="spokenTestBtn" data-i18n="sim.spoken" hidden>
+        <i class="fa-solid fa-microphone-lines"></i> Spoken Test (Auto-Scored)
       </button>
     </div>
 
@@ -158,6 +178,23 @@
         <div class="quiz__answer" id="quizAnswer" hidden>
           <p class="quiz__answer-label" id="quizAnswerLabel"></p>
           <p class="quiz__answer-text" id="quizAnswerText"></p>
+        </div>
+
+        <!-- ═══ SPOKEN (AUTO-SCORED) MODE ═══ -->
+        <div class="quiz__spoken" id="quizSpoken" hidden>
+          <div class="quiz__spoken-ask" id="spokenAsk">
+            <button class="btn btn--outline" id="repeatQuestionBtn"><i class="fa-solid fa-volume-high"></i> <span data-i18n="spoken.repeat">Hear Question</span></button>
+            <button class="btn btn--primary btn--mic" id="micBtn"><i class="fa-solid fa-microphone"></i> <span data-i18n="spoken.answer">Answer Out Loud</span></button>
+            <p class="quiz__listening" id="quizListening" hidden><i class="fa-solid fa-circle"></i> <span data-i18n="spoken.listening">Listening… speak your answer</span></p>
+          </div>
+          <div class="quiz__spoken-result" id="spokenResult" hidden>
+            <p class="quiz__transcript" id="quizTranscript"><span data-i18n="spoken.youSaid">You said:</span> <em id="quizTranscriptText"></em></p>
+            <p class="quiz__verdict" id="quizVerdict"></p>
+            <div class="quiz__spoken-confirm">
+              <button class="btn btn--correct" id="spokenCorrectBtn"><i class="fa-solid fa-check"></i> <span data-i18n="spoken.correct">Correct</span></button>
+              <button class="btn btn--wrong" id="spokenWrongBtn"><i class="fa-solid fa-xmark"></i> <span data-i18n="spoken.incorrect">Incorrect</span></button>
+            </div>
+          </div>
         </div>
 
         <div class="quiz__actions">

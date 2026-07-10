@@ -2,3 +2,4 @@
 .netlify
 .env
 .claude/
+.DS_Store
