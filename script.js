@@ -1158,3 +1158,13 @@ document.addEventListener("DOMContentLoaded", () => {
   initAuth();
   loadQuestions();
 });
+
+// Register the service worker so the app is installable ("Add to Home Screen")
+// and loads instantly on repeat visits. Data still comes live from Supabase.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((err) => {
+      console.warn("Service worker registration failed:", err);
+    });
+  });
+}

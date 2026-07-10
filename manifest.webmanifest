@@ -1,0 +1,19 @@
+{
+  "name": "Future Steps Interview Prep",
+  "short_name": "Interview Prep",
+  "description": "Practice real U.S. immigration interview questions — marriage green card, naturalization, asylum, F-1 student visa, and B1/B2 visitor visa. Bilingual English / Tiếng Việt.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "./?utm_source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "categories": ["education", "reference"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

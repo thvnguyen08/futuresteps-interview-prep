@@ -37,6 +37,29 @@ Naturalization splits into two parts, matching the real N-400 interview:
 Static HTML/CSS/JS (no build step, no server) — the question bank lives in a
 free Supabase (Postgres) database and is queried directly from the browser.
 
+## SEO & installable app (PWA)
+
+The site is tuned for discoverability and can be installed to a phone home
+screen:
+
+- **SEO** — `index.html` carries a keyword-focused title/description, canonical
+  URL, Open Graph + Twitter cards (with a generated 1200×630 share image at
+  `icons/og-image.png`), and **FAQ structured data** (`schema.org` `FAQPage`)
+  seeded with representative marriage/asylum/F-1/B1-B2 questions so they can
+  surface as rich results for the non-civics long tail. `robots.txt` +
+  `sitemap.xml` point crawlers at the site and keep `admin.html` out of the
+  index.
+- **PWA / "Add to Home Screen"** — `manifest.webmanifest` + brand icons in
+  `icons/` (192, 512, and a maskable 512) + `sw.js` (a service worker that
+  caches the app shell for instant repeat loads and offline access; live
+  question data always comes fresh from Supabase). `netlify.toml` sets
+  cache/`Content-Type` headers so worker and manifest updates ship on the next
+  visit.
+- Icons/OG image were generated from the brand mark with the Pillow scripts in
+  the session scratchpad; to regenerate, re-run them and copy the output into
+  `icons/`. If you move to a custom domain, update the absolute URLs in
+  `index.html` (canonical, `og:*`), `robots.txt`, and `sitemap.xml`.
+
 ## One-time setup
 
 1. **Create a free Supabase project** at [supabase.com](https://supabase.com) (sign up, then "New Project").
