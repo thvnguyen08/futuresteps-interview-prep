@@ -9,21 +9,29 @@ flagged questions and quiz/test results across devices.
 
 Naturalization splits into two parts, matching the real N-400 interview:
 
-- **Civics Test** — **Study All 128 Questions** (practice the full civics
-  question bank), **Simulate Real Test** (a random 20-question round with
-  a live per-question stopwatch, self-scored "I Knew It" / "I Missed It"
-  buttons, and a pass/fail result requiring 12/20 correct, mirroring the real
-  test), or **Spoken Test (Auto-Scored)** — the officer's question is read
-  aloud, you answer **out loud**, and the browser's speech recognition
-  transcribes it and **auto-grades** the answer against the official USCIS
-  answer (with a one-tap confirm/override for edge cases). It feeds the same
-  20-question, 12/20 pass result. The 8 civics questions whose answer depends
-  on a lookup (the current President, your Senator, your Governor, etc.) can't
-  be auto-graded and fall back to self-scoring. Spoken mode uses the browser
-  Web Speech API — best in Chrome/Edge; if a browser doesn't support it, the
-  button is hidden and Simulate Real Test is used instead. No AI/backend and
-  no extra cost — the grading is keyword matching in the browser. The result
-  screen also shows total time and average time per question.
+- **Civics Test** — **Study All 129 Questions** (practice the full civics
+  question bank as **multiple choice**: each question shows the correct answer
+  plus three distractors auto-drawn from other civics answers; picking one marks
+  it right/wrong and reveals the official answer — a low-pressure way to learn
+  the material), **Simulate Real Test** (a random 20-question round with a live
+  per-question stopwatch; you **type your answer and Submit**, it **auto-grades**
+  against the official USCIS answer and pops up the correct answer, and you get a
+  pass/fail result requiring 12/20 correct, mirroring the real test), or
+  **Spoken Test (Auto-Scored)** — the officer's question is read aloud, you
+  answer **out loud**, and the browser's speech recognition transcribes it and
+  auto-grades it (with a one-tap confirm/override). Both Simulate and Spoken feed
+  the same 20-question, 12/20 pass result. The 8 civics questions whose answer
+  depends on a lookup (the current President, your Senator, your Governor, etc.)
+  can't be auto-graded — Study skips multiple choice for them, and Simulate/Spoken
+  fall back to self-scoring. Spoken mode uses the browser Web Speech API (best in
+  Chrome/Edge; the button hides where unsupported). No AI/backend and no extra
+  cost — the auto-grading is keyword matching in the browser. The result screen
+  also shows total time and average time per question. A fourth mode,
+  **Review Missed (N)**, appears once you've missed civics questions: it quizzes
+  only the ones you got wrong (self-scored reveal) and drops each from the list
+  the next time you answer it correctly — adaptive, spaced-repetition-lite
+  review. The missed list persists per device and syncs to your account when
+  logged in.
 - **English Test** — three self-scored practice sections: **Speaking**
   (common biographic questions asked in English during the interview),
   **Reading** (practice sentences built from the official USCIS reading
@@ -75,8 +83,9 @@ screen:
    - `supabase/add_asylum_expansion.sql`
    - `supabase/add_f1_expansion.sql`
    - `supabase/add_b1b2_expansion.sql`
-10. **Get your API credentials.** Go to **Project Settings → API**. Copy the **Project URL** and the **`anon` public key**.
-11. **Configure the app.** Open `script.js` and replace:
+10. **Add adaptive review of missed questions.** Open a new query, paste the contents of `supabase/add_missed_questions.sql`, and run it once. This adds a `missed_questions` table (scoped to the signed-in user via row-level security), like `flagged_questions`. A civics question is added when the customer answers it wrong on the Simulate or Spoken test and removed the next time they get it right; the app's **Review Missed** civics mode quizzes only those. Logged-out customers keep the list in `localStorage` and it merges to the account on first login.
+11. **Get your API credentials.** Go to **Project Settings → API**. Copy the **Project URL** and the **`anon` public key**.
+12. **Configure the app.** Open `script.js` and replace:
    ```js
    const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";

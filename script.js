@@ -72,9 +72,13 @@ const translations = {
     "answer.label.eng_writing": "Gợi Ý Viết",
     "progress": "Câu {current} / {total}",
     "flag.ariaLabel": "Đánh dấu để ôn lại",
-    "sim.practice": '<i class="fa-solid fa-book-open"></i> Học Tất Cả 128 Câu',
+    "sim.practice": '<i class="fa-solid fa-book-open"></i> Học Tất Cả 129 Câu',
     "sim.test": '<i class="fa-solid fa-stopwatch"></i> Mô Phỏng Thi Thật (20 Câu)',
     "sim.spoken": '<i class="fa-solid fa-microphone-lines"></i> Thi Nói (Tự Chấm Điểm)',
+    "sim.review": "Ôn Câu Sai",
+    "review.badgeSuffix": " — Ôn Câu Sai",
+    "review.done": "Đã ôn xong — anh/chị đã nắm được {cleared}/{total} câu. Còn {remaining} câu cần ôn.",
+    "review.again": '<i class="fa-solid fa-rotate-right"></i> Ôn Lại',
     "spoken.repeat": "Nghe Câu Hỏi",
     "spoken.answer": "Trả Lời Bằng Giọng Nói",
     "spoken.listening": "Đang nghe… hãy nói câu trả lời của bạn",
@@ -86,6 +90,10 @@ const translations = {
     "spoken.verdict.manual": "Câu này không thể tự chấm — hãy nghe đáp án rồi tự chấm điểm.",
     "spoken.unsupported": "Trình duyệt này không hỗ trợ nhận diện giọng nói. Hãy dùng Chrome hoặc Edge trên máy tính, hoặc chọn Mô Phỏng Thi Thật để tự chấm.",
     "spoken.error": "Không nghe rõ. Hãy bấm micro thử lại, hoặc tự chấm điểm bên dưới.",
+    "mc.prompt": "Chọn câu trả lời mà anh/chị cho là đúng:",
+    "typed.placeholder": "Nhập câu trả lời của anh/chị…",
+    "typed.submit": "Nộp",
+    "typed.youTyped": "Anh/chị đã nhập:",
     "sim.progress": "Câu {current}/{total} · Đúng {correct}/{answered}",
     "sim.badgeSuffix": " — Mô Phỏng Thi",
     "sim.pass": "✅ ĐẠT — Trả lời đúng {correct}/{total} câu (cần tối thiểu {threshold}/20 để đậu bài thi thật)",
@@ -174,6 +182,11 @@ const SPOKEN_EN = {
   verdictManual: "This question can't be auto-checked — listen to the official answer, then score yourself.",
   error: "Didn't catch that. Listen to the answer and score yourself, or restart to try again.",
 };
+const TYPED_EN = {
+  verdictPass: "✅ Looks correct — confirm or change it below.",
+  verdictFail: "❌ Doesn't match the official answer — confirm or change it below.",
+  verdictManual: "This question can't be auto-checked — read the official answer, then score yourself.",
+};
 // Small, conservative stopword list so matching keys on the meaningful words.
 const CIVICS_STOPWORDS = new Set([
   "a","an","the","of","and","or","to","in","on","for","is","are","was","were",
@@ -245,9 +258,17 @@ const DONE_MESSAGES = {
     en: "You haven't flagged any questions to review yet. Tap the star on any question to save it here.",
     vi: "Bạn chưa đánh dấu câu hỏi nào để ôn lại. Bấm vào ngôi sao trên bất kỳ câu hỏi nào để lưu lại ở đây.",
   },
+  reviewEmpty: {
+    en: "No missed civics questions to review right now — nice work! Any you miss on the Simulate or Spoken test will collect here.",
+    vi: "Hiện không có câu Thi Dân Sự nào bị sai để ôn lại — làm tốt lắm! Những câu anh/chị trả lời sai trong bài Mô Phỏng hoặc Thi Nói sẽ được lưu ở đây.",
+  },
 };
 
+const REVIEW_DONE_EN = "Review complete — you cleared {cleared} of {total}. {remaining} still to review.";
+const REVIEW_BADGE_SUFFIX_EN = " — Review Missed";
+
 const FLAG_STORAGE_KEY = "interviewPrepFlaggedIds";
+const MISSED_STORAGE_KEY = "interviewPrepMissedIds";
 
 /* ── States/territories for the account dropdown (value = code stored in the
    user's profile; must match the `code` column in state_officials) ── */
@@ -372,6 +393,24 @@ function saveFlaggedIds() {
   localStorage.setItem(FLAG_STORAGE_KEY, JSON.stringify([...flaggedIds]));
 }
 
+function loadMissedIds() {
+  try {
+    const raw = localStorage.getItem(MISSED_STORAGE_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (err) {
+    return new Set();
+  }
+}
+
+function saveMissedIds() {
+  localStorage.setItem(MISSED_STORAGE_KEY, JSON.stringify([...missedIds]));
+}
+
+// Count of civics questions currently on the missed list (drives the button count).
+function countMissedCivics() {
+  return allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id)).length;
+}
+
 let lastResultsCache = [];
 
 function initAuth() {
@@ -382,6 +421,8 @@ function initAuth() {
     if (currentUser && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
       mergeLocalFlagsToAccount()
         .then(loadFlaggedIdsFromAccount)
+        .then(mergeLocalMissedToAccount)
+        .then(loadMissedIdsFromAccount)
         .then(loadRecentResults);
     }
   });
@@ -492,6 +533,54 @@ async function loadFlaggedIdsFromAccount() {
   }
 }
 
+async function mergeLocalMissedToAccount() {
+  if (!currentUser || !supabaseClient || missedIds.size === 0) return;
+  const rows = [...missedIds].map(id => ({ user_id: currentUser.id, question_id: id }));
+  try {
+    await supabaseClient.from("missed_questions").upsert(rows, { onConflict: "user_id,question_id" });
+  } catch (err) {
+    console.error("Failed to merge local missed questions into account:", err);
+  }
+}
+
+async function loadMissedIdsFromAccount() {
+  if (!currentUser || !supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient
+      .from("missed_questions")
+      .select("question_id")
+      .eq("user_id", currentUser.id);
+    if (error) throw error;
+    missedIds = new Set((data || []).map(r => r.question_id));
+    saveMissedIds();
+    if (currentCategory === "naturalization") updateNaturalizationUI();
+    if (reviewMode) startRound("naturalization");
+  } catch (err) {
+    console.error("Failed to load missed questions from account:", err);
+  }
+}
+
+// Add (missed=true) or clear (missed=false) a question on the missed list,
+// persist locally, refresh the button count, and sync to the account if signed in.
+async function markMissed(id, missed) {
+  if (missed === missedIds.has(id)) return; // no change
+  if (missed) missedIds.add(id); else missedIds.delete(id);
+  saveMissedIds();
+  if (currentCategory === "naturalization") updateNaturalizationUI();
+  if (!currentUser || !supabaseClient) return;
+  try {
+    if (missed) {
+      await supabaseClient.from("missed_questions")
+        .upsert({ user_id: currentUser.id, question_id: id }, { onConflict: "user_id,question_id" });
+    } else {
+      await supabaseClient.from("missed_questions")
+        .delete().eq("user_id", currentUser.id).eq("question_id", id);
+    }
+  } catch (err) {
+    console.error("Failed to sync missed question:", err);
+  }
+}
+
 async function recordQuizResult(category, mode, correct, total) {
   if (!currentUser || !supabaseClient) return;
   try {
@@ -552,9 +641,13 @@ let currentCategory = "marriage";
 let contentType = "question"; // "question" | "red_flag" | "checklist" — only meaningful for OPEN_FIELD categories
 let spokenMode = false; // civics "Spoken Test" — answer aloud, auto-scored
 let spokenVerdict = null; // true | false | null(=manual) for the current spoken question
+let typedVerdict = null; // true | false | null(=manual) for the current typed (Simulate) question
+let mcState = { qid: null, options: [], answeredIndex: null }; // Study multiple-choice state
 let quizSet = [];
 let currentIndex = 0;
 let flaggedIds = loadFlaggedIds();
+let missedIds = loadMissedIds();
+let reviewMode = false; // civics "Review Missed" mode — quiz only your missed civics questions
 let simMode = false;
 let simScore = { correct: 0, total: 0 };
 let simTimes = [];
@@ -565,7 +658,7 @@ let questionStartTime = 0;
 let currentUser = null;
 
 function isSelfScored() {
-  return simMode || (currentCategory === "naturalization" && natTestType === "english");
+  return simMode || reviewMode || (currentCategory === "naturalization" && natTestType === "english");
 }
 
 function hasTimer() {
@@ -619,11 +712,17 @@ function updateNaturalizationUI() {
 
   const showCivicsSub = isNat && natTestType === "civics";
   document.getElementById("simToggle").hidden = !showCivicsSub;
-  document.getElementById("practiceModeBtn").classList.toggle("sim-toggle__btn--active", !simMode);
+  document.getElementById("practiceModeBtn").classList.toggle("sim-toggle__btn--active", !simMode && !reviewMode);
   document.getElementById("simModeBtn").classList.toggle("sim-toggle__btn--active", simMode && !spokenMode);
   const spokenBtn = document.getElementById("spokenTestBtn");
   spokenBtn.hidden = !(showCivicsSub && SPEECH_SUPPORTED);
   spokenBtn.classList.toggle("sim-toggle__btn--active", simMode && spokenMode);
+  // "Review Missed" appears only when there are missed civics questions to drill.
+  const reviewBtn = document.getElementById("reviewMissedBtn");
+  const missedCount = countMissedCivics();
+  document.getElementById("reviewMissedCount").textContent = missedCount;
+  reviewBtn.hidden = !(showCivicsSub && missedCount > 0);
+  reviewBtn.classList.toggle("sim-toggle__btn--active", reviewMode);
 
   const showEnglishSub = isNat && natTestType === "english";
   document.getElementById("englishSectionToggle").hidden = !showEnglishSub;
@@ -657,12 +756,21 @@ function setContentType(type) {
 function setSimMode(on) {
   simMode = on;
   spokenMode = false;
+  reviewMode = false;
   startRound("naturalization");
 }
 
 function setSpokenTest() {
   simMode = true;
   spokenMode = true;
+  reviewMode = false;
+  startRound("naturalization");
+}
+
+function setReviewMode() {
+  simMode = false;
+  spokenMode = false;
+  reviewMode = true;
   startRound("naturalization");
 }
 
@@ -670,6 +778,7 @@ function setNatTestType(type) {
   natTestType = type;
   simMode = false;
   spokenMode = false;
+  reviewMode = false;
   startRound("naturalization");
 }
 
@@ -681,14 +790,16 @@ function setEnglishSection(section) {
 function startRound(category) {
   clearInterval(timerInterval);
   currentCategory = category;
-  if (category !== "naturalization") { simMode = false; spokenMode = false; natTestType = "civics"; }
+  if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
   if (!OPEN_FIELD.includes(category)) contentType = "question";
   updateNaturalizationUI();
   updateContentTypeToggle();
 
   let pool;
   if (category === "flagged") pool = allQuestions.filter(q => flaggedIds.has(q.id));
-  else if (category === "naturalization") {
+  else if (category === "naturalization" && natTestType === "civics" && reviewMode) {
+    pool = allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id));
+  } else if (category === "naturalization") {
     const dbCategory = natTestType === "english" ? natEnglishSection : "naturalization";
     pool = allQuestions.filter(q => q.category === dbCategory);
   } else pool = allQuestions.filter(q => q.category === category && (q.content_type || "question") === contentType);
@@ -703,7 +814,7 @@ function startRound(category) {
   document.getElementById("quizCard").hidden = quizSet.length === 0;
 
   if (quizSet.length === 0) {
-    renderDoneState(category === "flagged" ? "flaggedEmpty" : "finished");
+    renderDoneState(category === "flagged" ? "flaggedEmpty" : (reviewMode ? "reviewEmpty" : "finished"));
     document.getElementById("quizDone").hidden = false;
   } else {
     renderCurrentQuestion();
@@ -770,6 +881,21 @@ function renderDoneState(kind) {
     iconEl.style.color = cls === "fail" ? "#dc2626" : (cls === "warn" ? "#d97706" : "");
     restartBtn.innerHTML = currentLang === "vi" ? translations.vi["btn.tryAgain"] : '<i class="fa-solid fa-rotate-right"></i> Try Another Random Set';
     restartBtn.style.display = "";
+  } else if (kind === "reviewDone") {
+    const cleared = simScore.correct;
+    const remaining = countMissedCivics();
+    const template = currentLang === "vi" ? translations.vi["review.done"] : REVIEW_DONE_EN;
+    badgeEl.textContent = template
+      .replace("{cleared}", cleared)
+      .replace("{total}", simScore.total)
+      .replace("{remaining}", remaining);
+    badgeEl.classList.add(remaining === 0 ? "sim-result-badge--pass" : "sim-result-badge--warn");
+    badgeEl.hidden = false;
+    textEl.hidden = true;
+    iconEl.className = remaining === 0 ? "fa-solid fa-circle-check" : "fa-solid fa-rotate-right";
+    iconEl.style.color = "";
+    restartBtn.innerHTML = currentLang === "vi" ? translations.vi["review.again"] : '<i class="fa-solid fa-rotate-right"></i> Review Again';
+    restartBtn.style.display = remaining === 0 ? "none" : "";
   } else {
     badgeEl.hidden = true;
     textEl.hidden = false;
@@ -777,7 +903,7 @@ function renderDoneState(kind) {
     iconEl.className = "fa-solid fa-circle-check";
     iconEl.style.color = "";
     restartBtn.innerHTML = currentLang === "vi" ? translations.vi["btn.restart"] : '<i class="fa-solid fa-rotate-right"></i> Start Over';
-    restartBtn.style.display = kind === "flaggedEmpty" ? "none" : "";
+    restartBtn.style.display = (kind === "flaggedEmpty" || kind === "reviewEmpty") ? "none" : "";
   }
 }
 
@@ -798,6 +924,7 @@ function renderCurrentQuestion() {
     ? translations.vi["badge." + q.category]
     : CATEGORY_LABEL_EN[q.category];
   if (simMode) badge.textContent += currentLang === "vi" ? translations.vi["sim.badgeSuffix"] : SIM_BADGE_SUFFIX_EN;
+  if (reviewMode) badge.textContent += currentLang === "vi" ? translations.vi["review.badgeSuffix"] : REVIEW_BADGE_SUFFIX_EN;
   if (ct !== "question") badge.textContent += currentLang === "vi" ? translations.vi["content.badge." + ct] : CONTENT_BADGE_SUFFIX_EN[ct];
 
   if (isSelfScored()) {
@@ -846,17 +973,27 @@ function renderCurrentQuestion() {
   renderFlagButton();
   renderActionButtons();
   renderTimer();
-  if (spokenMode && simMode) enterSpokenAsk(q);
+  if (simMode && spokenMode) enterSpokenAsk(q);
+  else if (simMode && !spokenMode) enterTypedAsk(q);
+  else if (studyMCActive(q)) renderChoices(q);
 }
 
 function renderActionButtons() {
+  const q = quizSet[currentIndex];
+  const spoken = simMode && spokenMode;     // Spoken Test — answer aloud
+  const typed = simMode && !spokenMode;      // Simulate — typed answer
+  const mc = studyMCActive(q);               // Study — multiple choice
   const selfScored = isSelfScored();
-  const spoken = spokenMode && simMode;
   document.getElementById("quizSpoken").hidden = !spoken;
-  document.getElementById("revealBtn").hidden = spoken;
-  document.getElementById("nextBtn").hidden = selfScored || spoken;
-  document.getElementById("gotItBtn").hidden = !selfScored || spoken;
-  document.getElementById("missedBtn").hidden = !selfScored || spoken;
+  document.getElementById("quizTyped").hidden = !typed;
+  document.getElementById("quizChoices").hidden = !mc;
+  // spoken/typed/mc reveal the answer themselves; hide the plain reveal button.
+  document.getElementById("revealBtn").hidden = spoken || typed || mc;
+  // Next shows for plain reveal; for MC it's toggled on after a choice (renderChoices).
+  document.getElementById("nextBtn").hidden = selfScored || spoken || typed || mc;
+  // I Knew It / I Missed It only for the remaining self-scored modes (English, Review).
+  document.getElementById("gotItBtn").hidden = !selfScored || spoken || typed || mc;
+  document.getElementById("missedBtn").hidden = !selfScored || spoken || typed || mc;
 }
 
 // Reset the spoken card to its "ask" phase and read the question aloud.
@@ -936,6 +1073,116 @@ function showSpokenError() {
   showSpokenResult(null);
   document.getElementById("quizVerdict").textContent =
     currentLang === "vi" ? translations.vi["spoken.error"] : SPOKEN_EN.error;
+}
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ── Study multiple choice ──────────────────────────────────────────────
+// Shown only in civics Study mode, for questions with a fixed correct answer.
+function studyMCActive(q) {
+  return !simMode && !reviewMode && !spokenMode
+    && currentCategory === "naturalization" && natTestType === "civics"
+    && !!q && q.category === "naturalization" && isCivicsAutoScorable(q);
+}
+
+// Concise option label: first acceptable variant, parentheticals and trailing
+// punctuation removed (e.g. "Twenty-seven (27)." → "Twenty-seven").
+function optionText(answer) {
+  let v = (answer || "").split(/;|\n/)[0] || "";
+  v = v.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  return v.replace(/[.;,]+$/, "").trim();
+}
+
+// Correct answer + 3 distractors drawn from other civics answers, shuffled.
+function buildChoices(q) {
+  const correctText = optionText(q.answer_en).toLowerCase();
+  const pool = shuffle(allQuestions.filter(o =>
+    o.category === "naturalization" && o.id !== q.id && isCivicsAutoScorable(o)));
+  const distractors = [];
+  const seen = new Set([correctText]);
+  for (const o of pool) {
+    const t = optionText(o.answer_en).toLowerCase();
+    if (!t || seen.has(t)) continue;
+    seen.add(t);
+    distractors.push({ q: o, correct: false });
+    if (distractors.length === 3) break;
+  }
+  mcState = { qid: q.id, options: shuffle([{ q, correct: true }, ...distractors]), answeredIndex: null };
+}
+
+function renderChoices(q) {
+  if (mcState.qid !== q.id) buildChoices(q);
+  const answered = mcState.answeredIndex !== null;
+  const keys = ["A", "B", "C", "D"];
+  document.getElementById("quizChoicesList").innerHTML = mcState.options.map((opt, i) => {
+    const text = optionText(currentLang === "vi" ? opt.q.answer_vi : opt.q.answer_en);
+    let cls = "quiz__choice";
+    if (answered) {
+      if (opt.correct) cls += " quiz__choice--correct";
+      else if (i === mcState.answeredIndex) cls += " quiz__choice--wrong";
+      else cls += " quiz__choice--dim";
+    }
+    return `<button class="${cls}" data-choice="${i}"${answered ? " disabled" : ""}>` +
+      `<span class="quiz__choice-key">${keys[i]}</span><span>${escapeHtml(text)}</span></button>`;
+  }).join("");
+  document.getElementById("quizChoices").hidden = false;
+  document.getElementById("quizAnswer").hidden = !answered; // reveal official answer after choosing
+  document.getElementById("nextBtn").hidden = !answered;
+}
+
+function selectChoice(idx) {
+  if (mcState.answeredIndex !== null) return;
+  mcState.answeredIndex = idx;
+  renderChoices(quizSet[currentIndex]);
+}
+
+// ── Simulate: typed answer (auto-scored) ───────────────────────────────
+function enterTypedAsk(q) {
+  typedVerdict = null;
+  const input = document.getElementById("typedInput");
+  input.value = "";
+  input.placeholder = currentLang === "vi" ? translations.vi["typed.placeholder"] : "Type your answer…";
+  document.getElementById("typedAsk").hidden = false;
+  document.getElementById("typedResult").hidden = true;
+  document.getElementById("typedEcho").textContent = "";
+  document.getElementById("quizAnswer").hidden = true;
+  input.focus();
+}
+
+function submitTyped() {
+  const q = quizSet[currentIndex];
+  const val = document.getElementById("typedInput").value.trim();
+  if (!val) return;
+  document.getElementById("typedEcho").textContent = val;
+  const verdict = isCivicsAutoScorable(q) ? gradeCivicsAnswer([val], q.answer_en) : null;
+  showTypedResult(verdict);
+}
+
+function showTypedResult(verdict) {
+  document.getElementById("typedAsk").hidden = true;
+  document.getElementById("typedResult").hidden = false;
+  document.getElementById("quizAnswer").hidden = false; // reveal the official answer
+  const vEl = document.getElementById("typedVerdict");
+  const correctBtn = document.getElementById("typedCorrectBtn");
+  const wrongBtn = document.getElementById("typedWrongBtn");
+  vEl.classList.remove("quiz__verdict--pass", "quiz__verdict--fail", "quiz__verdict--neutral");
+  correctBtn.classList.remove("btn--suggested");
+  wrongBtn.classList.remove("btn--suggested");
+  if (verdict === true) {
+    vEl.textContent = currentLang === "vi" ? translations.vi["spoken.verdict.pass"] : TYPED_EN.verdictPass;
+    vEl.classList.add("quiz__verdict--pass");
+    correctBtn.classList.add("btn--suggested");
+  } else if (verdict === false) {
+    vEl.textContent = currentLang === "vi" ? translations.vi["spoken.verdict.fail"] : TYPED_EN.verdictFail;
+    vEl.classList.add("quiz__verdict--fail");
+    wrongBtn.classList.add("btn--suggested");
+  } else {
+    vEl.textContent = currentLang === "vi" ? translations.vi["spoken.verdict.manual"] : TYPED_EN.verdictManual;
+    vEl.classList.add("quiz__verdict--neutral");
+  }
+  typedVerdict = verdict;
 }
 
 function renderTimer() {
@@ -1022,6 +1269,7 @@ function nextQuestion() {
   if (currentIndex >= quizSet.length) {
     let kind = "finished";
     if (simMode) kind = "simResult";
+    else if (reviewMode) kind = "reviewDone";
     else if (isSelfScored()) kind = "englishResult";
     if (kind === "simResult" || kind === "englishResult") {
       recordQuizResult(
@@ -1040,9 +1288,12 @@ function nextQuestion() {
 }
 
 function recordSimAnswer(correct) {
+  const q = quizSet[currentIndex];
   stopTimerAndRecord();
   simScore.total++;
   if (correct) simScore.correct++;
+  // Adaptive review: track civics misses, and clear a question once it's right.
+  if (q && q.category === "naturalization") markMissed(q.id, !correct);
   nextQuestion();
 }
 
@@ -1106,6 +1357,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("practiceModeBtn").addEventListener("click", () => setSimMode(false));
   document.getElementById("simModeBtn").addEventListener("click", () => setSimMode(true));
   document.getElementById("spokenTestBtn").addEventListener("click", setSpokenTest);
+  document.getElementById("reviewMissedBtn").addEventListener("click", setReviewMode);
   document.getElementById("micBtn").addEventListener("click", startListening);
   document.getElementById("repeatQuestionBtn").addEventListener("click", () => {
     const q = quizSet[currentIndex];
@@ -1113,6 +1365,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("spokenCorrectBtn").addEventListener("click", () => recordSimAnswer(true));
   document.getElementById("spokenWrongBtn").addEventListener("click", () => recordSimAnswer(false));
+  document.getElementById("quizChoicesList").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-choice]");
+    if (btn) selectChoice(Number(btn.dataset.choice));
+  });
+  document.getElementById("submitTypedBtn").addEventListener("click", submitTyped);
+  document.getElementById("typedInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitTyped();
+  });
+  document.getElementById("typedCorrectBtn").addEventListener("click", () => recordSimAnswer(true));
+  document.getElementById("typedWrongBtn").addEventListener("click", () => recordSimAnswer(false));
   document.getElementById("civicsTestBtn").addEventListener("click", () => setNatTestType("civics"));
   document.getElementById("englishTestBtn").addEventListener("click", () => setNatTestType("english"));
   document.getElementById("speakingSectionBtn").addEventListener("click", () => setEnglishSection("eng_speaking"));

@@ -221,13 +221,16 @@
     <!-- ═══ CIVICS MODE TOGGLE (Study / Simulate) ═══ -->
     <div class="sim-toggle" id="simToggle" hidden>
       <button class="sim-toggle__btn sim-toggle__btn--active" id="practiceModeBtn" data-i18n="sim.practice">
-        <i class="fa-solid fa-book-open"></i> Study All 128 Questions
+        <i class="fa-solid fa-book-open"></i> Study All 129 Questions
       </button>
       <button class="sim-toggle__btn" id="simModeBtn" data-i18n="sim.test">
         <i class="fa-solid fa-stopwatch"></i> Simulate Real Test (20 Random)
       </button>
       <button class="sim-toggle__btn" id="spokenTestBtn" data-i18n="sim.spoken" hidden>
         <i class="fa-solid fa-microphone-lines"></i> Spoken Test (Auto-Scored)
+      </button>
+      <button class="sim-toggle__btn" id="reviewMissedBtn" hidden>
+        <i class="fa-solid fa-rotate-left"></i> <span data-i18n="sim.review">Review Missed</span> (<span id="reviewMissedCount">0</span>)
       </button>
     </div>
 
@@ -274,6 +277,12 @@
           <button class="btn btn--outline" id="playSentenceBtn"><i class="fa-solid fa-volume-high"></i> <span data-i18n="btn.playSentence">Play Sentence</span></button>
         </div>
 
+        <!-- ═══ STUDY MULTIPLE-CHOICE ═══ -->
+        <div class="quiz__choices" id="quizChoices" hidden>
+          <p class="quiz__choices-prompt" data-i18n="mc.prompt">Choose the answer you think is correct:</p>
+          <div class="quiz__choices-list" id="quizChoicesList"></div>
+        </div>
+
         <div class="quiz__answer" id="quizAnswer" hidden>
           <p class="quiz__answer-label" id="quizAnswerLabel"></p>
           <p class="quiz__answer-text" id="quizAnswerText"></p>
@@ -292,6 +301,22 @@
             <div class="quiz__spoken-confirm">
               <button class="btn btn--correct" id="spokenCorrectBtn"><i class="fa-solid fa-check"></i> <span data-i18n="spoken.correct">Correct</span></button>
               <button class="btn btn--wrong" id="spokenWrongBtn"><i class="fa-solid fa-xmark"></i> <span data-i18n="spoken.incorrect">Incorrect</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SIMULATE — TYPED ANSWER (AUTO-SCORED) ═══ -->
+        <div class="quiz__typed" id="quizTyped" hidden>
+          <div class="quiz__typed-ask" id="typedAsk">
+            <input type="text" class="quiz__typed-input" id="typedInput" data-i18n-placeholder="typed.placeholder" placeholder="Type your answer…" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <button class="btn btn--primary" id="submitTypedBtn"><i class="fa-solid fa-paper-plane"></i> <span data-i18n="typed.submit">Submit</span></button>
+          </div>
+          <div class="quiz__spoken-result" id="typedResult" hidden>
+            <p class="quiz__transcript"><span data-i18n="typed.youTyped">You typed:</span> <em id="typedEcho"></em></p>
+            <p class="quiz__verdict" id="typedVerdict"></p>
+            <div class="quiz__spoken-confirm">
+              <button class="btn btn--correct" id="typedCorrectBtn"><i class="fa-solid fa-check"></i> <span data-i18n="spoken.correct">Correct</span></button>
+              <button class="btn btn--wrong" id="typedWrongBtn"><i class="fa-solid fa-xmark"></i> <span data-i18n="spoken.incorrect">Incorrect</span></button>
             </div>
           </div>
         </div>
