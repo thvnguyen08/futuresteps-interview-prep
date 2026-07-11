@@ -159,6 +159,27 @@
           <tbody id="tableBody"></tbody>
         </table>
       </div>
+
+      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Registration Leads
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        Everyone who filled the "start practicing" gate (name + email/phone + location).
+      </p>
+      <div class="toolbar">
+        <input type="text" class="toolbar__search" id="leadsSearch" placeholder="Search leads by name, email, phone, or location…">
+        <button class="btn btn--green" id="leadsExportBtn">
+          <i class="fa-solid fa-file-csv"></i> Export Leads CSV
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="leadsHead"></tr>
+          </thead>
+          <tbody id="leadsBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -285,6 +306,74 @@
       renderTable();
     }
 
+    // ── Registration leads ──
+    let leadsData = [];
+    const leadColumns = [
+      { key: "name",       label: "Name" },
+      { key: "email",      label: "Email" },
+      { key: "phone",      label: "Phone" },
+      { key: "location",   label: "Location" },
+      { key: "created_at", label: "Registered" },
+    ];
+
+    function renderLeadsHead() {
+      document.getElementById("leadsHead").innerHTML =
+        leadColumns.map(c => `<th>${c.label}</th>`).join("");
+    }
+
+    function renderLeads(filter) {
+      let rows = [...leadsData];
+      if (filter) {
+        const q = filter.toLowerCase();
+        rows = rows.filter(r => leadColumns.some(c =>
+          r[c.key] && String(r[c.key]).toLowerCase().includes(q)));
+      }
+      const tbody = document.getElementById("leadsBody");
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${leadColumns.length}" class="empty-state">No leads yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>${leadColumns.map(c => {
+        let val = r[c.key];
+        if (c.key === "created_at") val = fmtDate(val);
+        if (val == null || val === "") val = "—";
+        return `<td>${String(val).replace(/</g, "&lt;")}</td>`;
+      }).join("")}</tr>`).join("");
+    }
+
+    function exportLeadsCSV() {
+      const header = leadColumns.map(c => c.label).join(",");
+      const rows = leadsData.map(r => leadColumns.map(c => {
+        let v = r[c.key];
+        if (c.key === "created_at") v = v ? new Date(v).toISOString() : "";
+        if (v == null) v = "";
+        return `"${String(v).replace(/"/g, '""')}"`;
+      }).join(","));
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `futuresteps_leads_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function loadLeads() {
+      const { data, error } = await sb.rpc("get_leads_data");
+      if (error) {
+        console.error("Leads load error:", error);
+        document.getElementById("leadsBody").innerHTML =
+          `<tr><td colspan="${leadColumns.length}" class="empty-state" style="color:var(--clr-red)">
+            Failed to load leads. Make sure you've run <code>supabase/add_leads.sql</code> and your email is in the admin list.
+          </td></tr>`;
+        return;
+      }
+      leadsData = data || [];
+      renderLeadsHead();
+      renderLeads();
+    }
+
     function showDashboard(user) {
       document.getElementById("loginGate").style.display = "none";
       document.getElementById("dashboard").classList.add("is-visible");
@@ -297,6 +386,7 @@
         location.reload();
       });
       loadCRM();
+      loadLeads();
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -345,6 +435,11 @@
       });
 
       document.getElementById("exportBtn").addEventListener("click", exportCSV);
+
+      document.getElementById("leadsSearch").addEventListener("input", (e) => {
+        renderLeads(e.target.value);
+      });
+      document.getElementById("leadsExportBtn").addEventListener("click", exportLeadsCSV);
     });
   </script>
 </body>

@@ -782,3 +782,65 @@ body {
   .cta-login { flex-direction: column; text-align: center; gap: 14px; }
   .cta-login__btn { width: 100%; justify-content: center; }
 }
+
+/* ── Registration gate (must register to start practicing) ── */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(37,99,235,.18), transparent 45%),
+    radial-gradient(circle at 85% 92%, rgba(178,34,52,.14), transparent 45%),
+    rgba(15,23,42,.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+body.gate-open { overflow: hidden; }
+
+.gate__card {
+  background: var(--clr-surface);
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+  padding: 26px 26px 22px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 24px 64px rgba(0,0,0,.28);
+  border-top: 4px solid transparent;
+  border-image: linear-gradient(90deg, #b22234 0 33.33%, #fff 33.33% 66.66%, #3c3b6e 66.66% 100%) 1;
+}
+.gate__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.gate__logo { display: flex; align-items: center; gap: 8px; }
+.gate__logo-text { font-family: var(--ff-heading); font-size: 1.05rem; color: var(--clr-white); }
+.gate__logo-text strong { color: var(--clr-primary); }
+.gate__title { font-family: var(--ff-heading); font-size: 1.45rem; line-height: 1.2; color: var(--clr-white); margin-bottom: 8px; }
+.gate__sub { font-size: .9rem; color: var(--clr-muted); line-height: 1.5; margin-bottom: 18px; }
+.gate__input {
+  width: 100%;
+  font-family: var(--ff-body);
+  font-size: .95rem;
+  padding: 12px 14px;
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  background: #fff;
+  color: var(--clr-text);
+}
+.gate__input:focus { outline: none; border-color: var(--clr-primary); }
+.gate__hint { font-size: .78rem; color: var(--clr-muted); margin: -2px 0 12px; line-height: 1.45; }
+.gate__error { font-size: .85rem; color: #dc2626; font-weight: 600; margin: 0 0 12px; }
+.gate__submit { width: 100%; justify-content: center; margin-top: 4px; }
+.gate__login-prompt { text-align: center; font-size: .85rem; color: var(--clr-muted); margin-top: 16px; }
+.gate__login-prompt a { color: var(--clr-primary); font-weight: 600; }
+.gate__login-box { margin-top: 12px; }
+.gate__msg { font-size: .8rem; margin-top: 8px; }
+.gate__msg--ok { color: var(--clr-green); }
+.gate__msg--error { color: #dc2626; }
+.gate__legal {
+  font-size: .72rem; color: var(--clr-muted); line-height: 1.5; text-align: center;
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--clr-surface2);
+}

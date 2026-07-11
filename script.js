@@ -124,6 +124,26 @@ const translations = {
     "account.stateHint": "Chọn tiểu bang của bạn để xem đáp án đúng cho câu hỏi về Thống Đốc, Thượng Nghị Sĩ và thủ phủ tiểu bang trong phần Thi Dân Sự.",
     "account.phoneSaved": "Đã lưu!",
     "account.help": 'Cần hỗ trợ? Liên hệ chúng tôi qua <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>',
+    "gate.title": "Bắt đầu luyện phỏng vấn",
+    "gate.sub": "Hãy cho chúng tôi biết đôi chút về bạn để Future Steps Services có thể hỗ trợ hồ sơ của bạn. Sau đó bạn có thể luyện tập ngay — hoàn toàn miễn phí.",
+    "gate.contactHint": "Nhập email hoặc số điện thoại — ít nhất một cách để chúng tôi liên hệ với bạn.",
+    "gate.start": "Bắt Đầu Luyện Tập",
+    "gate.haveAccount": "Đã đăng ký trước đây?",
+    "gate.logIn": "Đăng nhập",
+    "gate.sendLink": "Gửi Liên Kết Đăng Nhập",
+    "gate.legal": "Đây chỉ là tài liệu luyện tập, không phải tư vấn pháp lý. Thông tin của bạn chỉ được chia sẻ với Future Steps Services.",
+    "gate.ph.name": "Họ và tên",
+    "gate.ph.email": "Email",
+    "gate.ph.phone": "Số điện thoại",
+    "gate.ph.location": "Bạn đang ở đâu? (tiểu bang hoặc Việt Nam)",
+    "gate.loc.vietnam": "Việt Nam",
+    "gate.loc.other": "Quốc gia khác",
+    "gate.err.name": "Vui lòng nhập tên của bạn.",
+    "gate.err.contact": "Vui lòng nhập email hoặc số điện thoại.",
+    "gate.err.email": "Địa chỉ email không hợp lệ.",
+    "gate.err.location": "Vui lòng chọn nơi bạn đang ở.",
+    "gate.err.save": "Có lỗi xảy ra. Vui lòng thử lại.",
+    "gate.loginSent": "Hãy kiểm tra email để nhận liên kết đăng nhập!",
   }
 };
 
@@ -269,6 +289,26 @@ const REVIEW_BADGE_SUFFIX_EN = " — Review Missed";
 
 const FLAG_STORAGE_KEY = "interviewPrepFlaggedIds";
 const MISSED_STORAGE_KEY = "interviewPrepMissedIds";
+const REGISTERED_STORAGE_KEY = "interviewPrepRegistered";
+
+// English placeholders / messages for the registration gate (VI live in translations.vi).
+const GATE_EN = {
+  "gate.ph.name": "Full name",
+  "gate.ph.email": "Email",
+  "gate.ph.phone": "Phone number",
+  "gate.ph.location": "Where are you? (state or Vietnam)",
+  "gate.loc.vietnam": "Vietnam",
+  "gate.loc.other": "Other country",
+  "gate.err.name": "Please enter your name.",
+  "gate.err.contact": "Please enter your email or your phone number.",
+  "gate.err.email": "Please enter a valid email address.",
+  "gate.err.location": "Please choose where you are.",
+  "gate.err.save": "Something went wrong. Please try again.",
+  "gate.loginSent": "Check your email for a login link!",
+};
+function gateText(key) {
+  return currentLang === "vi" ? translations.vi[key] : GATE_EN[key];
+}
 
 /* ── States/territories for the account dropdown (value = code stored in the
    user's profile; must match the `code` column in state_officials) ── */
@@ -328,6 +368,117 @@ function populateStateSelect() {
   sel.innerHTML = `<option value="">${statePlaceholderText()}</option>` +
     STATES.map(s => `<option value="${s.code}">${s.name}</option>`).join("");
   sel.value = selected;
+}
+
+/* ── Registration gate ──
+   Customers must give a name + (email or phone) + location before practicing.
+   The lead is saved to Supabase and they start immediately (no verification).
+   Logged-in users and returning visitors on this device skip the gate. */
+
+function isRegistered() {
+  return !!currentUser || localStorage.getItem(REGISTERED_STORAGE_KEY) === "1";
+}
+
+function markRegistered() {
+  try { localStorage.setItem(REGISTERED_STORAGE_KEY, "1"); } catch (e) {}
+}
+
+function populateGateLocation() {
+  const sel = document.getElementById("gateLocation");
+  if (!sel) return;
+  const selected = sel.value;
+  // value = canonical English label (stored in the CRM); US states + Vietnam + Other.
+  sel.innerHTML =
+    `<option value="" disabled selected>${gateText("gate.ph.location")}</option>` +
+    STATES.map(s => `<option value="${s.name}">${s.name}</option>`).join("") +
+    `<option value="Vietnam">${gateText("gate.loc.vietnam")}</option>` +
+    `<option value="Other country">${gateText("gate.loc.other")}</option>`;
+  sel.value = selected;
+}
+
+function renderGateLang() {
+  const g = document.getElementById("regGate");
+  if (!g) return;
+  document.getElementById("gateName").placeholder = gateText("gate.ph.name");
+  document.getElementById("gateEmail").placeholder = gateText("gate.ph.email");
+  document.getElementById("gatePhone").placeholder = gateText("gate.ph.phone");
+  document.getElementById("gateLoginEmail").placeholder = gateText("gate.ph.email");
+  document.getElementById("gateLangFlag").textContent = currentLang === "vi" ? "🇺🇸" : "🇻🇳";
+  document.getElementById("gateLangLabel").textContent = currentLang === "vi" ? "English" : "Tiếng Việt";
+  populateGateLocation();
+}
+
+function openGate() {
+  document.getElementById("regGate").hidden = false;
+  document.body.classList.add("gate-open");
+}
+
+function closeGate() {
+  document.getElementById("regGate").hidden = true;
+  document.body.classList.remove("gate-open");
+}
+
+function showGateIfNeeded() {
+  if (isRegistered()) closeGate();
+  else openGate();
+}
+
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+async function submitRegistration(e) {
+  if (e) e.preventDefault();
+  const errEl = document.getElementById("gateError");
+  const btn = document.getElementById("gateSubmit");
+  const name = document.getElementById("gateName").value.trim();
+  const email = document.getElementById("gateEmail").value.trim();
+  const phone = document.getElementById("gatePhone").value.trim();
+  const location = document.getElementById("gateLocation").value;
+
+  const fail = (key) => { errEl.textContent = gateText(key); errEl.hidden = false; };
+  errEl.hidden = true;
+  if (!name) return fail("gate.err.name");
+  if (!email && !phone) return fail("gate.err.contact");
+  if (email && !isValidEmail(email)) return fail("gate.err.email");
+  if (!location) return fail("gate.err.location");
+
+  btn.disabled = true;
+  try {
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from("leads")
+        .insert({ name, email: email || null, phone: phone || null, location });
+      if (error) throw error;
+    }
+  } catch (err) {
+    // Fail open: never trap an interested user behind a transient DB error (or a
+    // not-yet-run migration). The form was filled; log the miss and let them in.
+    console.error("Failed to save registration lead:", err);
+  }
+  markRegistered();
+  closeGate();
+  btn.disabled = false;
+}
+
+async function gateSendLoginLink() {
+  const email = document.getElementById("gateLoginEmail").value.trim();
+  const msg = document.getElementById("gateLoginMsg");
+  msg.hidden = true;
+  if (!isValidEmail(email) || !supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) throw error;
+    msg.textContent = gateText("gate.loginSent");
+    msg.className = "gate__msg gate__msg--ok";
+    msg.hidden = false;
+  } catch (err) {
+    msg.textContent = gateText("gate.err.save");
+    msg.className = "gate__msg gate__msg--error";
+    msg.hidden = false;
+  }
 }
 
 async function loadStateOfficials() {
@@ -419,6 +570,9 @@ function initAuth() {
     currentUser = session ? session.user : null;
     renderAccountUI();
     if (currentUser && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+      // A logged-in user has already given us their details — skip the gate.
+      markRegistered();
+      closeGate();
       mergeLocalFlagsToAccount()
         .then(loadFlaggedIdsFromAccount)
         .then(mergeLocalMissedToAccount)
@@ -648,6 +802,7 @@ let currentIndex = 0;
 let flaggedIds = loadFlaggedIds();
 let missedIds = loadMissedIds();
 let reviewMode = false; // civics "Review Missed" mode — quiz only your missed civics questions
+let firstRoundDone = false; // the first question is a free preview; the gate opens on the next move
 let simMode = false;
 let simScore = { correct: 0, total: 0 };
 let simTimes = [];
@@ -692,6 +847,7 @@ function switchLanguage(lang) {
   if (!document.getElementById("quizDone").hidden) renderDoneState(currentDoneKind);
   renderCurrentQuestion();
   renderAccountUI();
+  renderGateLang();
   if (currentUser) renderRecentResults(lastResultsCache);
 }
 
@@ -749,6 +905,7 @@ function updateContentTypeToggle() {
 }
 
 function setContentType(type) {
+  if (!isRegistered()) { openGate(); return; }
   contentType = type;
   startRound(currentCategory);
 }
@@ -788,6 +945,9 @@ function setEnglishSection(section) {
 }
 
 function startRound(category) {
+  // First question is a free preview; any move after that opens the gate.
+  if (firstRoundDone && !isRegistered()) { openGate(); return; }
+  firstRoundDone = true;
   clearInterval(timerInterval);
   currentCategory = category;
   if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
@@ -1265,6 +1425,8 @@ function revealAnswer() {
 }
 
 function nextQuestion() {
+  // Advancing past the free preview question requires registering.
+  if (!isRegistered()) { openGate(); return; }
   currentIndex++;
   if (currentIndex >= quizSet.length) {
     let kind = "finished";
@@ -1335,9 +1497,26 @@ document.addEventListener("DOMContentLoaded", () => {
     switchLanguage(currentLang === "en" ? "vi" : "en");
   });
 
+  // ── Registration gate wiring ──
+  document.getElementById("gateForm").addEventListener("submit", submitRegistration);
+  document.getElementById("gateLangToggle").addEventListener("click", () => {
+    switchLanguage(currentLang === "en" ? "vi" : "en");
+  });
+  document.getElementById("gateLoginLink").addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById("gateLoginBox").hidden = false;
+    document.getElementById("gateLoginEmail").focus();
+  });
+  document.getElementById("gateLoginSend").addEventListener("click", gateSendLoginLink);
+  document.getElementById("gateLoginEmail").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); gateSendLoginLink(); }
+  });
+
   document.getElementById("categories").addEventListener("click", (e) => {
     const btn = e.target.closest(".pill");
     if (!btn) return;
+    // Switching category counts as a move past the free preview — gate first.
+    if (!isRegistered()) { openGate(); return; }
     document.querySelectorAll(".pill").forEach(p => p.classList.remove("pill--active"));
     btn.classList.add("pill--active");
     contentType = "question";
@@ -1415,6 +1594,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("accountLogoutBtn").addEventListener("click", signOutUser);
 
   populateStateSelect();
+  renderGateLang();
+  // No gate on load — the first question is a free preview. The gate opens on
+  // the next move (Next / switch category / switch mode) unless registered.
   loadStateOfficials();
   renderAccountUI();
   initAuth();
