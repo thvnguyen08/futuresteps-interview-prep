@@ -1251,18 +1251,65 @@ function optionText(answer) {
   return v.replace(/[.;,]+$/, "").trim();
 }
 
+// Number words used to detect answers that are a count, duration, or year
+// so those questions only ever offer numeric choices.
+const NUM_WORD = "(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|" +
+  "eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|" +
+  "nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)";
+
+// True when the concise answer is essentially a number, duration, or date
+// (e.g. "One hundred", "Six years", "435", "July 4, 1776") — not merely a
+// phrase that happens to contain a year like "War of 1812".
+function isNumericAnswer(text) {
+  let s = (text || "").toLowerCase().trim();
+  if (/^\d{4}$/.test(s)) return true;                         // a year on its own
+  if (/^[a-z]+ \d{1,2},? \d{4}$/.test(s)) return true;        // "july 4, 1776"
+  s = s.replace(/[.,]/g, "").replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  const re = new RegExp(`^${NUM_WORD}( ${NUM_WORD})*( (?:years?|days?|months?|stars?|stripes?))?$`);
+  return re.test(s) || /^\d+( years?)?$/.test(s);
+}
+
+// True when the correct answer is a specific person's name, so the distractors
+// should also be people's names rather than concepts or numbers. The official
+// civics answers that are a bare name all come from these question stems.
+function isPersonAnswer(q) {
+  const s = (q.question_en || "").toLowerCase();
+  return /\bwho wrote\b/.test(s)
+    || /\bwho was president\b/.test(s)
+    || /name one of the writers/.test(s)
+    || /name one leader of the women/.test(s);
+}
+
+// Coarse answer type used to keep multiple-choice distractors the same kind as
+// the correct answer (names→names, numbers→numbers, everything else→text).
+function answerType(q) {
+  if (isPersonAnswer(q)) return "person";
+  if (isNumericAnswer(optionText(q.answer_en))) return "number";
+  return "text";
+}
+
 // Correct answer + 3 distractors drawn from other civics answers, shuffled.
+// Distractors are matched to the correct answer's type first (so a "name"
+// question offers names and a "number" question offers numbers), then any
+// remaining slots are filled from the rest of the pool.
 function buildChoices(q) {
   const correctText = optionText(q.answer_en).toLowerCase();
+  const correctType = answerType(q);
   const pool = shuffle(allQuestions.filter(o =>
     o.category === "naturalization" && o.id !== q.id && isCivicsAutoScorable(o)));
   const distractors = [];
   const seen = new Set([correctText]);
-  for (const o of pool) {
-    const t = optionText(o.answer_en).toLowerCase();
-    if (!t || seen.has(t)) continue;
-    seen.add(t);
-    distractors.push({ q: o, correct: false });
+  // Pass 1: same answer type as the correct answer. Pass 2: fill remaining
+  // slots from the other types so there are always four choices.
+  for (const sameType of [true, false]) {
+    for (const o of pool) {
+      if (distractors.length === 3) break;
+      if (sameType !== (answerType(o) === correctType)) continue;
+      const t = optionText(o.answer_en).toLowerCase();
+      if (!t || seen.has(t)) continue;
+      seen.add(t);
+      distractors.push({ q: o, correct: false });
+    }
     if (distractors.length === 3) break;
   }
   mcState = { qid: q.id, options: shuffle([{ q, correct: true }, ...distractors]), answeredIndex: null };
