@@ -802,7 +802,6 @@ let currentIndex = 0;
 let flaggedIds = loadFlaggedIds();
 let missedIds = loadMissedIds();
 let reviewMode = false; // civics "Review Missed" mode — quiz only your missed civics questions
-let firstRoundDone = false; // the first question is a free preview; the gate opens on the next move
 let simMode = false;
 let simScore = { correct: 0, total: 0 };
 let simTimes = [];
@@ -945,9 +944,6 @@ function setEnglishSection(section) {
 }
 
 function startRound(category) {
-  // First question is a free preview; any move after that opens the gate.
-  if (firstRoundDone && !isRegistered()) { openGate(); return; }
-  firstRoundDone = true;
   clearInterval(timerInterval);
   currentCategory = category;
   if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
@@ -1595,8 +1591,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   populateStateSelect();
   renderGateLang();
-  // No gate on load — the first question is a free preview. The gate opens on
-  // the next move (Next / switch category / switch mode) unless registered.
+  // Gate on load — registration is required before practicing (unless already
+  // registered on this device or logged in, which initAuth also handles).
+  showGateIfNeeded();
   loadStateOfficials();
   renderAccountUI();
   initAuth();
