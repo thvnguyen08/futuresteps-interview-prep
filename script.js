@@ -1604,7 +1604,8 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // Register the service worker so the app is installable ("Add to Home Screen")
-// and loads instantly on repeat visits. Data still comes live from Supabase.
+// and works offline. Code (HTML/CSS/JS) is served network-first (see sw.js), so
+// deploys always load the latest version. Data still comes live from Supabase.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("sw.js").catch((err) => {
