@@ -1265,7 +1265,9 @@ function escapeHtml(s) {
 function studyMCActive(q) {
   return !simMode && !reviewMode && !spokenMode
     && currentCategory === "naturalization" && natTestType === "civics"
-    && !!q && q.category === "naturalization" && isCivicsAutoScorable(q);
+    && contentType === "question"
+    && !!q && q.category === "naturalization" && (q.content_type || "question") === "question"
+    && isCivicsAutoScorable(q);
 }
 
 // Concise option label: first acceptable variant, parentheticals and trailing
