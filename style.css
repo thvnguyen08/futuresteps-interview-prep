@@ -17,6 +17,7 @@
   --clr-accent:     #0891b2;
   --clr-gold:       #f59e0b;
   --clr-green:      #059669;
+  --clr-red:        #dc2626;
 
   --ff-heading: "Playfair Display", Georgia, serif;
   --ff-body:    "DM Sans", -apple-system, sans-serif;
@@ -335,6 +336,51 @@ body {
 
 .cta-login__btn:hover { background: var(--clr-surface2); }
 
+/* ── Website call-to-action (drives traffic to Future Steps Services) ── */
+.site-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  max-width: 720px;
+  margin: 44px auto 0;
+  padding: 24px 28px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(120deg, #0f172a, var(--clr-primary-dk));
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255, 255, 255, .08);
+  color: #fff;
+}
+.site-cta__content { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.site-cta__icon {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .14);
+}
+.site-cta__text { min-width: 0; }
+.site-cta__title {
+  font-family: var(--ff-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+.site-cta__sub { font-size: .9rem; line-height: 1.5; color: rgba(255, 255, 255, .88); }
+.site-cta__btn {
+  flex-shrink: 0;
+  background: #fff;
+  color: var(--clr-primary-dk);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+.site-cta__btn:hover { background: var(--clr-surface2); transform: translateY(-1px); }
+
 /* ── Category pills ── */
 .categories {
   display: flex;
@@ -417,6 +463,20 @@ body {
 }
 
 .sim-toggle__btn--active:hover { color: #fff; }
+
+/* Green / Red flag tabs carry their signal color (idle hint + active fill). */
+.sim-toggle__btn--green { color: var(--clr-green); }
+.sim-toggle__btn--green:hover { border-color: var(--clr-green); color: var(--clr-green); }
+.sim-toggle__btn--green.sim-toggle__btn--active,
+.sim-toggle__btn--green.sim-toggle__btn--active:hover {
+  background: var(--clr-green); border-color: var(--clr-green); color: #fff;
+}
+.sim-toggle__btn--red { color: var(--clr-red); }
+.sim-toggle__btn--red:hover { border-color: var(--clr-red); color: var(--clr-red); }
+.sim-toggle__btn--red.sim-toggle__btn--active,
+.sim-toggle__btn--red.sim-toggle__btn--active:hover {
+  background: var(--clr-red); border-color: var(--clr-red); color: #fff;
+}
 
 /* ── Quiz card ── */
 .quiz {
@@ -540,6 +600,33 @@ body {
 
 .quiz__answer-text {
   color: var(--clr-text);
+}
+
+/* ── Green / Red flag card theming ──
+   Green flags = things to do well; red flags = things to avoid. The badge and
+   the "why it matters" box take the matching signal color. */
+.quiz__card--green-flag .quiz__badge { background: #dcfce7; color: var(--clr-green); }
+.quiz__card--green-flag .quiz__answer {
+  background: #f0fdf4;
+  border-left-color: var(--clr-green);
+}
+.quiz__card--green-flag .quiz__answer-label { color: var(--clr-green); }
+.quiz__card--green-flag .quiz__question::before {
+  content: "\f058"; /* fa circle-check */
+  font-family: "Font Awesome 6 Free"; font-weight: 900;
+  color: var(--clr-green); margin-right: 10px;
+}
+
+.quiz__card--red-flag .quiz__badge { background: #fee2e2; color: var(--clr-red); }
+.quiz__card--red-flag .quiz__answer {
+  background: #fef2f2;
+  border-left-color: var(--clr-red);
+}
+.quiz__card--red-flag .quiz__answer-label { color: var(--clr-red); }
+.quiz__card--red-flag .quiz__question::before {
+  content: "\f071"; /* fa triangle-exclamation */
+  font-family: "Font Awesome 6 Free"; font-weight: 900;
+  color: var(--clr-red); margin-right: 10px;
 }
 
 .quiz__actions {
@@ -774,13 +861,59 @@ body {
   font-size: .8rem;
 }
 
+/* ── Tablet / large phone ── */
+@media (max-width: 720px) {
+  .wrap { padding: 32px 18px 52px; }
+  .site-cta { flex-direction: column; text-align: center; gap: 16px; padding: 24px 22px; }
+  .site-cta__content { flex-direction: column; text-align: center; gap: 12px; }
+  .site-cta__btn { width: 100%; justify-content: center; }
+}
+
+/* ── Phone ── */
 @media (max-width: 560px) {
-  .quiz { padding: 28px 20px; }
-  .intro h1 { font-size: 1.6rem; }
+  /* Header: tighten spacing and drop the "Interview Prep" subtitle so the
+     logo + account + language controls fit on one row. */
+  .topbar__inner { padding: 12px 16px; gap: 8px; }
+  .topbar__logo { gap: 8px; }
+  .topbar__logo svg { width: 30px; height: 30px; }
+  .topbar__logo-text { font-size: 1rem; }
+  .topbar__actions { gap: 6px; }
+  .lang-toggle, .account-btn { padding: 7px 11px; font-size: .8rem; gap: 6px; }
+  .account-panel { width: min(300px, calc(100vw - 24px)); padding: 16px; }
+
+  /* Content */
+  .intro { margin-bottom: 24px; }
+  .intro h1 { font-size: 1.5rem; }
+  .intro__desc { font-size: .92rem; }
+
+  .categories { gap: 8px; margin-bottom: 24px; }
+  .pill { padding: 8px 14px; font-size: .8rem; }
+
+  .sim-toggle { gap: 8px; margin: -6px 0 24px; }
+  .sim-toggle__btn { padding: 8px 13px; font-size: .76rem; }
+
+  .quiz { padding: 24px 18px; border-radius: var(--radius-lg); }
+  .quiz__meta { flex-wrap: wrap; gap: 8px 10px; }
+  .quiz__question { font-size: 1.25rem; margin-bottom: 20px; }
+
   .quiz__actions { flex-direction: column; }
   .quiz__actions .btn { width: 100%; justify-content: center; }
+
+  /* Answer-mode controls stack full-width for easy tapping. */
+  .quiz__spoken-confirm { flex-direction: column; }
+  .quiz__spoken-confirm .btn { width: 100%; justify-content: center; }
+  .quiz__typed-ask { flex-direction: column; align-items: stretch; }
+  .quiz__typed-ask .btn { width: 100%; justify-content: center; }
+  .quiz__spoken-ask { flex-direction: column; align-items: stretch; }
+  .quiz__spoken-ask .btn { width: 100%; justify-content: center; }
+
   .cta-login { flex-direction: column; text-align: center; gap: 14px; }
   .cta-login__btn { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  /* Very small screens: hide the subtitle to protect the header row. */
+  .topbar__logo-text [data-i18n="header.subtitle"] { display: none; }
 }
 
 /* ── Registration gate (must register to start practicing) ── */

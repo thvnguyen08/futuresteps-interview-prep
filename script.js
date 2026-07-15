@@ -28,6 +28,9 @@ const translations = {
     "cta.title": "Tiếp tục ngay từ chỗ bạn đã dừng",
     "cta.sub": "Đăng nhập bằng email để lưu tiến trình và đồng bộ câu hỏi đã đánh dấu cùng kết quả trên mọi thiết bị của bạn.",
     "cta.btn": '<i class="fa-regular fa-envelope"></i> Đăng Nhập',
+    "siteCta.title": "Cần hỗ trợ thật sự cho hồ sơ của bạn?",
+    "siteCta.sub": "Hãy cho chúng tôi biết bạn đang cần dịch vụ gì — Future Steps Services sẽ đồng hành cùng bạn ở từng bước.",
+    "siteCta.btn": '<i class="fa-solid fa-arrow-up-right-from-square"></i> Ghé Thăm Trang Web',
     "cat.marriage": "Thẻ Xanh Diện Hôn Nhân",
     "cat.naturalization": "Thi Quốc Tịch",
     "cat.asylum": "Phỏng Vấn Tị Nạn",
@@ -35,12 +38,16 @@ const translations = {
     "cat.b1b2": "Visa Du Lịch/Công Tác B1/B2",
     "cat.flagged": "Đã Đánh Dấu",
     "content.questions": "Câu Hỏi Luyện Tập",
+    "content.greenFlags": "Điều Nên Làm",
     "content.redFlags": "Điều Cần Tránh",
     "content.documents": "Giấy Tờ Cần Mang",
+    "content.badge.green_flag": " — Điều Nên Làm",
     "content.badge.red_flag": " — Điều Cần Tránh",
     "content.badge.checklist": " — Giấy Tờ",
+    "content.answerLabel.green_flag": "Vì Sao Có Lợi / Cách Thể Hiện",
     "content.answerLabel.red_flag": "Vì Sao Quan Trọng / Cách Xử Lý",
     "content.answerLabel.checklist": "Vì Sao Cần Thiết",
+    "content.progress.green_flag": "Điều nên làm {current}/{total}",
     "content.progress.red_flag": "Điều cần tránh {current}/{total}",
     "content.progress.checklist": "Giấy tờ {current}/{total}",
     "state.loading": "Đang tải câu hỏi…",
@@ -185,11 +192,14 @@ const ENGLISH_RESULT_EN = {
   needsPractice: "📚 Needs Practice — {pct}% correct. Keep practicing speaking, reading, and writing.",
 };
 
-/* Categories that use the Practice Questions / Red Flags / Documents toggle. */
+/* Categories that use the Practice Questions / Green Flags / Red Flags /
+   Documents content toggle. Green flags now apply to every main category
+   (incl. naturalization); red flags/documents show per whatever is seeded. */
 const OPEN_FIELD = ["marriage", "asylum", "f1", "b1b2"];
-const CONTENT_BADGE_SUFFIX_EN = { red_flag: " — Red Flags", checklist: " — Documents" };
-const CONTENT_ANSWER_LABEL_EN = { red_flag: "Why It Matters / How to Handle", checklist: "Why It Matters" };
-const CONTENT_PROGRESS_EN = { red_flag: "Red flag {current} of {total}", checklist: "Document {current} of {total}" };
+const MAIN_CATEGORIES = ["marriage", "naturalization", "asylum", "f1", "b1b2"];
+const CONTENT_BADGE_SUFFIX_EN = { green_flag: " — Green Flags", red_flag: " — Red Flags", checklist: " — Documents" };
+const CONTENT_ANSWER_LABEL_EN = { green_flag: "Why It Helps / How to Show It", red_flag: "Why It Matters / How to Handle", checklist: "Why It Matters" };
+const CONTENT_PROGRESS_EN = { green_flag: "Green flag {current} of {total}", red_flag: "Red flag {current} of {total}", checklist: "Document {current} of {total}" };
 
 /* ── Spoken (auto-scored) civics mode ──
    Browser speech recognition captures the spoken English answer, then we grade
@@ -860,7 +870,10 @@ function shuffle(array) {
 }
 
 function updateNaturalizationUI() {
-  const isNat = currentCategory === "naturalization";
+  // The civics/English test flow only applies to the "question" content type.
+  // When a Green Flags / Red Flags tab is active, hide the naturalization
+  // toggles and just show the flag cards.
+  const isNat = currentCategory === "naturalization" && contentType === "question";
   document.getElementById("natTestTypeToggle").hidden = !isNat;
   document.getElementById("civicsTestBtn").classList.toggle("sim-toggle__btn--active", natTestType === "civics");
   document.getElementById("englishTestBtn").classList.toggle("sim-toggle__btn--active", natTestType === "english");
@@ -892,13 +905,16 @@ function categoryHasContent(category, type) {
 
 function updateContentTypeToggle() {
   const toggle = document.getElementById("contentTypeToggle");
-  const isOpenField = OPEN_FIELD.includes(currentCategory);
-  const hasRedFlags = isOpenField && categoryHasContent(currentCategory, "red_flag");
-  const hasChecklist = isOpenField && categoryHasContent(currentCategory, "checklist");
-  toggle.hidden = !(isOpenField && (hasRedFlags || hasChecklist));
+  const isMain = MAIN_CATEGORIES.includes(currentCategory);
+  const hasGreenFlags = isMain && categoryHasContent(currentCategory, "green_flag");
+  const hasRedFlags = isMain && categoryHasContent(currentCategory, "red_flag");
+  const hasChecklist = isMain && categoryHasContent(currentCategory, "checklist");
+  toggle.hidden = !(isMain && (hasGreenFlags || hasRedFlags || hasChecklist));
+  document.getElementById("greenFlagsTabBtn").hidden = !hasGreenFlags;
   document.getElementById("redFlagsTabBtn").hidden = !hasRedFlags;
   document.getElementById("documentsTabBtn").hidden = !hasChecklist;
   document.getElementById("questionsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "question");
+  document.getElementById("greenFlagsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "green_flag");
   document.getElementById("redFlagsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "red_flag");
   document.getElementById("documentsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "checklist");
 }
@@ -947,13 +963,17 @@ function startRound(category) {
   clearInterval(timerInterval);
   currentCategory = category;
   if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
-  if (!OPEN_FIELD.includes(category)) contentType = "question";
+  if (!MAIN_CATEGORIES.includes(category)) contentType = "question";
   updateNaturalizationUI();
   updateContentTypeToggle();
 
   let pool;
   if (category === "flagged") pool = allQuestions.filter(q => flaggedIds.has(q.id));
-  else if (category === "naturalization" && natTestType === "civics" && reviewMode) {
+  // Green Flags / Red Flags / Documents — same handling for every main category
+  // (including naturalization), which bypasses the civics/English test flow.
+  else if (contentType !== "question") {
+    pool = allQuestions.filter(q => q.category === category && (q.content_type || "question") === contentType);
+  } else if (category === "naturalization" && natTestType === "civics" && reviewMode) {
     pool = allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id));
   } else if (category === "naturalization") {
     const dbCategory = natTestType === "english" ? natEnglishSection : "naturalization";
@@ -1067,6 +1087,11 @@ function renderCurrentQuestion() {
   if (!quizSet.length || currentIndex >= quizSet.length) return;
   const q = quizSet[currentIndex];
   const ct = q.content_type || "question";
+
+  // Color the card green for green flags, red for red flags (styled in CSS).
+  const card = document.getElementById("quizCard");
+  card.classList.toggle("quiz__card--green-flag", ct === "green_flag");
+  card.classList.toggle("quiz__card--red-flag", ct === "red_flag");
 
   const badge = document.getElementById("quizBadge");
   const progress = document.getElementById("quizProgress");
@@ -1567,6 +1592,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.getElementById("questionsTabBtn").addEventListener("click", () => setContentType("question"));
+  document.getElementById("greenFlagsTabBtn").addEventListener("click", () => setContentType("green_flag"));
   document.getElementById("redFlagsTabBtn").addEventListener("click", () => setContentType("red_flag"));
   document.getElementById("documentsTabBtn").addEventListener("click", () => setContentType("checklist"));
 

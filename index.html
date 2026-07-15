@@ -247,7 +247,10 @@
       <button class="sim-toggle__btn sim-toggle__btn--active" id="questionsTabBtn" data-i18n="content.questions">
         <i class="fa-solid fa-comments"></i> Practice Questions
       </button>
-      <button class="sim-toggle__btn" id="redFlagsTabBtn" data-i18n="content.redFlags">
+      <button class="sim-toggle__btn sim-toggle__btn--green" id="greenFlagsTabBtn" data-i18n="content.greenFlags">
+        <i class="fa-solid fa-circle-check"></i> Green Flags
+      </button>
+      <button class="sim-toggle__btn sim-toggle__btn--red" id="redFlagsTabBtn" data-i18n="content.redFlags">
         <i class="fa-solid fa-triangle-exclamation"></i> Red Flags
       </button>
       <button class="sim-toggle__btn" id="documentsTabBtn" data-i18n="content.documents">
@@ -384,6 +387,19 @@
         <button class="btn btn--primary" id="restartBtn" data-i18n="btn.restart"><i class="fa-solid fa-rotate-right"></i> Start Over</button>
       </div>
     </section>
+    <!-- ═══ WEBSITE CALL-TO-ACTION ═══ -->
+    <aside class="site-cta">
+      <div class="site-cta__content">
+        <span class="site-cta__icon"><i class="fa-solid fa-hand-holding-heart"></i></span>
+        <div class="site-cta__text">
+          <p class="site-cta__title" data-i18n="siteCta.title">Need real help with your case?</p>
+          <p class="site-cta__sub" data-i18n="siteCta.sub">Tell us what service you're looking for — Future Steps Services will guide you every step of the way.</p>
+        </div>
+      </div>
+      <a class="btn site-cta__btn" href="https://futuresteps-llc.netlify.app/" target="_blank" rel="noopener" data-i18n="siteCta.btn">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit Our Website
+      </a>
+    </aside>
   </main>
 
   <footer class="footer">
