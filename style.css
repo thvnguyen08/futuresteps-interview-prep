@@ -4,20 +4,31 @@
    ════════════════════════════════════════════════ */
 
 :root {
-  --clr-bg:       #f8fafc;
+  /* FutureSteps brand — "Path to Opportunity" (emerald / charcoal / light gray).
+     Premium-SaaS palette: professional, hopeful, growth-oriented. */
+  --clr-bg:       #f5f7f8;
   --clr-surface:  #ffffff;
-  --clr-surface2: #f1f5f9;
-  --clr-border:   #e2e8f0;
-  --clr-text:     #334155;
-  --clr-muted:    #64748b;
-  --clr-white:    #0f172a;
+  --clr-surface2: #eef2f0;
+  --clr-border:   #e3e9e6;
+  --clr-text:     #2d3748;
+  --clr-muted:    #6b7688;
+  --clr-white:    #1b2a24;   /* near-black heading ink (kept name for compatibility) */
 
-  --clr-primary:    #2563eb;
-  --clr-primary-dk: #1d4ed8;
-  --clr-accent:     #0891b2;
+  --clr-primary:    #1b8f5a;   /* emerald green */
+  --clr-primary-dk: #156943;   /* dark green */
+  --clr-accent:     #2bb673;   /* bright emerald (gradient endpoint) */
+  --clr-charcoal:   #2d3748;
   --clr-gold:       #f59e0b;
-  --clr-green:      #059669;
-  --clr-red:        #dc2626;
+  --clr-green:      #1b8f5a;
+  --clr-red:        #e5484d;
+
+  /* Per-service accent colors (home grid + focused service header) */
+  --svc-marriage:       #ec4899;
+  --svc-naturalization: #1b8f5a;
+  --svc-asylum:         #6366f1;
+  --svc-f1:             #f59e0b;
+  --svc-b1b2:           #06b6d4;
+  --svc-flagged:        #8b5cf6;
 
   --ff-heading: "Playfair Display", Georgia, serif;
   --ff-body:    "DM Sans", -apple-system, sans-serif;
@@ -38,19 +49,14 @@
 
 body {
   font-family: var(--ff-body);
-  /* Patriotic, U.S.-passport-inspired backdrop: a faint Great-Seal emblem
-     watermark (star ring + shield) over a field of stars and a soft red/blue
-     gradient wash. All kept low-opacity so content on the white cards stays
-     fully readable. */
+  /* Clean, premium backdrop: a soft emerald wash in the corners over a light
+     gray field. Professional and hopeful — no literal immigration motifs. */
   background-image:
-    url("icons/seal-watermark.png"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='%233c3b6e' fill-opacity='0.05'%3E%3Cpath d='M22 8l2.5 5.8 6.3.5-4.8 4.1 1.5 6.1L22 27.3l-5.5 3.4 1.5-6.1-4.8-4.1 6.3-.5z'/%3E%3Cpath d='M67 53l2.5 5.8 6.3.5-4.8 4.1 1.5 6.1L67 72.3l-5.5 3.4 1.5-6.1-4.8-4.1 6.3-.5z'/%3E%3C/g%3E%3C/svg%3E"),
-    radial-gradient(circle at 12% 6%, rgba(60,59,110,.08) 0%, transparent 42%),
-    radial-gradient(circle at 88% 10%, rgba(178,34,52,.06) 0%, transparent 40%);
-  background-repeat: no-repeat, repeat, no-repeat, no-repeat;
-  background-position: center center, top left, top left, top left;
-  background-size: min(82vw, 620px) auto, 90px 90px, auto, auto;
-  background-attachment: fixed, fixed, fixed, fixed;
+    radial-gradient(circle at 10% 0%, rgba(27,143,90,.07) 0%, transparent 40%),
+    radial-gradient(circle at 92% 6%, rgba(43,182,115,.06) 0%, transparent 42%);
+  background-repeat: no-repeat, no-repeat;
+  background-position: top left, top right;
+  background-attachment: fixed, fixed;
   background-color: var(--clr-bg);
   color: var(--clr-text);
   line-height: 1.65;
@@ -65,7 +71,7 @@ body {
   border-bottom: 1px solid var(--clr-border);
   /* Thin patriotic tri-color accent along the very top edge */
   border-top: 4px solid transparent;
-  border-image: linear-gradient(90deg, #b22234 0 33.33%, #ffffff 33.33% 66.66%, #3c3b6e 66.66% 100%) 1;
+  border-image: linear-gradient(90deg, var(--clr-primary) 0%, var(--clr-accent) 100%) 1;
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
@@ -429,6 +435,149 @@ body {
   color: #fff;
 }
 
+/* ── Home: prompt + service selector grid ── */
+.home-prompt {
+  text-align: center;
+  font-family: var(--ff-heading);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--clr-white);
+  margin: 4px 0 20px;
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.service-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 18px 22px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--clr-border);
+  background: var(--clr-surface);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  font-family: var(--ff-body);
+  /* soft tint of the service color at the top */
+  background-image: linear-gradient(180deg,
+    color-mix(in srgb, var(--svc) 9%, #fff) 0%,
+    var(--clr-surface) 62%);
+}
+
+.service-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--svc) 45%, var(--clr-border));
+}
+
+.service-card__icon {
+  width: 60px;
+  height: 60px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  color: #fff;
+  background: linear-gradient(140deg,
+    color-mix(in srgb, var(--svc) 82%, #fff) 0%,
+    var(--svc) 100%);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--svc) 40%, transparent);
+}
+
+.service-card__label {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--clr-white);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ── Progress summary card (signed-in returning users) ── */
+.progress-card {
+  max-width: 640px;
+  margin: 0 auto 26px;
+  padding: 22px 24px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--clr-primary-dk), var(--clr-primary));
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.progress-card__head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.progress-card__badge {
+  flex-shrink: 0;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border-radius: 12px;
+  background: rgba(255,255,255,.18);
+  font-size: 1.15rem;
+}
+.progress-card__title { font-family: var(--ff-heading); font-size: 1.2rem; font-weight: 600; }
+.progress-card__sub { font-size: .82rem; color: rgba(255,255,255,.85); }
+
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.progress-stat {
+  background: rgba(255,255,255,.12);
+  border-radius: var(--radius-md);
+  padding: 14px 8px;
+  text-align: center;
+}
+.progress-stat__num { display: block; font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.progress-stat__num--correct  { color: #d1fae5; }
+.progress-stat__num--wrong    { color: #fecaca; }
+.progress-stat__num--accuracy { color: #fff; }
+.progress-stat__label {
+  font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: rgba(255,255,255,.85);
+}
+
+/* ── Service header (focused-service view) ── */
+.service-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 720px;
+  margin: 0 auto 24px;
+  padding-left: 6px;
+  border-left: 4px solid var(--svc, var(--clr-primary));
+}
+.service-header__title {
+  font-family: var(--ff-heading);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--clr-white);
+}
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  font-family: var(--ff-body);
+  font-size: .85rem;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  cursor: pointer;
+  transition: all .2s;
+}
+.home-btn:hover { border-color: var(--clr-primary); color: var(--clr-primary); }
+
 /* ── Naturalization mode toggle ── */
 .sim-toggle {
   display: flex;
@@ -457,8 +606,8 @@ body {
 .sim-toggle__btn:hover { border-color: var(--clr-primary); color: var(--clr-primary); }
 
 .sim-toggle__btn--active {
-  background: var(--clr-white);
-  border-color: var(--clr-white);
+  background: var(--clr-primary);
+  border-color: var(--clr-primary);
   color: #fff;
 }
 
@@ -889,6 +1038,14 @@ body {
   .categories { gap: 8px; margin-bottom: 24px; }
   .pill { padding: 8px 14px; font-size: .8rem; }
 
+  .service-grid { gap: 12px; }
+  .service-card { padding: 20px 12px 18px; gap: 10px; }
+  .service-card__icon { width: 52px; height: 52px; font-size: 1.3rem; }
+  .service-card__label { font-size: .85rem; }
+  .progress-card { padding: 18px; }
+  .progress-stat__num { font-size: 1.4rem; }
+  .service-header__title { font-size: 1.15rem; }
+
   .sim-toggle { gap: 8px; margin: -6px 0 24px; }
   .sim-toggle__btn { padding: 8px 13px; font-size: .76rem; }
 
@@ -944,7 +1101,7 @@ body.gate-open { overflow: hidden; }
   border-radius: var(--radius-md);
   box-shadow: 0 24px 64px rgba(0,0,0,.28);
   border-top: 4px solid transparent;
-  border-image: linear-gradient(90deg, #b22234 0 33.33%, #fff 33.33% 66.66%, #3c3b6e 66.66% 100%) 1;
+  border-image: linear-gradient(90deg, var(--clr-primary) 0%, var(--clr-accent) 100%) 1;
 }
 .gate__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .gate__logo { display: flex; align-items: center; gap: 8px; }

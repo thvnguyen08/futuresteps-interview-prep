@@ -22,12 +22,12 @@ try {
 const translations = {
   vi: {
     "header.subtitle": "Ôn Phỏng Vấn",
-    "intro.tag": "Luyện Tập Phỏng Vấn",
+    "intro.tag": "Hành Trình Của Bạn Bắt Đầu Từ Đây",
     "intro.title": 'Chuẩn Bị Cho <em>Buổi Phỏng Vấn Di Trú</em> Của Bạn',
     "intro.desc": "Luyện tập với các câu hỏi mà viên chức thường hỏi. Chọn một danh mục, tự kiểm tra, và xem gợi ý hoặc đáp án khi bạn sẵn sàng.",
-    "cta.title": "Tiếp tục ngay từ chỗ bạn đã dừng",
-    "cta.sub": "Đăng nhập bằng email để lưu tiến trình và đồng bộ câu hỏi đã đánh dấu cùng kết quả trên mọi thiết bị của bạn.",
-    "cta.btn": '<i class="fa-regular fa-envelope"></i> Đăng Nhập',
+    "cta.title": "Dùng nhiều thiết bị?",
+    "cta.sub": "Tiến trình của bạn đã được lưu trên thiết bị này. Chỉ cần đăng nhập bằng email nếu bạn muốn đồng bộ trên điện thoại, máy tính bảng và máy tính — hoàn toàn tùy chọn.",
+    "cta.btn": '<i class="fa-regular fa-envelope"></i> Đồng Bộ Thiết Bị',
     "siteCta.title": "Cần hỗ trợ thật sự cho hồ sơ của bạn?",
     "siteCta.sub": "Hãy cho chúng tôi biết bạn đang cần dịch vụ gì — Future Steps Services sẽ đồng hành cùng bạn ở từng bước.",
     "siteCta.btn": '<i class="fa-solid fa-arrow-up-right-from-square"></i> Ghé Thăm Trang Web',
@@ -50,6 +50,13 @@ const translations = {
     "content.progress.green_flag": "Điều nên làm {current}/{total}",
     "content.progress.red_flag": "Điều cần tránh {current}/{total}",
     "content.progress.checklist": "Giấy tờ {current}/{total}",
+    "home.prompt": "Bạn đang cần dịch vụ nào?",
+    "home.back": "Trang Chủ",
+    "progress.title": "Tiến trình của bạn",
+    "progress.sub": "Qua {rounds} lượt luyện tập",
+    "progress.correct": "Đúng",
+    "progress.wrong": "Sai",
+    "progress.accuracy": "Độ chính xác",
     "state.loading": "Đang tải câu hỏi…",
     "state.error": "Không thể tải ngân hàng câu hỏi. Hãy đảm bảo URL và khóa Supabase đã được thiết lập trong <code>script.js</code>, và cơ sở dữ liệu đã có dữ liệu.",
     "state.done": "Bạn đã hoàn thành tất cả câu hỏi trong lượt này. Làm tốt lắm!",
@@ -185,6 +192,7 @@ const SIM_FAIL_EN = "❌ NOT YET — You answered {correct} of {total} correctly
 const SIM_TIMING_EN = "Total time: {total} · Average: {avg}/question";
 const ACCOUNT_ERROR_EN = "Something went wrong. Please try again.";
 const ACCOUNT_NO_RESULTS_EN = "No practice results yet.";
+const PROGRESS_SUB_EN = "Across {rounds} practice round(s)";
 const ACCOUNT_RECENT_RESULTS_EN = "Recent Results";
 const ENGLISH_RESULT_EN = {
   excellent: "🌟 Excellent — {pct}% correct. You're ready for the English portion of the interview!",
@@ -393,6 +401,63 @@ function markRegistered() {
   try { localStorage.setItem(REGISTERED_STORAGE_KEY, "1"); } catch (e) {}
 }
 
+/* ── Anonymous device identity + local/backend activity tracking ──
+   Everyone who registers at the gate gets a stable client_id (kept on the
+   device). It lets us save their practice progress and activity to the
+   backend — and correlate it with their lead — WITHOUT the magic-link login,
+   which was a drop-off point. The magic link stays as an optional
+   "sync across devices" upgrade. */
+const CLIENT_ID_KEY = "interviewPrepClientId";
+const REG_EMAIL_KEY = "interviewPrepRegEmail";
+const REG_NAME_KEY  = "interviewPrepRegName";
+const PROGRESS_KEY  = "interviewPrepProgress";
+
+function getClientId() {
+  let id = localStorage.getItem(CLIENT_ID_KEY);
+  if (!id) {
+    id = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : "c_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem(CLIENT_ID_KEY, id); } catch (e) {}
+  }
+  return id;
+}
+
+function registeredEmail() {
+  return (currentUser && currentUser.email) || localStorage.getItem(REG_EMAIL_KEY) || null;
+}
+
+function loadLocalProgress() {
+  try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || { correct: 0, total: 0, rounds: 0 }; }
+  catch (e) { return { correct: 0, total: 0, rounds: 0 }; }
+}
+
+function addLocalProgress(correct, total) {
+  const p = loadLocalProgress();
+  p.correct += correct; p.total += total; p.rounds += 1;
+  try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch (e) {}
+}
+
+/* Log a practice/view event to the backend, keyed to the device + lead.
+   Fire-and-forget: never block or break the UI on a logging failure. */
+async function logActivity(activityType, category, data = {}) {
+  if (!supabaseClient) return;
+  try {
+    await supabaseClient.from("practice_activity").insert({
+      client_id: getClientId(),
+      email: registeredEmail(),
+      activity_type: activityType,       // 'view' | 'practice'
+      category: category || null,
+      mode: data.mode || null,
+      content_type: data.content_type || null,
+      correct: (data.correct ?? null),
+      total: (data.total ?? null),
+    });
+  } catch (err) {
+    console.error("Failed to log practice activity:", err);
+  }
+}
+
 function populateGateLocation() {
   const sel = document.getElementById("gateLocation");
   if (!sel) return;
@@ -454,10 +519,16 @@ async function submitRegistration(e) {
   if (!location) return fail("gate.err.location");
 
   btn.disabled = true;
+  // Remember who they are on this device so we can attach it to their activity
+  // (and personalize) without requiring the magic-link login.
+  try {
+    if (email) localStorage.setItem(REG_EMAIL_KEY, email);
+    if (name) localStorage.setItem(REG_NAME_KEY, name);
+  } catch (e) {}
   try {
     if (supabaseClient) {
       const { error } = await supabaseClient.from("leads")
-        .insert({ name, email: email || null, phone: phone || null, location });
+        .insert({ name, email: email || null, phone: phone || null, location, client_id: getClientId() });
       if (error) throw error;
     }
   } catch (err) {
@@ -467,6 +538,7 @@ async function submitRegistration(e) {
   }
   markRegistered();
   closeGate();
+  showHome();
   btn.disabled = false;
 }
 
@@ -666,8 +738,10 @@ function renderAccountUI() {
     btnLabel.textContent = currentLang === "vi" ? translations.vi["account.login"] : "Log In";
     loggedOutEl.hidden = false;
     loggedInEl.hidden = true;
-    if (ctaLogin) ctaLogin.hidden = false;
+    if (ctaLogin) ctaLogin.hidden = appView !== "home";
   }
+  // Progress card visibility depends on login state.
+  if (typeof renderProgress === "function") renderProgress();
 }
 
 async function mergeLocalFlagsToAccount() {
@@ -746,6 +820,13 @@ async function markMissed(id, missed) {
 }
 
 async function recordQuizResult(category, mode, correct, total) {
+  // Save progress for EVERY registered user — on the device (works instantly
+  // and offline) and in the backend activity log (keyed to their lead). This
+  // no longer requires the magic-link login.
+  addLocalProgress(correct, total);
+  logActivity("practice", category, { mode, correct, total });
+
+  // Signed-in users also get the cross-device quiz_results history.
   if (!currentUser || !supabaseClient) return;
   try {
     const { error } = await supabaseClient.from("quiz_results").insert({
@@ -770,10 +851,11 @@ async function loadRecentResults() {
       .select("*")
       .eq("user_id", currentUser.id)
       .order("taken_at", { ascending: false })
-      .limit(10);
+      .limit(365);
     if (error) throw error;
     lastResultsCache = data || [];
-    renderRecentResults(lastResultsCache);
+    renderRecentResults(lastResultsCache.slice(0, 8));
+    renderProgress();
   } catch (err) {
     console.error("Failed to load recent results:", err);
   }
@@ -857,7 +939,9 @@ function switchLanguage(lang) {
   renderCurrentQuestion();
   renderAccountUI();
   renderGateLang();
-  if (currentUser) renderRecentResults(lastResultsCache);
+  if (currentUser) renderRecentResults(lastResultsCache.slice(0, 8));
+  setServiceHeaderTitle();
+  renderProgress();
 }
 
 function shuffle(array) {
@@ -917,6 +1001,87 @@ function updateContentTypeToggle() {
   document.getElementById("greenFlagsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "green_flag");
   document.getElementById("redFlagsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "red_flag");
   document.getElementById("documentsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "checklist");
+}
+
+/* ── Home ↔ Service navigation ──
+   Home shows the colorful service grid (+ progress for signed-in users).
+   Picking a service focuses it: the grid is replaced by that service's
+   quiz flow, and the only way to switch is via the Home button/logo. */
+let appView = "home";                 // "home" | "service"
+let currentServiceCategory = null;
+
+const SERVICE_TOGGLE_IDS = ["contentTypeToggle", "natTestTypeToggle", "simToggle", "englishSectionToggle"];
+
+function setServiceHeaderTitle() {
+  const el = document.getElementById("serviceHeaderTitle");
+  if (!el || !currentServiceCategory) return;
+  el.textContent = currentLang === "vi"
+    ? (translations.vi["cat." + currentServiceCategory] || currentServiceCategory)
+    : (CATEGORY_LABEL_EN[currentServiceCategory] || currentServiceCategory);
+}
+
+function showHome() {
+  appView = "home";
+  currentServiceCategory = null;
+  clearInterval(timerInterval);
+  document.getElementById("intro").hidden = false;
+  document.getElementById("homeView").hidden = false;
+  document.getElementById("serviceHeader").hidden = true;
+  document.getElementById("quiz").hidden = true;
+  SERVICE_TOGGLE_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  document.querySelectorAll(".service-card").forEach(c => c.classList.remove("service-card--active"));
+  // Progress card + login CTA are home-only.
+  renderProgress();
+  const cta = document.getElementById("ctaLogin");
+  if (cta) cta.hidden = !!currentUser;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function enterService(category) {
+  if (!isRegistered()) { openGate(); return; }
+  appView = "service";
+  currentServiceCategory = category;
+  document.getElementById("intro").hidden = true;
+  document.getElementById("homeView").hidden = true;
+  const cta = document.getElementById("ctaLogin");
+  if (cta) cta.hidden = true;
+  const header = document.getElementById("serviceHeader");
+  header.hidden = false;
+  header.style.setProperty("--svc", `var(--svc-${category})`);
+  setServiceHeaderTitle();
+  document.getElementById("quiz").hidden = false;
+  contentType = "question";
+  logActivity("view", category);
+  if (!allQuestions.length) { document.getElementById("quizLoading").hidden = false; return; }
+  startRound(category);
+}
+
+/* Aggregate correct/wrong across all saved quiz rounds for the progress card. */
+function renderProgress() {
+  const card = document.getElementById("progressCard");
+  if (!card) return;
+  // Signed-in users: use their cross-device backend history. Everyone else who
+  // has registered: use the on-device progress log (no login needed).
+  let correct, total, rounds;
+  if (currentUser && (lastResultsCache || []).length) {
+    const rows = lastResultsCache;
+    correct = rows.reduce((s, r) => s + (r.correct || 0), 0);
+    total = rows.reduce((s, r) => s + (r.total || 0), 0);
+    rounds = rows.length;
+  } else {
+    const p = loadLocalProgress();
+    correct = p.correct; total = p.total; rounds = p.rounds;
+  }
+  const show = isRegistered() && appView === "home" && rounds > 0;
+  card.hidden = !show;
+  if (!show) return;
+  const wrong = Math.max(0, total - correct);
+  const pct = total ? Math.round((correct / total) * 100) : 0;
+  document.getElementById("statCorrect").textContent = correct;
+  document.getElementById("statWrong").textContent = wrong;
+  document.getElementById("statAccuracy").textContent = pct + "%";
+  const tmpl = currentLang === "vi" ? translations.vi["progress.sub"] : PROGRESS_SUB_EN;
+  document.getElementById("progressSub").textContent = tmpl.replace("{rounds}", rounds);
 }
 
 function setContentType(type) {
@@ -1546,7 +1711,10 @@ async function loadQuestions() {
 
     allQuestions = data;
     loadingEl.hidden = true;
-    startRound("marriage");
+    // If the user tapped a service before questions finished loading, start it;
+    // otherwise land on the home grid.
+    if (appView === "service" && currentServiceCategory) startRound(currentServiceCategory);
+    else showHome();
   } catch (err) {
     console.error("Failed to load questions:", err);
     loadingEl.hidden = true;
@@ -1582,16 +1750,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Enter") { e.preventDefault(); gateSendLoginLink(); }
   });
 
-  document.getElementById("categories").addEventListener("click", (e) => {
-    const btn = e.target.closest(".pill");
+  document.getElementById("serviceGrid").addEventListener("click", (e) => {
+    const btn = e.target.closest(".service-card");
     if (!btn) return;
-    // Switching category counts as a move past the free preview — gate first.
+    // Picking a service counts as moving past the free preview — gate first.
     if (!isRegistered()) { openGate(); return; }
-    document.querySelectorAll(".pill").forEach(p => p.classList.remove("pill--active"));
-    btn.classList.add("pill--active");
-    contentType = "question";
-    startRound(btn.dataset.category);
+    enterService(btn.dataset.category);
   });
+
+  // Home button and logo both return to the service grid.
+  document.getElementById("homeBtn").addEventListener("click", showHome);
+  document.getElementById("homeLogoLink").addEventListener("click", (e) => { e.preventDefault(); showHome(); });
 
   document.getElementById("questionsTabBtn").addEventListener("click", () => setContentType("question"));
   document.getElementById("greenFlagsTabBtn").addEventListener("click", () => setContentType("green_flag"));

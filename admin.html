@@ -180,6 +180,27 @@
           <tbody id="leadsBody"></tbody>
         </table>
       </div>
+
+      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Practice Activity
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        Every time a lead views or practices a service — which service, mode, score, and when.
+      </p>
+      <div class="toolbar">
+        <input type="text" class="toolbar__search" id="activitySearch" placeholder="Search activity by name, email, service, or type…">
+        <button class="btn btn--green" id="activityExportBtn">
+          <i class="fa-solid fa-file-csv"></i> Export Activity CSV
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr id="activityHead"></tr>
+          </thead>
+          <tbody id="activityBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -374,6 +395,87 @@
       renderLeads();
     }
 
+    // ── Practice activity ──
+    let activityData = [];
+    const activityColumns = [
+      { key: "created_at",    label: "When" },
+      { key: "name",          label: "Name" },
+      { key: "email",         label: "Email" },
+      { key: "activity_type", label: "Action" },
+      { key: "category",      label: "Service" },
+      { key: "mode",          label: "Mode" },
+      { key: "score",         label: "Score" },
+    ];
+    const SERVICE_LABEL = {
+      marriage: "Marriage Green Card", naturalization: "Naturalization", asylum: "Asylum",
+      f1: "F-1 Student Visa", b1b2: "B1/B2 Visitor Visa", flagged: "Flagged",
+      eng_speaking: "English — Speaking", eng_reading: "English — Reading", eng_writing: "English — Writing",
+    };
+    function activityCell(r, key) {
+      if (key === "created_at") return fmtDate(r.created_at);
+      if (key === "activity_type") return r.activity_type === "practice" ? "Practiced" : "Viewed";
+      if (key === "category") return SERVICE_LABEL[r.category] || r.category || "—";
+      if (key === "score") return (r.total != null) ? `${r.correct ?? 0}/${r.total}` : "—";
+      return r[key];
+    }
+
+    function renderActivityHead() {
+      document.getElementById("activityHead").innerHTML =
+        activityColumns.map(c => `<th>${c.label}</th>`).join("");
+    }
+
+    function renderActivity(filter) {
+      let rows = [...activityData];
+      if (filter) {
+        const q = filter.toLowerCase();
+        rows = rows.filter(r =>
+          ["name", "email", "category", "activity_type", "mode"].some(k =>
+            r[k] && String(r[k]).toLowerCase().includes(q)));
+      }
+      const tbody = document.getElementById("activityBody");
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${activityColumns.length}" class="empty-state">No practice activity yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>${activityColumns.map(c => {
+        let val = activityCell(r, c.key);
+        if (val == null || val === "") val = "—";
+        return `<td>${String(val).replace(/</g, "&lt;")}</td>`;
+      }).join("")}</tr>`).join("");
+    }
+
+    function exportActivityCSV() {
+      const header = activityColumns.map(c => c.label).join(",");
+      const rows = activityData.map(r => activityColumns.map(c => {
+        let v = c.key === "created_at" ? (r.created_at ? new Date(r.created_at).toISOString() : "") : activityCell(r, c.key);
+        if (v == null) v = "";
+        return `"${String(v).replace(/"/g, '""')}"`;
+      }).join(","));
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `futuresteps_activity_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function loadActivity() {
+      const { data, error } = await sb.rpc("get_activity_data");
+      if (error) {
+        console.error("Activity load error:", error);
+        document.getElementById("activityBody").innerHTML =
+          `<tr><td colspan="${activityColumns.length}" class="empty-state" style="color:var(--clr-red)">
+            Failed to load activity. Make sure you've run <code>supabase/add_practice_tracking.sql</code> and your email is in the admin list.
+          </td></tr>`;
+        return;
+      }
+      activityData = data || [];
+      renderActivityHead();
+      renderActivity();
+    }
+
     function showDashboard(user) {
       document.getElementById("loginGate").style.display = "none";
       document.getElementById("dashboard").classList.add("is-visible");
@@ -387,6 +489,7 @@
       });
       loadCRM();
       loadLeads();
+      loadActivity();
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -440,6 +543,11 @@
         renderLeads(e.target.value);
       });
       document.getElementById("leadsExportBtn").addEventListener("click", exportLeadsCSV);
+
+      document.getElementById("activitySearch").addEventListener("input", (e) => {
+        renderActivity(e.target.value);
+      });
+      document.getElementById("activityExportBtn").addEventListener("click", exportActivityCSV);
     });
   </script>
 </body>

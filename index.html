@@ -8,7 +8,7 @@
   <meta name="keywords" content="marriage green card interview questions, I-485 interview, asylum interview questions, F-1 visa interview questions, B1 B2 visa interview questions, US citizenship test practice, immigration interview prep, bilingual, Vietnamese, phỏng vấn di trú">
   <link rel="canonical" href="https://futuresteps-interview-prep.netlify.app/">
   <meta name="robots" content="index, follow">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#1b8f5a">
 
   <!-- PWA / mobile install -->
   <link rel="manifest" href="manifest.webmanifest">
@@ -17,6 +17,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Interview Prep">
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
@@ -117,12 +118,14 @@
     <div class="gate__card">
       <div class="gate__head">
         <span class="gate__logo">
-          <svg width="34" height="34" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="42" height="42" rx="12" fill="url(#gateLogoGrad)"/>
-            <path d="M13 28C13 28 15.5 22 21 22C26.5 22 29 28 29 28" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M10 24C10 24 13.5 16 21 16C28.5 16 32 24 32 24" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity=".6"/>
-            <circle cx="21" cy="28" r="2.5" fill="white"/>
-            <defs><linearGradient id="gateLogoGrad" x1="0" y1="0" x2="42" y2="42"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#0891b2"/></linearGradient></defs>
+          <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="FutureSteps">
+            <rect width="48" height="48" rx="13" fill="url(#gateLogoGrad)"/>
+            <circle cx="24" cy="26" r="12.5" stroke="#fff" stroke-width="2.4" fill="none" opacity=".55"/>
+            <path d="M24 26 L17.5 33.5" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+            <path d="M24 26 L35 12" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M35 12 L28.7 13 M35 12 L34 18.3" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="26" r="2.4" fill="#fff"/>
+            <defs><linearGradient id="gateLogoGrad" x1="4" y1="4" x2="44" y2="44"><stop stop-color="#2bb673"/><stop offset="1" stop-color="#156943"/></linearGradient></defs>
           </svg>
           <span class="gate__logo-text">Future<strong>Steps</strong></span>
         </span>
@@ -162,13 +165,16 @@
   <!-- ═══ HEADER ═══ -->
   <header class="topbar">
     <div class="topbar__inner">
-      <a href="#" class="topbar__logo">
-        <svg width="36" height="36" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="42" height="42" rx="12" fill="url(#logoGrad)"/>
-          <path d="M13 28C13 28 15.5 22 21 22C26.5 22 29 28 29 28" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-          <path d="M10 24C10 24 13.5 16 21 16C28.5 16 32 24 32 24" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity=".6"/>
-          <circle cx="21" cy="28" r="2.5" fill="white"/>
-          <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="42" y2="42"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#0891b2"/></linearGradient></defs>
+      <a href="#" class="topbar__logo" id="homeLogoLink">
+        <svg width="38" height="38" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="FutureSteps">
+          <rect width="48" height="48" rx="13" fill="url(#logoGrad)"/>
+          <!-- Compass whose needle rises into an upward path: guidance toward a better future -->
+          <circle cx="24" cy="26" r="12.5" stroke="#fff" stroke-width="2.4" fill="none" opacity=".55"/>
+          <path d="M24 26 L17.5 33.5" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+          <path d="M24 26 L35 12" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M35 12 L28.7 13 M35 12 L34 18.3" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="24" cy="26" r="2.4" fill="#fff"/>
+          <defs><linearGradient id="logoGrad" x1="4" y1="4" x2="44" y2="44"><stop stop-color="#2bb673"/><stop offset="1" stop-color="#156943"/></linearGradient></defs>
         </svg>
         <span class="topbar__logo-text">Future<strong>Steps</strong> <span data-i18n="header.subtitle">Interview Prep</span></span>
       </a>
@@ -212,8 +218,8 @@
   </header>
 
   <main class="wrap">
-    <div class="intro">
-      <p class="intro__tag" data-i18n="intro.tag">Interview Practice</p>
+    <div class="intro" id="intro">
+      <p class="intro__tag" data-i18n="intro.tag">Your Journey Starts Here</p>
       <h1 data-i18n="intro.title">Get Ready For Your <em>Immigration Interview</em></h1>
       <p class="intro__desc" data-i18n="intro.desc">Practice with real questions officers commonly ask. Pick a category, quiz yourself, and reveal tips or answers when you're ready.</p>
     </div>
@@ -222,22 +228,74 @@
     <div class="cta-login" id="ctaLogin">
       <span class="cta-login__icon"><i class="fa-solid fa-bookmark"></i></span>
       <div class="cta-login__text">
-        <p class="cta-login__title" data-i18n="cta.title">Pick up right where you left off</p>
-        <p class="cta-login__sub" data-i18n="cta.sub">Log in with your email to save your progress and sync your flagged questions and results across all your devices.</p>
+        <p class="cta-login__title" data-i18n="cta.title">Use more than one device?</p>
+        <p class="cta-login__sub" data-i18n="cta.sub">Your progress is already saved on this device. Log in with your email only if you'd like to sync it across your phone, tablet, and computer — it's optional.</p>
       </div>
-      <button class="btn cta-login__btn" id="ctaLoginBtn" data-i18n="cta.btn"><i class="fa-regular fa-envelope"></i> Log In</button>
+      <button class="btn cta-login__btn" id="ctaLoginBtn" data-i18n="cta.btn"><i class="fa-regular fa-envelope"></i> Sync Devices</button>
     </div>
 
-    <!-- ═══ CATEGORY SELECTOR ═══ -->
-    <div class="categories" id="categories">
-      <button class="pill pill--active" data-category="marriage" data-i18n="cat.marriage">Marriage-Based Green Card</button>
-      <button class="pill" data-category="naturalization" data-i18n="cat.naturalization">Naturalization</button>
-      <button class="pill" data-category="asylum" data-i18n="cat.asylum">Asylum</button>
-      <button class="pill" data-category="f1" data-i18n="cat.f1">F-1 Student Visa</button>
-      <button class="pill" data-category="b1b2" data-i18n="cat.b1b2">B1/B2 Visitor Visa</button>
-      <button class="pill pill--flag" data-category="flagged" id="flaggedPill">
-        <i class="fa-solid fa-star"></i> <span data-i18n="cat.flagged">Flagged</span>
-      </button>
+    <!-- ═══ HOME VIEW: progress summary + service selector ═══ -->
+    <div id="homeView">
+      <!-- Progress summary — shown to signed-in users who have practiced before -->
+      <section class="progress-card" id="progressCard" hidden>
+        <div class="progress-card__head">
+          <span class="progress-card__badge"><i class="fa-solid fa-chart-line"></i></span>
+          <div>
+            <p class="progress-card__title" data-i18n="progress.title">Your progress</p>
+            <p class="progress-card__sub" id="progressSub"></p>
+          </div>
+        </div>
+        <div class="progress-stats">
+          <div class="progress-stat">
+            <span class="progress-stat__num progress-stat__num--correct" id="statCorrect">0</span>
+            <span class="progress-stat__label" data-i18n="progress.correct">Correct</span>
+          </div>
+          <div class="progress-stat">
+            <span class="progress-stat__num progress-stat__num--wrong" id="statWrong">0</span>
+            <span class="progress-stat__label" data-i18n="progress.wrong">Wrong</span>
+          </div>
+          <div class="progress-stat">
+            <span class="progress-stat__num progress-stat__num--accuracy" id="statAccuracy">0%</span>
+            <span class="progress-stat__label" data-i18n="progress.accuracy">Accuracy</span>
+          </div>
+        </div>
+      </section>
+
+      <p class="home-prompt" data-i18n="home.prompt">Which service are you here for?</p>
+
+      <!-- Service selector grid — pick one to focus on it -->
+      <div class="service-grid" id="serviceGrid">
+        <button class="service-card" data-category="marriage" style="--svc: var(--svc-marriage);">
+          <span class="service-card__icon"><i class="fa-solid fa-heart"></i></span>
+          <span class="service-card__label" data-i18n="cat.marriage">Marriage-Based Green Card</span>
+        </button>
+        <button class="service-card" data-category="naturalization" style="--svc: var(--svc-naturalization);">
+          <span class="service-card__icon"><i class="fa-solid fa-landmark"></i></span>
+          <span class="service-card__label" data-i18n="cat.naturalization">Naturalization</span>
+        </button>
+        <button class="service-card" data-category="asylum" style="--svc: var(--svc-asylum);">
+          <span class="service-card__icon"><i class="fa-solid fa-hands-holding-circle"></i></span>
+          <span class="service-card__label" data-i18n="cat.asylum">Asylum</span>
+        </button>
+        <button class="service-card" data-category="f1" style="--svc: var(--svc-f1);">
+          <span class="service-card__icon"><i class="fa-solid fa-user-graduate"></i></span>
+          <span class="service-card__label" data-i18n="cat.f1">F-1 Student Visa</span>
+        </button>
+        <button class="service-card" data-category="b1b2" style="--svc: var(--svc-b1b2);">
+          <span class="service-card__icon"><i class="fa-solid fa-plane-departure"></i></span>
+          <span class="service-card__label" data-i18n="cat.b1b2">B1/B2 Visitor Visa</span>
+        </button>
+        <button class="service-card" data-category="flagged" style="--svc: var(--svc-flagged);">
+          <span class="service-card__icon"><i class="fa-solid fa-star"></i></span>
+          <span class="service-card__label" data-i18n="cat.flagged">Flagged</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ SERVICE HEADER (shown when a single service is focused) ═══ -->
+    <div class="service-header" id="serviceHeader" hidden>
+      <button class="home-btn" id="homeBtn"><i class="fa-solid fa-house"></i> <span data-i18n="home.back">Home</span></button>
+      <span class="service-header__title" id="serviceHeaderTitle"></span>
     </div>
 
     <!-- ═══ CONTENT-TYPE TOGGLE (Practice Questions / Red Flags / Documents) ═══
@@ -298,7 +356,7 @@
     </div>
 
     <!-- ═══ QUIZ CARD ═══ -->
-    <section class="quiz" id="quiz">
+    <section class="quiz" id="quiz" hidden>
       <div class="quiz__state" id="quizLoading">
         <i class="fa-solid fa-spinner fa-spin"></i>
         <span data-i18n="state.loading">Loading questions…</span>
