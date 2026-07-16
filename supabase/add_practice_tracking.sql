@@ -139,3 +139,11 @@ begin
   group by a.client_id;
 end;
 $$;
+
+-- Defense in depth: new functions get EXECUTE from the PUBLIC pseudo-role by
+-- Postgres default, and on this project also directly from `anon` (via ALTER
+-- DEFAULT PRIVILEGES) -- independent of the admin checks above. Both checks
+-- are null-safe and correctly block anon callers, but don't rely on that
+-- alone -- revoke both grants too.
+revoke execute on function get_activity_data() from public, anon;
+revoke execute on function get_lead_activity_summary() from public, anon;

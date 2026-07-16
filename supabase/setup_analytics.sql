@@ -450,18 +450,19 @@ begin
 end;
 $$;
 
--- Supabase grants EXECUTE on every new function directly to `anon` and
--- `authenticated` by default (ALTER DEFAULT PRIVILEGES on the public schema) --
--- NOT via the PUBLIC pseudo-role -- so without these explicit revokes, the
--- admin-only functions above (and _person_rollup(), which has no admin check of
--- its own) are callable by anyone holding the public anon key.
-revoke execute on function _person_rollup()             from anon, authenticated;
-revoke execute on function get_funnel_summary()         from anon;
-revoke execute on function get_channel_performance()    from anon;
-revoke execute on function get_person_crm()             from anon;
-revoke execute on function get_category_breakdown()     from anon;
-revoke execute on function get_practice_reminders(int)  from anon;
-revoke execute on function get_event_feed(int)          from anon;
+-- New functions get EXECUTE from the PUBLIC pseudo-role by Postgres default
+-- AND, on this project, directly from `anon`/`authenticated` too (via ALTER
+-- DEFAULT PRIVILEGES on the public schema) -- two independent grants, both
+-- must be revoked, or anyone holding the public anon key can call the
+-- admin-only functions above (and _person_rollup(), which has no admin check
+-- of its own) directly.
+revoke execute on function _person_rollup()             from public, anon, authenticated;
+revoke execute on function get_funnel_summary()         from public, anon;
+revoke execute on function get_channel_performance()    from public, anon;
+revoke execute on function get_person_crm()             from public, anon;
+revoke execute on function get_category_breakdown()     from public, anon;
+revoke execute on function get_practice_reminders(int)  from public, anon;
+revoke execute on function get_event_feed(int)          from public, anon;
 
 grant execute on function get_funnel_summary()      to authenticated;
 grant execute on function get_channel_performance() to authenticated;

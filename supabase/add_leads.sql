@@ -63,3 +63,10 @@ begin
   order by l.created_at desc;
 end;
 $$;
+
+-- Defense in depth: new functions get EXECUTE from the PUBLIC pseudo-role by
+-- Postgres default, and on this project also directly from `anon` (via ALTER
+-- DEFAULT PRIVILEGES) -- independent of the admin check above. The check is
+-- null-safe and correctly blocks anon callers, but don't rely on that alone --
+-- revoke both grants too.
+revoke execute on function get_leads_data() from public, anon;
