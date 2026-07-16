@@ -209,7 +209,10 @@ language sql
 security definer
 set search_path = public
 as $$
-  with anon_of_person as (
+  with admin_emails as (
+    select unnest(array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com']) as email
+  ),
+  anon_of_person as (
     select m.person_id, m.anon_id from person_anon_map m
   ),
   first_anon as (
@@ -276,7 +279,8 @@ as $$
   left join first_anon fa on fa.person_id = p.id
   left join agg a       on a.person_id = p.id
   left join top_cat tc  on tc.person_id = p.id
-  left join cat_json cj on cj.person_id = p.id;
+  left join cat_json cj on cj.person_id = p.id
+  where p.email is null or lower(p.email) not in (select email from admin_emails);
 $$;
 
 create or replace function get_funnel_summary()

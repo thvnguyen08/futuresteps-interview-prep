@@ -53,6 +53,7 @@ begin
   left join lateral (
     select count(*)::bigint as cnt from flagged_questions f where f.user_id = u.id
   ) fq on true
+  where u.email is null or lower(u.email) <> all(admin_emails)
   order by u.created_at desc;
 end;
 $$;

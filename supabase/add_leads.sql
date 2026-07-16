@@ -60,6 +60,7 @@ begin
   return query
   select l.id, l.name, l.email, l.phone, l.location, l.created_at
   from leads l
+  where l.email is null or lower(l.email) <> all(admin_emails)
   order by l.created_at desc;
 end;
 $$;

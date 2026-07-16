@@ -94,6 +94,8 @@ begin
     where a.email is not null and l.email = a.email
     order by l.created_at desc limit 1
   ) le on true
+  where coalesce(a.email, le.email, lc.email) is null
+     or lower(coalesce(a.email, le.email, lc.email)) <> all(admin_emails)
   order by a.created_at desc
   limit 2000;
 end;
@@ -136,7 +138,8 @@ begin
     coalesce(sum(a.correct) filter (where a.activity_type = 'practice'), 0) as questions_right,
     string_agg(distinct a.category, ', ') as services
   from practice_activity a
-  group by a.client_id;
+  group by a.client_id
+  having max(a.email) is null or lower(max(a.email)) <> all(admin_emails);
 end;
 $$;
 
