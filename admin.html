@@ -142,6 +142,56 @@
   <!-- DASHBOARD (hidden until authenticated) -->
   <div class="wrap">
     <div class="dashboard" id="dashboard">
+      <h2 class="section-title" style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Unified Funnel
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        Visitor → Lead → Activated → Active, tracked across the website and this app under one identity.
+      </p>
+      <div class="stats" id="funnelStatsRow"></div>
+
+      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Channel Performance
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        Which channel a visitor first arrived from, and how far they got.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="channelHead"></tr></thead>
+          <tbody id="channelBody"></tbody>
+        </table>
+      </div>
+
+      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Category Breakdown
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        Which services people actually practice, and how they score.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="categoryHead"></tr></thead>
+          <tbody id="categoryBody"></tbody>
+        </table>
+      </div>
+
+      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Live Activity Feed
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        The 50 most recent events across both properties — reload the page to refresh.
+      </p>
+      <div class="table-wrap" style="margin-bottom:36px;">
+        <table>
+          <thead><tr id="feedHead"></tr></thead>
+          <tbody id="feedBody"></tbody>
+        </table>
+      </div>
+
+      <h2 class="section-title" style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Customers
+      </h2>
       <div class="stats" id="statsRow"></div>
 
       <div class="toolbar">
@@ -476,6 +526,123 @@
       renderActivity();
     }
 
+    // ── Unified analytics (funnel, channel, category, live feed) ──
+    function renderFunnelStats(row) {
+      const r = row || {};
+      document.getElementById("funnelStatsRow").innerHTML = [
+        { label: "Visitors",  value: r.visitors ?? 0 },
+        { label: "Leads",     value: r.leads ?? 0 },
+        { label: "Activated", value: r.activated ?? 0 },
+        { label: "Active",    value: r.active ?? 0 },
+      ].map(s => `
+        <div class="stat-card">
+          <div class="stat-card__label">${s.label}</div>
+          <div class="stat-card__value">${s.value}</div>
+        </div>
+      `).join("");
+    }
+
+    const channelColumns = [
+      { key: "channel",   label: "Channel" },
+      { key: "visitors",  label: "Visitors" },
+      { key: "leads",     label: "Leads" },
+      { key: "activated", label: "Activated" },
+      { key: "active",    label: "Active" },
+      { key: "rate",      label: "Activation %" },
+    ];
+    function renderChannelTable(rows) {
+      document.getElementById("channelHead").innerHTML =
+        channelColumns.map(c => `<th>${c.label}</th>`).join("");
+      const tbody = document.getElementById("channelBody");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${channelColumns.length}" class="empty-state">No visitor data yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => {
+        const rate = r.leads ? Math.round((r.activated / r.leads) * 100) : 0;
+        return `<tr>
+          <td>${r.channel}</td>
+          <td class="td-num">${r.visitors}</td>
+          <td class="td-num">${r.leads}</td>
+          <td class="td-num">${r.activated}</td>
+          <td class="td-num">${r.active}</td>
+          <td class="td-num">${rate}%</td>
+        </tr>`;
+      }).join("");
+    }
+
+    const categoryColumns = [
+      { key: "category",        label: "Category" },
+      { key: "learners",        label: "Learners" },
+      { key: "practice_rounds", label: "Rounds" },
+      { key: "questions_done",  label: "Questions" },
+      { key: "accuracy_pct",    label: "Accuracy" },
+    ];
+    function renderCategoryTable(rows) {
+      document.getElementById("categoryHead").innerHTML =
+        categoryColumns.map(c => `<th>${c.label}</th>`).join("");
+      const tbody = document.getElementById("categoryBody");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${categoryColumns.length}" class="empty-state">No practice data yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>
+        <td>${SERVICE_LABEL[r.category] || r.category}</td>
+        <td class="td-num">${r.learners}</td>
+        <td class="td-num">${r.practice_rounds}</td>
+        <td class="td-num">${r.questions_done}</td>
+        <td class="td-num">${r.accuracy_pct != null ? r.accuracy_pct + "%" : "—"}</td>
+      </tr>`).join("");
+    }
+
+    const feedColumns = [
+      { key: "occurred_at", label: "When" },
+      { key: "who",         label: "Who" },
+      { key: "property",    label: "Property" },
+      { key: "event_name",  label: "Event" },
+      { key: "channel",     label: "Channel" },
+      { key: "page_path",   label: "Page" },
+    ];
+    function renderFeedTable(rows) {
+      document.getElementById("feedHead").innerHTML =
+        feedColumns.map(c => `<th>${c.label}</th>`).join("");
+      const tbody = document.getElementById("feedBody");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${feedColumns.length}" class="empty-state">No activity yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `<tr>
+        <td class="td-date">${new Date(r.occurred_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
+        <td>${r.name || r.email || "—"}</td>
+        <td>${r.property || "—"}</td>
+        <td>${r.event_name}</td>
+        <td>${r.channel || "—"}</td>
+        <td>${r.page_path || "—"}</td>
+      </tr>`).join("");
+    }
+
+    async function loadAnalytics() {
+      const [funnel, channels, categories, feed] = await Promise.all([
+        sb.rpc("get_funnel_summary"),
+        sb.rpc("get_channel_performance"),
+        sb.rpc("get_category_breakdown"),
+        sb.rpc("get_event_feed", { p_limit: 50 }),
+      ]);
+      const firstError = funnel.error || channels.error || categories.error || feed.error;
+      if (firstError) {
+        console.error("Analytics load error:", firstError);
+        document.getElementById("channelBody").innerHTML =
+          `<tr><td colspan="${channelColumns.length}" class="empty-state" style="color:var(--clr-red)">
+            Failed to load analytics. Make sure you've run <code>supabase/setup_analytics.sql</code> and your email is in the admin list.
+          </td></tr>`;
+        return;
+      }
+      renderFunnelStats((funnel.data || [])[0]);
+      renderChannelTable(channels.data || []);
+      renderCategoryTable(categories.data || []);
+      renderFeedTable(feed.data || []);
+    }
+
     function showDashboard(user) {
       document.getElementById("loginGate").style.display = "none";
       document.getElementById("dashboard").classList.add("is-visible");
@@ -487,6 +654,7 @@
         await sb.auth.signOut();
         location.reload();
       });
+      loadAnalytics();
       loadCRM();
       loadLeads();
       loadActivity();
