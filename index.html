@@ -140,15 +140,28 @@
 
       <form id="gateForm" novalidate>
         <input type="text" class="gate__input" id="gateName" autocomplete="name" required>
-        <input type="email" class="gate__input" id="gateEmail" autocomplete="email">
-        <input type="tel" class="gate__input" id="gatePhone" autocomplete="tel">
-        <p class="gate__hint" data-i18n="gate.contactHint">Enter your email or your phone — at least one so we can reach you.</p>
+        <input type="email" class="gate__input" id="gateEmail" autocomplete="email" required>
+        <input type="tel" class="gate__input" id="gatePhone" autocomplete="tel" required>
+        <p class="gate__hint" data-i18n="gate.contactHint">We'll email you a link to activate your account before you can start practicing.</p>
         <select class="gate__input" id="gateLocation" required></select>
         <p class="gate__error" id="gateError" hidden></p>
         <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit" data-i18n="gate.start">Start Practicing</button>
       </form>
 
-      <p class="gate__login-prompt">
+      <!-- Shown after submitting the form, until the activation email is clicked -->
+      <div class="gate__pending" id="gatePending" hidden>
+        <i class="fa-solid fa-envelope-circle-check gate__pending-icon"></i>
+        <p class="gate__pending-title" data-i18n="gate.pendingTitle">Check Your Email</p>
+        <p class="gate__pending-msg" data-i18n="gate.pendingMsg">We've sent an activation link to the email below. You must click it to activate your account before you can start practicing.</p>
+        <p class="gate__pending-email" id="gatePendingEmail"></p>
+        <button class="btn btn--outline gate__submit" id="gateResendBtn" data-i18n="gate.resend">Resend Email</button>
+        <p class="gate__msg" id="gateResendMsg" hidden></p>
+        <p class="gate__login-prompt">
+          <a href="#" id="gateUseDifferentEmail" data-i18n="gate.useDifferent">Use a different email</a>
+        </p>
+      </div>
+
+      <p class="gate__login-prompt" id="gateLoginPrompt">
         <span data-i18n="gate.haveAccount">Already registered before?</span>
         <a href="#" id="gateLoginLink" data-i18n="gate.logIn">Log in</a>
       </p>

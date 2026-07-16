@@ -1147,3 +1147,8 @@ body.gate-open { overflow: hidden; }
   font-size: .72rem; color: var(--clr-muted); line-height: 1.5; text-align: center;
   margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--clr-surface2);
 }
+.gate__pending { text-align: center; }
+.gate__pending-icon { font-size: 2.2rem; color: var(--clr-primary); margin-bottom: 12px; }
+.gate__pending-title { font-family: var(--ff-heading); font-size: 1.2rem; color: var(--clr-white); margin-bottom: 8px; }
+.gate__pending-msg { font-size: .88rem; color: var(--clr-muted); line-height: 1.5; margin-bottom: 10px; }
+.gate__pending-email { font-size: .92rem; font-weight: 700; color: var(--clr-white); margin-bottom: 18px; word-break: break-word; }

@@ -140,7 +140,7 @@ const translations = {
     "account.help": 'Cần hỗ trợ? Liên hệ chúng tôi qua <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>',
     "gate.title": "Bắt đầu luyện phỏng vấn",
     "gate.sub": "Hãy cho chúng tôi biết đôi chút về bạn để Future Steps Services có thể hỗ trợ hồ sơ của bạn. Sau đó bạn có thể luyện tập ngay — hoàn toàn miễn phí.",
-    "gate.contactHint": "Nhập email hoặc số điện thoại — ít nhất một cách để chúng tôi liên hệ với bạn.",
+    "gate.contactHint": "Chúng tôi sẽ gửi email cho bạn một liên kết để kích hoạt tài khoản trước khi bạn có thể bắt đầu luyện tập.",
     "gate.start": "Bắt Đầu Luyện Tập",
     "gate.haveAccount": "Đã đăng ký trước đây?",
     "gate.logIn": "Đăng nhập",
@@ -153,11 +153,17 @@ const translations = {
     "gate.loc.vietnam": "Việt Nam",
     "gate.loc.other": "Quốc gia khác",
     "gate.err.name": "Vui lòng nhập tên của bạn.",
-    "gate.err.contact": "Vui lòng nhập email hoặc số điện thoại.",
+    "gate.err.emailRequired": "Vui lòng nhập địa chỉ email của bạn.",
     "gate.err.email": "Địa chỉ email không hợp lệ.",
+    "gate.err.phoneRequired": "Vui lòng nhập số điện thoại của bạn.",
     "gate.err.location": "Vui lòng chọn nơi bạn đang ở.",
     "gate.err.save": "Có lỗi xảy ra. Vui lòng thử lại.",
     "gate.loginSent": "Hãy kiểm tra email để nhận liên kết đăng nhập!",
+    "gate.pendingTitle": "Kiểm Tra Email Của Bạn",
+    "gate.pendingMsg": "Chúng tôi đã gửi một liên kết kích hoạt đến email bên dưới. Bạn phải nhấp vào đó để kích hoạt tài khoản trước khi có thể bắt đầu luyện tập.",
+    "gate.resend": "Gửi Lại Email",
+    "gate.resendSent": "Đã gửi lại email kích hoạt!",
+    "gate.useDifferent": "Dùng email khác",
   }
 };
 
@@ -318,11 +324,13 @@ const GATE_EN = {
   "gate.loc.vietnam": "Vietnam",
   "gate.loc.other": "Other country",
   "gate.err.name": "Please enter your name.",
-  "gate.err.contact": "Please enter your email or your phone number.",
+  "gate.err.emailRequired": "Please enter your email address.",
   "gate.err.email": "Please enter a valid email address.",
+  "gate.err.phoneRequired": "Please enter your phone number.",
   "gate.err.location": "Please choose where you are.",
   "gate.err.save": "Something went wrong. Please try again.",
   "gate.loginSent": "Check your email for a login link!",
+  "gate.resendSent": "Activation email resent!",
 };
 function gateText(key) {
   return currentLang === "vi" ? translations.vi[key] : GATE_EN[key];
@@ -403,13 +411,16 @@ function markRegistered() {
 
 /* ── Anonymous device identity + local/backend activity tracking ──
    Everyone who registers at the gate gets a stable client_id (kept on the
-   device). It lets us save their practice progress and activity to the
-   backend — and correlate it with their lead — WITHOUT the magic-link login,
-   which was a drop-off point. The magic link stays as an optional
-   "sync across devices" upgrade. */
+   device), used to save practice progress/activity to the backend and
+   correlate it with their lead. Practicing itself requires a real account:
+   the gate form sends an activation email (magic link), and only once they
+   click it and get a real Supabase session are they let in. */
 const CLIENT_ID_KEY = "interviewPrepClientId";
 const REG_EMAIL_KEY = "interviewPrepRegEmail";
 const REG_NAME_KEY  = "interviewPrepRegName";
+const REG_PHONE_KEY = "interviewPrepRegPhone";
+const REG_LOCATION_KEY = "interviewPrepRegLocation";
+const PENDING_EMAIL_KEY = "interviewPrepPendingActivationEmail";
 const PROGRESS_KEY  = "interviewPrepProgress";
 const SESSION_ID_KEY = "interviewPrepSessionId";
 const FIRST_TOUCH_KEY = "interviewPrepFirstTouchLogged";
@@ -599,8 +610,13 @@ function closeGate() {
 }
 
 function showGateIfNeeded() {
-  if (isRegistered()) closeGate();
-  else openGate();
+  if (isRegistered()) { closeGate(); return; }
+  openGate();
+  // Reload before clicking the activation link → show the "check your email"
+  // screen again (with a resend option) instead of an empty form.
+  let pendingEmail = null;
+  try { pendingEmail = localStorage.getItem(PENDING_EMAIL_KEY); } catch (e) {}
+  if (pendingEmail) showActivationPending(pendingEmail);
 }
 
 function isValidEmail(v) {
@@ -619,51 +635,74 @@ async function submitRegistration(e) {
   const fail = (key) => { errEl.textContent = gateText(key); errEl.hidden = false; };
   errEl.hidden = true;
   if (!name) return fail("gate.err.name");
-  if (!email && !phone) return fail("gate.err.contact");
-  if (email && !isValidEmail(email)) return fail("gate.err.email");
+  if (!email) return fail("gate.err.emailRequired");
+  if (!isValidEmail(email)) return fail("gate.err.email");
+  if (!phone) return fail("gate.err.phoneRequired");
   if (!location) return fail("gate.err.location");
 
   btn.disabled = true;
-  // Remember who they are on this device so we can attach it to their activity
-  // (and personalize) without requiring the magic-link login.
+  // Remember who they are on this device so a resend (or a pre-activation
+  // reload) doesn't need to ask again.
   try {
-    if (email) localStorage.setItem(REG_EMAIL_KEY, email);
-    if (name) localStorage.setItem(REG_NAME_KEY, name);
+    localStorage.setItem(REG_EMAIL_KEY, email);
+    localStorage.setItem(REG_NAME_KEY, name);
+    localStorage.setItem(REG_PHONE_KEY, phone);
+    localStorage.setItem(REG_LOCATION_KEY, location);
   } catch (e) {}
   try {
     if (supabaseClient) {
       const { error } = await supabaseClient.from("leads")
-        .insert({ name, email: email || null, phone: phone || null, location, client_id: getClientId() });
+        .insert({ name, email, phone, location, client_id: getClientId() });
       if (error) throw error;
     }
   } catch (err) {
-    // Fail open: never trap an interested user behind a transient DB error (or a
-    // not-yet-run migration). The form was filled; log the miss and let them in.
+    // Fail open on the lead record itself: never trap someone behind a
+    // transient DB error here. Activation (below) is still required.
     console.error("Failed to save registration lead:", err);
   }
   identifyPerson({ name, email, phone, location });
-  sendActivationEmail(email, name, phone); // not awaited — never blocks entry
-  markRegistered();
-  closeGate();
-  showHome();
+  const sent = await sendActivationEmail(email, name, phone, location);
   btn.disabled = false;
+
+  if (!sent) return fail("gate.err.save");
+  try { localStorage.setItem(PENDING_EMAIL_KEY, email); } catch (e) {}
+  showActivationPending(email);
 }
 
-/* Confirms the email they typed at the gate is real and, once clicked, turns
-   their local registration into a real logged-in account with their name and
-   phone attached (so future visits/devices show their name, not just email).
-   Fire-and-forget: registration itself never waits on or blocks for this. */
-async function sendActivationEmail(email, name, phone) {
-  if (!supabaseClient || !email || currentUser) return;
+/* Sends the activation email (magic link). Practicing requires clicking it —
+   this is a hard gate, not an optional upgrade: submitRegistration() awaits
+   this and only shows the "check your email" screen if it actually sent. */
+async function sendActivationEmail(email, name, phone, location) {
+  if (!supabaseClient) return false;
   try {
     const options = { emailRedirectTo: window.location.origin + window.location.pathname, data: {} };
     if (name) options.data.name = name;
     if (phone) options.data.phone = phone;
+    if (location) options.data.location = location;
     const { error } = await supabaseClient.auth.signInWithOtp({ email, options });
     if (error) throw error;
+    return true;
   } catch (err) {
     console.error("Failed to send activation email:", err);
+    return false;
   }
+}
+
+/* Swap the gate form for the "check your email" screen. Used both right
+   after submitting and on a fresh page load if activation is still pending. */
+function showActivationPending(email) {
+  document.getElementById("gateForm").hidden = true;
+  document.getElementById("gateLoginPrompt").hidden = true;
+  document.getElementById("gateLoginBox").hidden = true;
+  document.getElementById("gatePending").hidden = false;
+  document.getElementById("gatePendingEmail").textContent = email;
+}
+
+function showRegistrationForm() {
+  document.getElementById("gatePending").hidden = true;
+  document.getElementById("gateForm").hidden = false;
+  document.getElementById("gateLoginPrompt").hidden = false;
+  try { localStorage.removeItem(PENDING_EMAIL_KEY); } catch (e) {}
 }
 
 async function gateSendLoginLink() {
@@ -779,6 +818,7 @@ function initAuth() {
       // A logged-in user has already given us their details — skip the gate.
       markRegistered();
       closeGate();
+      try { localStorage.removeItem(PENDING_EMAIL_KEY); } catch (e) {}
       // Only link identity on an actual sign-in transition, not every reload of
       // an existing session — identify() logs a 'register' event each call.
       if (event === "SIGNED_IN") identifyPerson({ email: currentUser.email });
@@ -1277,7 +1317,7 @@ function startRound(category) {
     pool = allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id));
   } else if (category === "naturalization") {
     const dbCategory = natTestType === "english" ? natEnglishSection : "naturalization";
-    pool = allQuestions.filter(q => q.category === dbCategory);
+    pool = allQuestions.filter(q => q.category === dbCategory && (q.content_type || "question") === "question");
   } else pool = allQuestions.filter(q => q.category === category && (q.content_type || "question") === contentType);
 
   quizSet = shuffle(pool);
@@ -1883,6 +1923,28 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("gateLoginSend").addEventListener("click", gateSendLoginLink);
   document.getElementById("gateLoginEmail").addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); gateSendLoginLink(); }
+  });
+
+  document.getElementById("gateResendBtn").addEventListener("click", async () => {
+    const email = document.getElementById("gatePendingEmail").textContent;
+    const btn = document.getElementById("gateResendBtn");
+    const msg = document.getElementById("gateResendMsg");
+    btn.disabled = true;
+    let name, phone, location;
+    try {
+      name = localStorage.getItem(REG_NAME_KEY);
+      phone = localStorage.getItem(REG_PHONE_KEY);
+      location = localStorage.getItem(REG_LOCATION_KEY);
+    } catch (e) {}
+    const sent = await sendActivationEmail(email, name, phone, location);
+    btn.disabled = false;
+    msg.hidden = false;
+    msg.className = sent ? "gate__msg gate__msg--ok" : "gate__msg gate__msg--error";
+    msg.textContent = gateText(sent ? "gate.resendSent" : "gate.err.save");
+  });
+  document.getElementById("gateUseDifferentEmail").addEventListener("click", (e) => {
+    e.preventDefault();
+    showRegistrationForm();
   });
 
   document.getElementById("serviceGrid").addEventListener("click", (e) => {
