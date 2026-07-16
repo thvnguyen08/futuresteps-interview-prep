@@ -18,8 +18,9 @@
 
 -- ----------------------------------------------------------------------------
 -- Helper (internal): per-person rollup used by every reader below.
--- SECURITY DEFINER so it can read the RLS-protected tables. NOT granted to the
--- public; the gated get_* wrappers call it.
+-- SECURITY DEFINER so it can read the RLS-protected tables. Has no admin check
+-- of its own -- callers must gate access. EXECUTE is explicitly revoked from
+-- anon/authenticated further down; only the get_* wrappers below should call it.
 -- ----------------------------------------------------------------------------
 create or replace function _person_rollup()
 returns table (
@@ -143,7 +144,11 @@ as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim at all, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data. Coalescing to '' makes it compare false
+  -- against every admin email instead.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
 
   return query
   select
@@ -174,7 +179,11 @@ as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim at all, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data. Coalescing to '' makes it compare false
+  -- against every admin email instead.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
 
   return query
   with visitor_channel as (
@@ -233,7 +242,11 @@ as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim at all, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data. Coalescing to '' makes it compare false
+  -- against every admin email instead.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
 
   return query
   select
@@ -274,7 +287,11 @@ as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim at all, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data. Coalescing to '' makes it compare false
+  -- against every admin email instead.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
 
   return query
   select
@@ -309,7 +326,11 @@ as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim at all, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data. Coalescing to '' makes it compare false
+  -- against every admin email instead.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
 
   return query
   with ev as (
@@ -357,7 +378,11 @@ as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim at all, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data. Coalescing to '' makes it compare false
+  -- against every admin email instead.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
 
   return query
   select
@@ -376,6 +401,23 @@ begin
   limit greatest(1, least(p_limit, 5000));
 end;
 $$;
+
+-- ----------------------------------------------------------------------------
+-- Lock down access. Supabase grants EXECUTE on every new function directly to
+-- `anon` and `authenticated` by default (ALTER DEFAULT PRIVILEGES on the public
+-- schema) -- NOT via the PUBLIC pseudo-role, so `revoke ... from public` alone
+-- does nothing here. Without this block, the admin-only functions above are
+-- callable by anyone holding the public anon key, and _person_rollup() -- which
+-- has no admin check of its own, relying entirely on its callers to gate it --
+-- is fully exposed with zero protection.
+-- ----------------------------------------------------------------------------
+revoke execute on function _person_rollup()             from anon, authenticated;
+revoke execute on function get_funnel_summary()         from anon;
+revoke execute on function get_channel_performance()    from anon;
+revoke execute on function get_person_crm()             from anon;
+revoke execute on function get_category_breakdown()     from anon;
+revoke execute on function get_practice_reminders(int)  from anon;
+revoke execute on function get_event_feed(int)          from anon;
 
 grant execute on function get_funnel_summary()          to authenticated;
 grant execute on function get_channel_performance()     to authenticated;

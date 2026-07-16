@@ -285,7 +285,10 @@ language plpgsql security definer set search_path = public
 as $$
 declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
   return query
   select
     (select count(*) from anon_visitors)::bigint,
@@ -301,7 +304,10 @@ language plpgsql security definer set search_path = public
 as $$
 declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
   return query
   with visitor_channel as (
     select analytics_channel(first_utm_source, first_utm_medium, first_referrer) as channel,
@@ -337,7 +343,10 @@ language plpgsql security definer set search_path = public
 as $$
 declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
   return query
   select
     r.name, r.email, r.phone, r.location, r.channel,
@@ -363,7 +372,10 @@ language plpgsql security definer set search_path = public
 as $$
 declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
   return query
   select
     r.name, r.email, r.top_category, r.last_practice_at,
@@ -386,7 +398,10 @@ language plpgsql security definer set search_path = public
 as $$
 declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
   return query
   with ev as (
     select e.anon_id,
@@ -418,7 +433,10 @@ language plpgsql security definer set search_path = public
 as $$
 declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
 begin
-  if not ((auth.jwt()->>'email') = any(admin_emails)) then return; end if;
+  -- coalesce() matters: an anon-key caller has no 'email' claim, so the
+  -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
+  -- return early, silently leaking data.
+  if not (coalesce(auth.jwt()->>'email', '') = any(admin_emails)) then return; end if;
   return query
   select
     e.occurred_at, p.name, p.email, e.property, e.event_name,
@@ -431,6 +449,19 @@ begin
   limit greatest(1, least(p_limit, 5000));
 end;
 $$;
+
+-- Supabase grants EXECUTE on every new function directly to `anon` and
+-- `authenticated` by default (ALTER DEFAULT PRIVILEGES on the public schema) --
+-- NOT via the PUBLIC pseudo-role -- so without these explicit revokes, the
+-- admin-only functions above (and _person_rollup(), which has no admin check of
+-- its own) are callable by anyone holding the public anon key.
+revoke execute on function _person_rollup()             from anon, authenticated;
+revoke execute on function get_funnel_summary()         from anon;
+revoke execute on function get_channel_performance()    from anon;
+revoke execute on function get_person_crm()             from anon;
+revoke execute on function get_category_breakdown()     from anon;
+revoke execute on function get_practice_reminders(int)  from anon;
+revoke execute on function get_event_feed(int)          from anon;
 
 grant execute on function get_funnel_summary()      to authenticated;
 grant execute on function get_channel_performance() to authenticated;
