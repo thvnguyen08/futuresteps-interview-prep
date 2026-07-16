@@ -411,9 +411,30 @@ const CLIENT_ID_KEY = "interviewPrepClientId";
 const REG_EMAIL_KEY = "interviewPrepRegEmail";
 const REG_NAME_KEY  = "interviewPrepRegName";
 const PROGRESS_KEY  = "interviewPrepProgress";
+const SESSION_ID_KEY = "interviewPrepSessionId";
+const FIRST_TOUCH_KEY = "interviewPrepFirstTouchLogged";
 
+/* UTM/referrer this page loaded with — captured once and reused for every
+   analytics event this pageview fires (see supabase/ANALYTICS.md). */
+const urlParams = new URLSearchParams(window.location.search);
+const utmParams = {
+  source:   urlParams.get("utm_source")   || null,
+  medium:   urlParams.get("utm_medium")   || null,
+  campaign: urlParams.get("utm_campaign") || null,
+  content:  urlParams.get("utm_content")  || null,
+  term:     urlParams.get("utm_term")     || null,
+};
+
+/* The device/browser id shared with the website (llc-web) to stitch one
+   human's journey across both properties: the website's "Practice now" CTA
+   appends ?aid=<id>, and we adopt it here over any id already on this device. */
 function getClientId() {
   let id = localStorage.getItem(CLIENT_ID_KEY);
+  const urlAid = urlParams.get("aid");
+  if (urlAid && urlAid !== id) {
+    id = urlAid;
+    try { localStorage.setItem(CLIENT_ID_KEY, id); } catch (e) {}
+  }
   if (!id) {
     id = (window.crypto && crypto.randomUUID)
       ? crypto.randomUUID()
@@ -421,6 +442,83 @@ function getClientId() {
     try { localStorage.setItem(CLIENT_ID_KEY, id); } catch (e) {}
   }
   return id;
+}
+
+function getSessionId() {
+  let id = sessionStorage.getItem(SESSION_ID_KEY);
+  if (!id) {
+    id = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : "s_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    try { sessionStorage.setItem(SESSION_ID_KEY, id); } catch (e) {}
+  }
+  return id;
+}
+
+/* Record this device's first-touch attribution, once ever. Fire-and-forget,
+   and safe to call every page load — it no-ops once FIRST_TOUCH_KEY is set. */
+async function logFirstTouchIfNeeded() {
+  if (!supabaseClient) return;
+  try { if (localStorage.getItem(FIRST_TOUCH_KEY)) return; } catch (e) {}
+  try {
+    const { error } = await supabaseClient.from("anon_visitors").insert({
+      anon_id: getClientId(),
+      first_property: "app",
+      first_referrer: document.referrer || null,
+      first_landing_path: window.location.pathname,
+      first_utm_source: utmParams.source,
+      first_utm_medium: utmParams.medium,
+      first_utm_campaign: utmParams.campaign,
+      first_utm_content: utmParams.content,
+      first_utm_term: utmParams.term,
+    });
+    if (error && error.code !== "23505") throw error;
+    try { localStorage.setItem(FIRST_TOUCH_KEY, "1"); } catch (e) {}
+  } catch (err) {
+    console.error("Failed to log first touch:", err);
+  }
+}
+
+/* Log one unified analytics event (see the taxonomy in supabase/ANALYTICS.md).
+   Fire-and-forget: never block or break the UI on a logging failure. */
+async function logEvent(eventName, props = {}) {
+  if (!supabaseClient) return;
+  try {
+    await supabaseClient.from("events").insert({
+      anon_id: getClientId(),
+      property: "app",
+      event_name: eventName,
+      session_id: getSessionId(),
+      page_path: window.location.pathname,
+      referrer: document.referrer || null,
+      utm_source: utmParams.source,
+      utm_medium: utmParams.medium,
+      utm_campaign: utmParams.campaign,
+      utm_content: utmParams.content,
+      utm_term: utmParams.term,
+      props,
+    });
+  } catch (err) {
+    console.error("Failed to log event:", eventName, err);
+  }
+}
+
+/* Upsert + link the current device to a person (register or magic-link login).
+   SECURITY DEFINER RPC — see identify() in supabase/add_analytics_core.sql. */
+async function identifyPerson({ name, email, phone, location, property = "app" } = {}) {
+  if (!supabaseClient) return;
+  try {
+    await supabaseClient.rpc("identify", {
+      p_anon_id: getClientId(),
+      p_name: name || null,
+      p_email: email || null,
+      p_phone: phone || null,
+      p_location: location || null,
+      p_property: property,
+    });
+  } catch (err) {
+    console.error("Failed to identify person:", err);
+  }
 }
 
 function registeredEmail() {
@@ -456,6 +554,13 @@ async function logActivity(activityType, category, data = {}) {
   } catch (err) {
     console.error("Failed to log practice activity:", err);
   }
+  // Mirror into the unified events table (see supabase/ANALYTICS.md taxonomy).
+  logEvent(activityType === "practice" ? "practice_complete" : "view",
+    activityType === "practice"
+      ? { category: category || null, mode: data.mode || null,
+          content_type: data.content_type || null,
+          correct: data.correct ?? null, total: data.total ?? null }
+      : { category: category || null, content_type: data.content_type || null });
 }
 
 function populateGateLocation() {
@@ -536,6 +641,7 @@ async function submitRegistration(e) {
     // not-yet-run migration). The form was filled; log the miss and let them in.
     console.error("Failed to save registration lead:", err);
   }
+  identifyPerson({ name, email, phone, location });
   markRegistered();
   closeGate();
   showHome();
@@ -655,6 +761,9 @@ function initAuth() {
       // A logged-in user has already given us their details — skip the gate.
       markRegistered();
       closeGate();
+      // Only link identity on an actual sign-in transition, not every reload of
+      // an existing session — identify() logs a 'register' event each call.
+      if (event === "SIGNED_IN") identifyPerson({ email: currentUser.email });
       mergeLocalFlagsToAccount()
         .then(loadFlaggedIdsFromAccount)
         .then(mergeLocalMissedToAccount)
@@ -1842,6 +1951,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAccountUI();
   initAuth();
   loadQuestions();
+  logFirstTouchIfNeeded();
+  logEvent("page_view");
 });
 
 // Register the service worker so the app is installable ("Add to Home Screen")
