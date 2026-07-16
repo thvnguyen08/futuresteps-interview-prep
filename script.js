@@ -536,10 +536,28 @@ async function submitRegistration(e) {
     // not-yet-run migration). The form was filled; log the miss and let them in.
     console.error("Failed to save registration lead:", err);
   }
+  sendActivationEmail(email, name, phone); // not awaited — never blocks entry
   markRegistered();
   closeGate();
   showHome();
   btn.disabled = false;
+}
+
+/* Confirms the email they typed at the gate is real and, once clicked, turns
+   their local registration into a real logged-in account with their name and
+   phone attached (so future visits/devices show their name, not just email).
+   Fire-and-forget: registration itself never waits on or blocks for this. */
+async function sendActivationEmail(email, name, phone) {
+  if (!supabaseClient || !email || currentUser) return;
+  try {
+    const options = { emailRedirectTo: window.location.origin + window.location.pathname, data: {} };
+    if (name) options.data.name = name;
+    if (phone) options.data.phone = phone;
+    const { error } = await supabaseClient.auth.signInWithOtp({ email, options });
+    if (error) throw error;
+  } catch (err) {
+    console.error("Failed to send activation email:", err);
+  }
 }
 
 async function gateSendLoginLink() {
@@ -726,9 +744,17 @@ function renderAccountUI() {
   const ctaLogin = document.getElementById("ctaLogin");
 
   if (currentUser) {
-    btnLabel.textContent = currentUser.email;
+    const displayName = (currentUser.user_metadata && currentUser.user_metadata.name) || "";
+    const nameDisplay = document.getElementById("accountNameDisplay");
+    btnLabel.textContent = displayName || currentUser.email;
     loggedOutEl.hidden = true;
     loggedInEl.hidden = false;
+    if (displayName) {
+      nameDisplay.textContent = displayName;
+      nameDisplay.hidden = false;
+    } else {
+      nameDisplay.hidden = true;
+    }
     emailDisplay.textContent = currentUser.email;
     phoneInputLoggedIn.value = (currentUser.user_metadata && currentUser.user_metadata.phone) || "";
     const stateInput = document.getElementById("accountStateInput");

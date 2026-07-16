@@ -217,12 +217,25 @@ body {
 .account-panel__msg--ok { color: var(--clr-green); }
 .account-panel__msg--error { color: #dc2626; }
 
+.account-panel__name {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--clr-white);
+  margin-bottom: 2px;
+}
+
 .account-panel__email {
   font-size: .85rem;
   font-weight: 700;
   color: var(--clr-white);
   margin-bottom: 14px;
   word-break: break-all;
+}
+
+.account-panel__name + .account-panel__email {
+  font-size: .75rem;
+  font-weight: 400;
+  color: var(--clr-white-dim, rgba(255, 255, 255, .7));
 }
 
 .account-panel__results {
