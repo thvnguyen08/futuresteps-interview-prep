@@ -60,8 +60,18 @@ language plpgsql
 security definer
 as $$
 declare
+  -- Who may call this function (the admin login gate).
   admin_emails text[] := array[
     'thvnguyen08@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
+  -- Whose data is hidden from the results (admins + internal team/test
+  -- accounts) -- a superset of admin_emails, kept separate on purpose.
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
     'futuresteps.dallas@gmail.com'
   ];
   caller_email text;
@@ -95,7 +105,7 @@ begin
     order by l.created_at desc limit 1
   ) le on true
   where coalesce(a.email, le.email, lc.email) is null
-     or lower(coalesce(a.email, le.email, lc.email)) <> all(admin_emails)
+     or lower(coalesce(a.email, le.email, lc.email)) <> all(excluded_emails)
   order by a.created_at desc
   limit 2000;
 end;
@@ -117,8 +127,18 @@ language plpgsql
 security definer
 as $$
 declare
+  -- Who may call this function (the admin login gate).
   admin_emails text[] := array[
     'thvnguyen08@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
+  -- Whose data is hidden from the results (admins + internal team/test
+  -- accounts) -- a superset of admin_emails, kept separate on purpose.
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
     'futuresteps.dallas@gmail.com'
   ];
   caller_email text;
@@ -139,7 +159,7 @@ begin
     string_agg(distinct a.category, ', ') as services
   from practice_activity a
   group by a.client_id
-  having max(a.email) is null or lower(max(a.email)) <> all(admin_emails);
+  having max(a.email) is null or lower(max(a.email)) <> all(excluded_emails);
 end;
 $$;
 

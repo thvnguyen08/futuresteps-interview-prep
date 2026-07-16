@@ -209,8 +209,16 @@ language sql
 security definer
 set search_path = public
 as $$
-  with admin_emails as (
-    select unnest(array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com']) as email
+  with excluded_emails as (
+    -- Admins + internal team/test accounts, hidden from every reader that
+    -- goes through this rollup.
+    select unnest(array[
+      'thvnguyen08@gmail.com',
+      'thang.nguyen.cv@gmail.com',
+      'victor.nghv@gmail.com',
+      'ngat87143@gmail.com',
+      'futuresteps.dallas@gmail.com'
+    ]) as email
   ),
   anon_of_person as (
     select m.person_id, m.anon_id from person_anon_map m
@@ -280,7 +288,7 @@ as $$
   left join agg a       on a.person_id = p.id
   left join top_cat tc  on tc.person_id = p.id
   left join cat_json cj on cj.person_id = p.id
-  where p.email is null or lower(p.email) not in (select email from admin_emails);
+  where p.email is null or lower(p.email) not in (select email from excluded_emails);
 $$;
 
 create or replace function get_funnel_summary()
@@ -400,7 +408,15 @@ returns table (
 )
 language plpgsql security definer set search_path = public
 as $$
-declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
+declare
+  admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
 begin
   -- coalesce() matters: an anon-key caller has no 'email' claim, so the
   -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
@@ -414,6 +430,12 @@ begin
            coalesce((e.props->>'correct')::int, 0) as correct
     from events e
     where e.event_name = 'practice_complete'
+      and not exists (
+        select 1 from person_anon_map m
+        join persons p on p.id = m.person_id
+        where m.anon_id = e.anon_id
+          and lower(p.email) = any(excluded_emails)
+      )
   )
   select ev.category,
          count(distinct ev.anon_id),
@@ -435,7 +457,15 @@ returns table (
 )
 language plpgsql security definer set search_path = public
 as $$
-declare admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
+declare
+  admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
 begin
   -- coalesce() matters: an anon-key caller has no 'email' claim, so the
   -- comparison is NULL and `if not (NULL)` is falsy in plpgsql -- it would NOT
@@ -449,6 +479,7 @@ begin
   from events e
   left join person_anon_map m on m.anon_id = e.anon_id
   left join persons p on p.id = m.person_id
+  where p.email is null or lower(p.email) <> all(excluded_emails)
   order by e.occurred_at desc
   limit greatest(1, least(p_limit, 5000));
 end;

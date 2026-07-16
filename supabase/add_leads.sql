@@ -46,8 +46,18 @@ language plpgsql
 security definer
 as $$
 declare
+  -- Who may call this function (the admin login gate).
   admin_emails text[] := array[
     'thvnguyen08@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
+  -- Whose data is hidden from the results (admins + internal team/test
+  -- accounts) -- a superset of admin_emails, kept separate on purpose.
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
     'futuresteps.dallas@gmail.com'
   ];
   caller_email text;
@@ -60,7 +70,7 @@ begin
   return query
   select l.id, l.name, l.email, l.phone, l.location, l.created_at
   from leads l
-  where l.email is null or lower(l.email) <> all(admin_emails)
+  where l.email is null or lower(l.email) <> all(excluded_emails)
   order by l.created_at desc;
 end;
 $$;

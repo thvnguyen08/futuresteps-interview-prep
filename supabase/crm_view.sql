@@ -25,8 +25,18 @@ language plpgsql
 security definer
 as $$
 declare
+  -- Who may call this function (the admin login gate).
   admin_emails text[] := array[
     'thvnguyen08@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
+  -- Whose data is hidden from the results (admins + internal team/test
+  -- accounts) -- a superset of admin_emails, kept separate on purpose.
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
     'futuresteps.dallas@gmail.com'
   ];
   caller_email text;
@@ -53,7 +63,7 @@ begin
   left join lateral (
     select count(*)::bigint as cnt from flagged_questions f where f.user_id = u.id
   ) fq on true
-  where u.email is null or lower(u.email) <> all(admin_emails)
+  where u.email is null or lower(u.email) <> all(excluded_emails)
   order by u.created_at desc;
 end;
 $$;
