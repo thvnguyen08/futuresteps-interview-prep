@@ -57,6 +57,9 @@
       padding: 10px 14px; border: 1.5px solid var(--clr-border); border-radius: 8px; margin-bottom: 10px;
     }
     .login-gate input:focus { outline: none; border-color: var(--clr-primary); }
+    .login-gate__forgot { margin-top: 14px; }
+    .login-gate__forgot a { color: var(--clr-primary); font-weight: 600; text-decoration: none; }
+    .login-gate__forgot a:hover { text-decoration: underline; }
 
     .btn {
       font-family: var(--ff); font-size: .85rem; font-weight: 700;
@@ -131,12 +134,28 @@
   <div class="login-gate" id="loginGate">
     <i class="fa-solid fa-lock"></i>
     <h2>Admin Access</h2>
-    <p>Log in with your authorized admin email to view customer data.</p>
+    <p>Sign in with your authorized admin email and password.</p>
     <input type="email" id="adminEmail" placeholder="you@example.com" autocomplete="email">
-    <button class="btn btn--primary btn--full" id="adminSendLink">
-      <i class="fa-solid fa-paper-plane"></i> Send Magic Link
+    <input type="password" id="adminPassword" placeholder="Password" autocomplete="current-password">
+    <button class="btn btn--primary btn--full" id="adminSignIn">
+      <i class="fa-solid fa-right-to-bracket"></i> Sign In
     </button>
     <p class="msg" id="loginMsg" hidden></p>
+    <p class="login-gate__forgot">
+      <a href="#" id="adminForgotLink">Forgot password / first time here?</a>
+    </p>
+  </div>
+
+  <!-- SET PASSWORD (shown after clicking the "forgot password" email link) -->
+  <div class="login-gate" id="setPasswordGate" hidden>
+    <i class="fa-solid fa-key"></i>
+    <h2>Set Your Password</h2>
+    <p>Choose a password for admin sign-in going forward.</p>
+    <input type="password" id="newPassword" placeholder="New password (min. 8 characters)" autocomplete="new-password">
+    <button class="btn btn--primary btn--full" id="adminSetPassword">
+      <i class="fa-solid fa-check"></i> Save Password
+    </button>
+    <p class="msg" id="setPasswordMsg" hidden></p>
   </div>
 
   <!-- DASHBOARD (hidden until authenticated) -->
@@ -660,36 +679,98 @@
       loadActivity();
     }
 
+    function showSetPasswordGate() {
+      document.getElementById("loginGate").style.display = "none";
+      document.getElementById("setPasswordGate").hidden = false;
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { session } } = await sb.auth.getSession();
-      if (session) showDashboard(session.user);
+      // A password-recovery link lands here with a live session but the user
+      // still needs to set a new password before we treat them as signed in.
+      if (session && location.hash.includes("type=recovery")) {
+        showSetPasswordGate();
+      } else if (session) {
+        showDashboard(session.user);
+      }
 
       sb.auth.onAuthStateChange((event, session) => {
+        if (event === "PASSWORD_RECOVERY") {
+          showSetPasswordGate();
+          return;
+        }
         if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
           showDashboard(session.user);
         }
       });
 
-      document.getElementById("adminSendLink").addEventListener("click", async () => {
+      document.getElementById("adminSignIn").addEventListener("click", async () => {
+        const email = document.getElementById("adminEmail").value.trim();
+        const password = document.getElementById("adminPassword").value;
+        const msg = document.getElementById("loginMsg");
+        msg.hidden = false;
+        if (!email || !password) {
+          msg.className = "msg msg--err";
+          msg.textContent = "Enter your email and password.";
+          return;
+        }
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) {
+          msg.className = "msg msg--err";
+          msg.textContent = error.message;
+        } else {
+          msg.hidden = true;
+        }
+      });
+
+      document.getElementById("adminPassword").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("adminSignIn").click();
+      });
+      document.getElementById("adminEmail").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("adminPassword").focus();
+      });
+
+      document.getElementById("adminForgotLink").addEventListener("click", async (e) => {
+        e.preventDefault();
         const email = document.getElementById("adminEmail").value.trim();
         const msg = document.getElementById("loginMsg");
-        if (!email) return;
-        const { error } = await sb.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: location.href }
-        });
         msg.hidden = false;
+        if (!email) {
+          msg.className = "msg msg--err";
+          msg.textContent = "Enter your email above first, then click this link.";
+          return;
+        }
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
         if (error) {
           msg.className = "msg msg--err";
           msg.textContent = error.message;
         } else {
           msg.className = "msg msg--ok";
-          msg.textContent = "Check your email for a login link!";
+          msg.textContent = "Check your email for a link to set your password.";
         }
       });
 
-      document.getElementById("adminEmail").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") document.getElementById("adminSendLink").click();
+      document.getElementById("adminSetPassword").addEventListener("click", async () => {
+        const password = document.getElementById("newPassword").value;
+        const msg = document.getElementById("setPasswordMsg");
+        msg.hidden = false;
+        if (!password || password.length < 8) {
+          msg.className = "msg msg--err";
+          msg.textContent = "Password must be at least 8 characters.";
+          return;
+        }
+        const { data, error } = await sb.auth.updateUser({ password });
+        if (error) {
+          msg.className = "msg msg--err";
+          msg.textContent = error.message;
+        } else {
+          document.getElementById("setPasswordGate").hidden = true;
+          showDashboard(data.user);
+        }
+      });
+
+      document.getElementById("newPassword").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("adminSetPassword").click();
       });
 
       document.getElementById("tableHead").addEventListener("click", (e) => {
