@@ -370,6 +370,13 @@ const STATES = [
   { code: "MP", name: "Northern Mariana Islands" },
 ];
 
+/* The registration gate stores the full state name as user_metadata.location
+   ("Texas"), while the Account panel's dropdown stores the two-letter code as
+   user_metadata.state ("TX"). This maps the former to the latter so a
+   customer's signup-time location also drives the localized civics answers,
+   not just a separate later visit to Account settings. */
+const STATE_NAME_TO_CODE = Object.fromEntries(STATES.map(s => [s.name, s.code]));
+
 /* The three civics questions whose correct answer depends on the applicant's
    state. Matched against the (lowercased, trimmed) English question text.
    "Name your U.S. representative" is district-level, not state-level, so it is
@@ -749,7 +756,8 @@ function localizableCivicsKind(q) {
 /* Builds the localized answer for a signed-in user who has set their state,
    or null if we should fall back to the generic database answer. */
 function buildLocalizedCivicsAnswer(kind, lang) {
-  const code = (currentUser && currentUser.user_metadata && currentUser.user_metadata.state) || "";
+  const meta = (currentUser && currentUser.user_metadata) || {};
+  const code = meta.state || STATE_NAME_TO_CODE[meta.location] || "";
   const o = code && stateOfficials[code];
   if (!o) return null;
   const name = o.name;

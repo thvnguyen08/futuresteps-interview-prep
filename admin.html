@@ -214,7 +214,7 @@
       <div class="stats" id="statsRow"></div>
 
       <div class="toolbar">
-        <input type="text" class="toolbar__search" id="searchInput" placeholder="Search by email or phone…">
+        <input type="text" class="toolbar__search" id="searchInput" placeholder="Search by name, email, or phone…">
         <button class="btn btn--green" id="exportBtn">
           <i class="fa-solid fa-file-csv"></i> Export CSV
         </button>
@@ -285,6 +285,7 @@
     let sortAsc = false;
 
     const columns = [
+      { key: "name",              label: "Name",             cls: "td-name"  },
       { key: "email",             label: "Email",            cls: "td-email" },
       { key: "phone",             label: "Phone",            cls: "td-phone" },
       { key: "state",             label: "State",            cls: "td-state" },
@@ -292,6 +293,7 @@
       { key: "last_active",       label: "Last Active",      cls: "td-date"  },
       { key: "rounds_completed",  label: "Rounds",           cls: "td-num"   },
       { key: "questions_flagged", label: "Flagged",           cls: "td-num"   },
+      { key: "last_activity_category", label: "Last Activity", cls: "td-category" },
     ];
 
     function fmtDate(iso) {
@@ -334,6 +336,7 @@
       if (filter) {
         const q = filter.toLowerCase();
         rows = rows.filter(r =>
+          (r.name && r.name.toLowerCase().includes(q)) ||
           (r.email && r.email.toLowerCase().includes(q)) ||
           (r.phone && r.phone.includes(q)) ||
           (r.state && r.state.toLowerCase().includes(q))
@@ -357,6 +360,7 @@
       tbody.innerHTML = rows.map(r => `<tr>${columns.map(c => {
         let val = r[c.key];
         if (c.key === "signed_up" || c.key === "last_active") val = fmtDate(val);
+        if (c.key === "last_activity_category" && val) val = SERVICE_LABEL[val] || val;
         if (val == null || val === "") val = "—";
         return `<td class="${c.cls}">${val}</td>`;
       }).join("")}</tr>`).join("");
@@ -619,6 +623,7 @@
       { key: "who",         label: "Who" },
       { key: "property",    label: "Property" },
       { key: "event_name",  label: "Event" },
+      { key: "category",    label: "Category" },
       { key: "channel",     label: "Channel" },
       { key: "page_path",   label: "Page" },
     ];
@@ -630,14 +635,20 @@
         tbody.innerHTML = `<tr><td colspan="${feedColumns.length}" class="empty-state">No activity yet.</td></tr>`;
         return;
       }
-      tbody.innerHTML = rows.map(r => `<tr>
+      tbody.innerHTML = rows.map(r => {
+        // category only exists in props for practice_complete/view events —
+        // everything else (page_view, register, first_touch...) has none.
+        const cat = r.props && r.props.category;
+        return `<tr>
         <td class="td-date">${new Date(r.occurred_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
         <td>${r.name || r.email || "—"}</td>
         <td>${r.property || "—"}</td>
         <td>${r.event_name}</td>
+        <td>${cat ? (SERVICE_LABEL[cat] || cat) : "—"}</td>
         <td>${r.channel || "—"}</td>
         <td>${r.page_path || "—"}</td>
-      </tr>`).join("");
+      </tr>`;
+      }).join("");
     }
 
     async function loadAnalytics() {

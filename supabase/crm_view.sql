@@ -10,16 +10,22 @@
 -- ⚠  Update the admin_emails array below with the email addresses that
 --    should have access to the admin page.
 
+-- Return type changed (added name, last_activity_category) -- Postgres can't
+-- CREATE OR REPLACE across a column-set change, so drop first.
+drop function if exists get_crm_data();
+
 create or replace function get_crm_data()
 returns table (
   user_id       uuid,
+  name          text,
   email         text,
   phone         text,
   state         text,
   signed_up     timestamptz,
   last_active   timestamptz,
   rounds_completed bigint,
-  questions_flagged bigint
+  questions_flagged bigint,
+  last_activity_category text
 )
 language plpgsql
 security definer
@@ -49,13 +55,15 @@ begin
   return query
   select
     u.id                                       as user_id,
+    (u.raw_user_meta_data->>'name')::text      as name,
     u.email::text                              as email,
     (u.raw_user_meta_data->>'phone')::text     as phone,
     (u.raw_user_meta_data->>'state')::text     as state,
     u.created_at                               as signed_up,
     u.last_sign_in_at                          as last_active,
     coalesce(qr.cnt, 0)                        as rounds_completed,
-    coalesce(fq.cnt, 0)                        as questions_flagged
+    coalesce(fq.cnt, 0)                        as questions_flagged,
+    la.category                                as last_activity_category
   from auth.users u
   left join lateral (
     select count(*)::bigint as cnt from quiz_results q where q.user_id = u.id
@@ -63,6 +71,14 @@ begin
   left join lateral (
     select count(*)::bigint as cnt from flagged_questions f where f.user_id = u.id
   ) fq on true
+  -- Most recent thing this person viewed/practiced, by matching email —
+  -- what to reference in a reminder ("come back and finish Naturalization").
+  left join lateral (
+    select a.category from practice_activity a
+    where a.email = u.email
+    order by a.created_at desc
+    limit 1
+  ) la on true
   where u.email is null or lower(u.email) <> all(excluded_emails)
   order by u.created_at desc;
 end;
