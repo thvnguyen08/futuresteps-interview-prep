@@ -167,7 +167,9 @@ begin
   return query
   select
     (select count(*) from anon_visitors)::bigint,
-    (select count(*) from persons)::bigint,
+    -- Must read through _person_rollup(), not `persons` directly, or the
+    -- excluded_emails filter it applies gets bypassed here.
+    (select count(*) from _person_rollup())::bigint,
     (select count(*) from _person_rollup() where is_activated)::bigint,
     (select count(*) from _person_rollup() where is_active)::bigint;
 end;
