@@ -135,8 +135,8 @@
         </button>
       </div>
 
-      <h2 class="gate__title" data-i18n="gate.title">Start your interview practice</h2>
-      <p class="gate__sub" data-i18n="gate.sub">Tell us a little about you so Future Steps Services can support your case. Then start practicing right away — it's free.</p>
+      <h2 class="gate__title" id="gateMainTitle" data-i18n="gate.title">Start your interview practice</h2>
+      <p class="gate__sub" id="gateMainSub" data-i18n="gate.sub">Tell us a little about you so Future Steps Services can support your case. Then start practicing right away — it's free.</p>
 
       <form id="gateForm" novalidate>
         <input type="text" class="gate__input" id="gateName" autocomplete="name" required>
@@ -169,6 +169,14 @@
         <input type="text" class="gate__input" id="gateLoginEmail" autocomplete="email">
         <button class="btn btn--outline gate__submit" id="gateLoginSend" data-i18n="gate.sendLink">Continue Where You Left Off</button>
         <p class="gate__msg gate__msg--ok" id="gateLoginMsg" hidden></p>
+      </div>
+
+      <!-- Welcome-back recap, shown after a successful email/phone restore -->
+      <div class="gate__welcome" id="gateWelcome" hidden>
+        <p class="gate__welcome-greeting" id="gateWelcomeGreeting"></p>
+        <h2 class="gate__title" id="gateWelcomeName"></h2>
+        <div class="gate__welcome-stats" id="gateWelcomeStats"></div>
+        <button class="btn btn--primary gate__submit" id="gateWelcomeContinue" data-i18n="gate.continue">Continue Practicing</button>
       </div>
 
       <p class="gate__legal" data-i18n="gate.legal">This is practice material only, not legal advice. Your details are shared only with Future Steps Services.</p>
@@ -229,6 +237,7 @@
 
   <main class="wrap">
     <div class="intro" id="intro">
+      <p class="home-greeting" id="homeGreeting" hidden></p>
       <p class="intro__tag" data-i18n="intro.tag">Your Journey Starts Here</p>
       <h1 data-i18n="intro.title">Get Ready For Your <em>Immigration Interview</em></h1>
       <p class="intro__desc" data-i18n="intro.desc">Practice with real questions officers commonly ask. Pick a category, quiz yourself, and reveal tips or answers when you're ready.</p>

@@ -1238,3 +1238,29 @@ body.gate-open { overflow: hidden; }
 .feedback-thanks { text-align: center; color: var(--clr-primary); font-weight: 600; font-size: .95rem; margin: 8px 0; }
 .feedback-reopen { text-align: center; margin: 14px 0 0; }
 .feedback-reopen a { color: var(--clr-muted); font-weight: 600; font-size: .82rem; text-decoration: none; }
+
+/* ── Home greeting (shown to registered users, non-blocking) ── */
+.home-greeting {
+  font-family: var(--ff-heading);
+  font-size: 1.15rem;
+  color: var(--clr-primary-dk);
+  margin-bottom: 6px;
+}
+
+/* ── Welcome-back recap (gate) ── */
+.gate__welcome { text-align: center; }
+.gate__welcome-greeting { font-size: .95rem; color: var(--clr-muted); margin-bottom: 4px; }
+.gate__welcome .gate__title { margin-bottom: 16px; }
+.gate__welcome-stats { margin-bottom: 20px; }
+.gate__welcome-grid {
+  display: flex; justify-content: center; gap: 14px; margin-bottom: 14px;
+}
+.gate__welcome-stat {
+  flex: 1; max-width: 110px; background: var(--clr-surface2);
+  border-radius: var(--radius-sm); padding: 14px 8px;
+}
+.gate__welcome-num { display: block; font-size: 1.7rem; font-weight: 800; color: var(--clr-primary); line-height: 1; }
+.gate__welcome-lbl { display: block; font-size: .72rem; color: var(--clr-muted); margin-top: 4px; }
+.gate__welcome-note { font-size: .85rem; color: var(--clr-text); margin: 4px 0; }
+.gate__welcome-note strong { color: var(--clr-primary-dk); }
+.gate__welcome-empty { font-size: .95rem; color: var(--clr-muted); margin-bottom: 4px; }

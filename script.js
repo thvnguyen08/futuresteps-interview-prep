@@ -172,6 +172,7 @@ const translations = {
     "gate.haveAccount": "Đã luyện tập trước đây?",
     "gate.logIn": "Tiếp tục với email hoặc số điện thoại",
     "gate.sendLink": "Tiếp Tục Từ Chỗ Đã Dừng",
+    "gate.continue": "Tiếp Tục Luyện Tập",
     "gate.legal": "Đây chỉ là tài liệu luyện tập, không phải tư vấn pháp lý. Thông tin của bạn chỉ được chia sẻ với Future Steps Services.",
     "gate.ph.name": "Họ và tên",
     "gate.ph.email": "Email",
@@ -369,6 +370,15 @@ const GATE_EN = {
 };
 function gateText(key) {
   return currentLang === "vi" ? translations.vi[key] : GATE_EN[key];
+}
+
+// Time-of-day greeting from the browser's local clock (already the user's tz).
+const GREET_EN = { morning: "Good morning", afternoon: "Good afternoon", evening: "Good evening" };
+const GREET_VI = { morning: "Chào buổi sáng", afternoon: "Chào buổi chiều", evening: "Chào buổi tối" };
+function greeting() {
+  const h = new Date().getHours();
+  const slot = h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
+  return (currentLang === "vi" ? GREET_VI : GREET_EN)[slot];
 }
 
 /* ── States/territories for the account dropdown (value = code stored in the
@@ -653,8 +663,22 @@ function closeGate() {
   document.body.classList.remove("gate-open");
 }
 
+// Reset the gate to its default registration form (used when (re)opening it).
+function resetGateToForm() {
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.hidden = !on; };
+  show("gateForm", true);
+  show("gateLoginPrompt", true);
+  show("gateLoginBox", false);
+  show("gateWelcome", false);
+  show("gateMainTitle", true);
+  show("gateMainSub", true);
+  const legal = document.querySelector("#regGate .gate__legal");
+  if (legal) legal.hidden = false;
+}
+
 function showGateIfNeeded() {
   if (isRegistered()) { closeGate(); return; }
+  resetGateToForm();
   openGate();
 }
 
@@ -751,13 +775,83 @@ async function restoreFromContact() {
     } catch (e) {}
     markRegistered();
     btn.disabled = false;
-    enterAppAfterGate();
+    await showWelcomeBack(lead.name, lead.client_id || getClientId());
   } catch (err) {
     console.error("Restore failed:", err);
     msg.textContent = gateText("gate.err.save");
     msg.className = "gate__msg gate__msg--error";
     msg.hidden = false;
     btn.disabled = false;
+  }
+}
+
+// Category label for the welcome recap (bilingual).
+function catLabelFor(cat) {
+  if (!cat) return "";
+  return currentLang === "vi"
+    ? (translations.vi["badge." + cat] || translations.vi["cat." + cat] || cat)
+    : (CATEGORY_LABEL_EN[cat] || cat);
+}
+
+// Returning-user "Welcome back" screen: greeting + a recap of their practice,
+// then a Continue button. Recap is fetched cross-device via get_my_summary().
+async function showWelcomeBack(name, clientId) {
+  let s = {};
+  try {
+    const { data } = await supabaseClient.rpc("get_my_summary", { p_client_id: clientId });
+    s = (data && data[0]) || {};
+  } catch (e) { console.error("Summary fetch failed:", e); }
+
+  document.getElementById("gateForm").hidden = true;
+  document.getElementById("gateLoginPrompt").hidden = true;
+  document.getElementById("gateLoginBox").hidden = true;
+  ["gateMainTitle", "gateMainSub"].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  const legal = document.querySelector("#regGate .gate__legal");
+  if (legal) legal.hidden = true;
+
+  document.getElementById("gateWelcomeGreeting").textContent = greeting() + " 👋";
+  document.getElementById("gateWelcomeName").textContent =
+    (currentLang === "vi" ? "Chào mừng trở lại, " : "Welcome back, ") + (name || "");
+  renderWelcomeStats(s);
+  document.getElementById("gateWelcome").hidden = false;
+}
+
+function renderWelcomeStats(s) {
+  const el = document.getElementById("gateWelcomeStats");
+  const rounds = Number(s.practice_rounds || 0);
+  if (!rounds) {
+    el.innerHTML = `<p class="gate__welcome-empty">${currentLang === "vi"
+      ? "Sẵn sàng để luyện tập tiếp chưa?" : "Ready to jump back in?"}</p>`;
+    return;
+  }
+  const done = Number(s.questions_done || 0), right = Number(s.questions_right || 0);
+  const acc = done ? Math.round((100 * right) / done) : null;
+  const cells = [
+    [rounds, currentLang === "vi" ? "lượt luyện" : "rounds"],
+    [Number(s.categories || 0), currentLang === "vi" ? "chủ đề" : "categories"],
+  ];
+  if (acc != null) cells.push([acc + "%", currentLang === "vi" ? "chính xác" : "accuracy"]);
+  let html = `<div class="gate__welcome-grid">` + cells.map(([n, l]) =>
+    `<div class="gate__welcome-stat"><span class="gate__welcome-num">${n}</span><span class="gate__welcome-lbl">${l}</span></div>`).join("") + `</div>`;
+  if (s.top_category)
+    html += `<p class="gate__welcome-note">${currentLang === "vi" ? "Chủ đề luyện nhiều nhất" : "Your top category"}: <strong>${catLabelFor(s.top_category)}</strong></p>`;
+  if (s.last_active) {
+    const d = new Date(s.last_active).toLocaleDateString(currentLang === "vi" ? "vi-VN" : "en-US", { month: "short", day: "numeric" });
+    html += `<p class="gate__welcome-note">${currentLang === "vi" ? "Hoạt động gần nhất" : "Last active"}: ${d}</p>`;
+  }
+  el.innerHTML = html;
+}
+
+// New/returning user greeting on the home screen (non-blocking, no extra step).
+function renderHomeGreeting() {
+  const el = document.getElementById("homeGreeting");
+  if (!el) return;
+  const name = lsGet(REG_NAME_KEY);
+  if (isRegistered() && name) {
+    el.textContent = `${greeting()}, ${name} 👋`;
+    el.hidden = false;
+  } else {
+    el.hidden = true;
   }
 }
 
@@ -1383,10 +1477,9 @@ function showHome() {
   document.getElementById("quiz").hidden = true;
   SERVICE_TOGGLE_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
   document.querySelectorAll(".service-card").forEach(c => c.classList.remove("service-card--active"));
-  // Progress card + login CTA are home-only.
+  // Progress card is home-only.
   renderProgress();
-  const cta = document.getElementById("ctaLogin");
-  if (cta) cta.hidden = !!currentUser;
+  renderHomeGreeting();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -2252,6 +2345,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("gateLoginEmail").addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); restoreFromContact(); }
   });
+  document.getElementById("gateWelcomeContinue").addEventListener("click", enterAppAfterGate);
 
   document.getElementById("gateResendBtn").addEventListener("click", async () => {
     const email = document.getElementById("gatePendingEmail").textContent;
