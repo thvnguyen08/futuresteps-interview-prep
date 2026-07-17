@@ -103,6 +103,17 @@ const translations = {
     "mock.okay": '<i class="fa-solid fa-face-meh"></i> Tạm Ổn',
     "mock.needsWork": '<i class="fa-solid fa-face-frown"></i> Cần Cải Thiện',
     "mock.tipsSummary": "Xem câu trả lời mẫu",
+    "fb.eyebrow": "Hai câu hỏi nhanh nhé? (không bắt buộc)",
+    "fb.qEase": "Ứng dụng có dễ dùng không?",
+    "fb.easeLow": "Khó",
+    "fb.easeHigh": "Rất dễ",
+    "fb.qHelp": "Nó có giúp bạn chuẩn bị không?",
+    "fb.helpLow": "Không hẳn",
+    "fb.helpHigh": "Rất nhiều",
+    "fb.send": "Gửi Đánh Giá",
+    "fb.skip": "Bỏ qua — tiếp tục luyện tập",
+    "fb.thanks": "Cảm ơn bạn — điều này giúp chúng tôi cải thiện ứng dụng! 🙌",
+    "fb.reopen": "★ Đánh giá ứng dụng",
     "review.badgeSuffix": " — Ôn Câu Sai",
     "review.done": "Đã ôn xong — anh/chị đã nắm được {cleared}/{total} câu. Còn {remaining} câu cần ôn.",
     "review.again": '<i class="fa-solid fa-rotate-right"></i> Ôn Lại',
@@ -153,15 +164,16 @@ const translations = {
     "account.help": 'Cần hỗ trợ? Liên hệ chúng tôi qua <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>',
     "gate.title": "Bắt đầu luyện phỏng vấn",
     "gate.sub": "Hãy cho chúng tôi biết đôi chút về bạn để Future Steps Services có thể hỗ trợ hồ sơ của bạn. Sau đó bạn có thể luyện tập ngay — hoàn toàn miễn phí.",
-    "gate.contactHint": "Chúng tôi sẽ gửi email cho bạn một liên kết để kích hoạt tài khoản trước khi bạn có thể bắt đầu luyện tập.",
-    "gate.start": "Bắt Đầu Luyện Tập",
-    "gate.haveAccount": "Đã đăng ký trước đây?",
-    "gate.logIn": "Đăng nhập",
-    "gate.sendLink": "Gửi Liên Kết Đăng Nhập",
+    "gate.contactHint": "Chúng tôi dùng thông tin này để Future Steps hỗ trợ hồ sơ của bạn. Không cần xác minh — bạn bắt đầu luyện tập ngay khi nhấn bên dưới.",
+    "gate.start": "Bắt Đầu Luyện Tập Ngay",
+    "gate.haveAccount": "Đã luyện tập trước đây?",
+    "gate.logIn": "Tiếp tục với email hoặc số điện thoại",
+    "gate.sendLink": "Tiếp Tục Từ Chỗ Đã Dừng",
     "gate.legal": "Đây chỉ là tài liệu luyện tập, không phải tư vấn pháp lý. Thông tin của bạn chỉ được chia sẻ với Future Steps Services.",
     "gate.ph.name": "Họ và tên",
     "gate.ph.email": "Email",
     "gate.ph.phone": "Số điện thoại",
+    "gate.ph.restore": "Email hoặc số điện thoại bạn đã đăng ký",
     "gate.ph.location": "Bạn đang ở đâu? (tiểu bang hoặc Việt Nam)",
     "gate.loc.vietnam": "Việt Nam",
     "gate.loc.other": "Quốc gia khác",
@@ -169,8 +181,11 @@ const translations = {
     "gate.err.emailRequired": "Vui lòng nhập địa chỉ email của bạn.",
     "gate.err.email": "Địa chỉ email không hợp lệ.",
     "gate.err.phoneRequired": "Vui lòng nhập số điện thoại của bạn.",
+    "gate.err.phone": "Vui lòng nhập số điện thoại hợp lệ.",
     "gate.err.location": "Vui lòng chọn nơi bạn đang ở.",
     "gate.err.save": "Có lỗi xảy ra. Vui lòng thử lại.",
+    "gate.restoreNotFound": "Không tìm thấy tài khoản với email hoặc số điện thoại đó. Vui lòng thử lại, hoặc bắt đầu mới ở trên.",
+    "gate.welcomeBack": "Chào mừng trở lại",
     "gate.loginSent": "Hãy kiểm tra email để nhận liên kết đăng nhập!",
     "gate.pendingTitle": "Kiểm Tra Email Của Bạn",
     "gate.pendingMsg": "Chúng tôi đã gửi một liên kết kích hoạt đến email bên dưới. Bạn phải nhấp vào đó để kích hoạt tài khoản trước khi có thể bắt đầu luyện tập.",
@@ -333,6 +348,7 @@ const GATE_EN = {
   "gate.ph.name": "Full name",
   "gate.ph.email": "Email",
   "gate.ph.phone": "Phone number",
+  "gate.ph.restore": "Email or phone you registered with",
   "gate.ph.location": "Where are you? (state or Vietnam)",
   "gate.loc.vietnam": "Vietnam",
   "gate.loc.other": "Other country",
@@ -340,10 +356,13 @@ const GATE_EN = {
   "gate.err.emailRequired": "Please enter your email address.",
   "gate.err.email": "Please enter a valid email address.",
   "gate.err.phoneRequired": "Please enter your phone number.",
+  "gate.err.phone": "Please enter a valid phone number.",
   "gate.err.location": "Please choose where you are.",
   "gate.err.save": "Something went wrong. Please try again.",
   "gate.loginSent": "Check your email for a login link!",
   "gate.resendSent": "Activation email resent!",
+  "gate.restoreNotFound": "We couldn't find an account with that email or phone. Try again, or start fresh above.",
+  "gate.welcomeBack": "Welcome back",
 };
 function gateText(key) {
   return currentLang === "vi" ? translations.vi[key] : GATE_EN[key];
@@ -613,7 +632,7 @@ function renderGateLang() {
   document.getElementById("gateName").placeholder = gateText("gate.ph.name");
   document.getElementById("gateEmail").placeholder = gateText("gate.ph.email");
   document.getElementById("gatePhone").placeholder = gateText("gate.ph.phone");
-  document.getElementById("gateLoginEmail").placeholder = gateText("gate.ph.email");
+  document.getElementById("gateLoginEmail").placeholder = gateText("gate.ph.restore");
   document.getElementById("gateLangFlag").textContent = currentLang === "vi" ? "🇺🇸" : "🇻🇳";
   document.getElementById("gateLangLabel").textContent = currentLang === "vi" ? "English" : "Tiếng Việt";
   populateGateLocation();
@@ -632,15 +651,25 @@ function closeGate() {
 function showGateIfNeeded() {
   if (isRegistered()) { closeGate(); return; }
   openGate();
-  // Reload before clicking the activation link → show the "check your email"
-  // screen again (with a resend option) instead of an empty form.
-  let pendingEmail = null;
-  try { pendingEmail = localStorage.getItem(PENDING_EMAIL_KEY); } catch (e) {}
-  if (pendingEmail) showActivationPending(pendingEmail);
 }
 
 function isValidEmail(v) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+// Lenient phone check: accept US and Vietnamese formats (and international) by
+// counting digits only — 8 to 15 digits (E.164 max). Avoids rejecting real
+// numbers with a too-strict pattern.
+function isValidPhone(v) {
+  const d = (v || "").replace(/\D/g, "");
+  return d.length >= 8 && d.length <= 15;
+}
+
+// Close the gate and drop the user into the app immediately (front door).
+function enterAppAfterGate() {
+  try { localStorage.removeItem(PENDING_EMAIL_KEY); } catch (e) {}
+  closeGate();
+  showHome();
 }
 
 async function submitRegistration(e) {
@@ -655,14 +684,14 @@ async function submitRegistration(e) {
   const fail = (key) => { errEl.textContent = gateText(key); errEl.hidden = false; };
   errEl.hidden = true;
   if (!name) return fail("gate.err.name");
+  if (!phone) return fail("gate.err.phoneRequired");
+  if (!isValidPhone(phone)) return fail("gate.err.phone");
   if (!email) return fail("gate.err.emailRequired");
   if (!isValidEmail(email)) return fail("gate.err.email");
-  if (!phone) return fail("gate.err.phoneRequired");
   if (!location) return fail("gate.err.location");
 
   btn.disabled = true;
-  // Remember who they are on this device so a resend (or a pre-activation
-  // reload) doesn't need to ask again.
+  // Remember who they are on this device so we recognise them next time.
   try {
     localStorage.setItem(REG_EMAIL_KEY, email);
     localStorage.setItem(REG_NAME_KEY, name);
@@ -677,21 +706,118 @@ async function submitRegistration(e) {
     }
   } catch (err) {
     // Fail open on the lead record itself: never trap someone behind a
-    // transient DB error here. Activation (below) is still required.
+    // transient DB error here.
     console.error("Failed to save registration lead:", err);
   }
   identifyPerson({ name, email, phone, location });
-  const sent = await sendActivationEmail(email, name, phone, location);
+  // Front door: no activation email — let them start practicing immediately.
+  markRegistered();
   btn.disabled = false;
-
-  if (!sent) return fail("gate.err.save");
-  try { localStorage.setItem(PENDING_EMAIL_KEY, email); } catch (e) {}
-  showActivationPending(email);
+  enterAppAfterGate();
 }
 
-/* Sends the activation email (magic link). Practicing requires clicking it —
-   this is a hard gate, not an optional upgrade: submitRegistration() awaits
-   this and only shows the "check your email" screen if it actually sent. */
+// "Welcome back": a returning customer types the email OR phone they used
+// before. We confirm a matching lead (find_lead_by_contact, SECURITY DEFINER),
+// adopt their name + device client_id for continuity, and let them straight in.
+async function restoreFromContact() {
+  const val = document.getElementById("gateLoginEmail").value.trim();
+  const msg = document.getElementById("gateLoginMsg");
+  const btn = document.getElementById("gateLoginSend");
+  msg.hidden = true;
+  if (!val || !supabaseClient) return;
+  btn.disabled = true;
+  try {
+    const { data, error } = await supabaseClient.rpc("find_lead_by_contact", { p_contact: val });
+    if (error) throw error;
+    const lead = data && data[0];
+    if (!lead) {
+      msg.textContent = gateText("gate.restoreNotFound");
+      msg.className = "gate__msg gate__msg--error";
+      msg.hidden = false;
+      btn.disabled = false;
+      return;
+    }
+    try {
+      if (lead.client_id) localStorage.setItem(CLIENT_ID_KEY, lead.client_id);
+      if (lead.name) localStorage.setItem(REG_NAME_KEY, lead.name);
+      if (val.includes("@")) localStorage.setItem(REG_EMAIL_KEY, val);
+      else localStorage.setItem(REG_PHONE_KEY, val);
+    } catch (e) {}
+    markRegistered();
+    btn.disabled = false;
+    enterAppAfterGate();
+  } catch (err) {
+    console.error("Restore failed:", err);
+    msg.textContent = gateText("gate.err.save");
+    msg.className = "gate__msg gate__msg--error";
+    msg.hidden = false;
+    btn.disabled = false;
+  }
+}
+
+// ── In-app feedback (ease + helpfulness), shown after a completed round ──
+const FEEDBACK_DONE_KEY = "interviewPrepFeedbackGiven";
+let fbEase = 0, fbHelpful = 0;
+
+function hasGivenFeedback() {
+  try { return localStorage.getItem(FEEDBACK_DONE_KEY) === "1"; } catch (e) { return false; }
+}
+
+// Called when a practice round finishes. Auto-opens once; afterwards leaves a
+// small re-open link. Never blocks — the done screen's other buttons stay live.
+function maybeShowFeedback() {
+  const card = document.getElementById("feedbackCard");
+  const reopen = document.getElementById("feedbackReopen");
+  if (!card || !reopen) return;
+  if (hasGivenFeedback()) { card.hidden = true; reopen.hidden = false; }
+  else openFeedback();
+}
+
+function openFeedback() {
+  const card = document.getElementById("feedbackCard");
+  if (!card) return;
+  document.getElementById("feedbackReopen").hidden = true;
+  card.hidden = false;
+  document.getElementById("feedbackForm").hidden = false;
+  document.getElementById("feedbackThanks").hidden = true;
+  fbEase = 0; fbHelpful = 0;
+  card.querySelectorAll(".fb-scale button").forEach(b => b.classList.remove("on"));
+  document.getElementById("feedbackSend").disabled = true;
+}
+
+function selectFbScale(row, val, btn) {
+  if (row === "ease") fbEase = val; else fbHelpful = val;
+  btn.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
+  document.getElementById("feedbackSend").disabled = !(fbEase && fbHelpful);
+}
+
+async function submitFeedback() {
+  if (!fbEase || !fbHelpful) return;
+  try {
+    if (supabaseClient) {
+      await supabaseClient.from("feedback").insert({
+        client_id: getClientId(),
+        email: registeredEmail(),
+        phone: (localStorage.getItem(REG_PHONE_KEY) || null),
+        ease: fbEase, helpful: fbHelpful,
+      });
+    }
+    logEvent("feedback_submitted", { ease: fbEase, helpful: fbHelpful });
+  } catch (err) { console.error("Feedback failed:", err); }
+  try { localStorage.setItem(FEEDBACK_DONE_KEY, "1"); } catch (e) {}
+  document.getElementById("feedbackForm").hidden = true;
+  document.getElementById("feedbackThanks").hidden = false;
+  document.getElementById("feedbackReopen").hidden = true;
+}
+
+function skipFeedback() {
+  try { localStorage.setItem(FEEDBACK_DONE_KEY, "1"); } catch (e) {}
+  document.getElementById("feedbackCard").hidden = true;
+  document.getElementById("feedbackReopen").hidden = false;
+}
+
+/* Legacy magic-link sender — no longer used by the front door, kept for the
+   optional cross-device login path. */
 async function sendActivationEmail(email, name, phone, location) {
   if (!supabaseClient) return false;
   try {
@@ -2027,6 +2153,7 @@ function nextQuestion() {
       renderMockDone();
       document.getElementById("quizCard").hidden = true;
       document.getElementById("quizDone").hidden = false;
+      maybeShowFeedback();
       return;
     }
     let kind = "finished";
@@ -2044,6 +2171,7 @@ function nextQuestion() {
     renderDoneState(kind);
     document.getElementById("quizCard").hidden = true;
     document.getElementById("quizDone").hidden = false;
+    maybeShowFeedback();
   } else {
     renderCurrentQuestion();
   }
@@ -2110,9 +2238,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("gateLoginBox").hidden = false;
     document.getElementById("gateLoginEmail").focus();
   });
-  document.getElementById("gateLoginSend").addEventListener("click", gateSendLoginLink);
+  document.getElementById("gateLoginSend").addEventListener("click", restoreFromContact);
   document.getElementById("gateLoginEmail").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); gateSendLoginLink(); }
+    if (e.key === "Enter") { e.preventDefault(); restoreFromContact(); }
   });
 
   document.getElementById("gateResendBtn").addEventListener("click", async () => {
@@ -2157,6 +2285,16 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("revealBtn").addEventListener("click", revealAnswer);
   document.getElementById("nextBtn").addEventListener("click", nextQuestion);
   document.getElementById("restartBtn").addEventListener("click", () => startRound(currentCategory));
+  // ── Feedback card wiring ──
+  document.querySelectorAll("#feedbackCard .fb-scale").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-val]");
+      if (b) selectFbScale(row.dataset.row, Number(b.dataset.val), b);
+    });
+  });
+  document.getElementById("feedbackSend").addEventListener("click", submitFeedback);
+  document.getElementById("feedbackSkip").addEventListener("click", skipFeedback);
+  document.getElementById("feedbackReopen").addEventListener("click", (e) => { e.preventDefault(); openFeedback(); });
   document.getElementById("flagBtn").addEventListener("click", toggleFlagCurrentQuestion);
   document.getElementById("gotItBtn").addEventListener("click", () => recordSimAnswer(true));
   document.getElementById("missedBtn").addEventListener("click", () => recordSimAnswer(false));

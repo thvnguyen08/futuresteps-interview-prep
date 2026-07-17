@@ -140,12 +140,12 @@
 
       <form id="gateForm" novalidate>
         <input type="text" class="gate__input" id="gateName" autocomplete="name" required>
-        <input type="email" class="gate__input" id="gateEmail" autocomplete="email" required>
         <input type="tel" class="gate__input" id="gatePhone" autocomplete="tel" required>
-        <p class="gate__hint" data-i18n="gate.contactHint">We'll email you a link to activate your account before you can start practicing.</p>
+        <input type="email" class="gate__input" id="gateEmail" autocomplete="email" required>
+        <p class="gate__hint" data-i18n="gate.contactHint">We use this so Future Steps can support your case. No verification — you start practicing the moment you tap below.</p>
         <select class="gate__input" id="gateLocation" required></select>
         <p class="gate__error" id="gateError" hidden></p>
-        <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit" data-i18n="gate.start">Start Practicing</button>
+        <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit" data-i18n="gate.start">Start Practicing Now</button>
       </form>
 
       <!-- Shown after submitting the form, until the activation email is clicked -->
@@ -162,12 +162,12 @@
       </div>
 
       <p class="gate__login-prompt" id="gateLoginPrompt">
-        <span data-i18n="gate.haveAccount">Already registered before?</span>
-        <a href="#" id="gateLoginLink" data-i18n="gate.logIn">Log in</a>
+        <span data-i18n="gate.haveAccount">Already practiced before?</span>
+        <a href="#" id="gateLoginLink" data-i18n="gate.logIn">Continue with your email or phone</a>
       </p>
       <div class="gate__login-box" id="gateLoginBox" hidden>
-        <input type="email" class="gate__input" id="gateLoginEmail" autocomplete="email">
-        <button class="btn btn--outline gate__submit" id="gateLoginSend" data-i18n="gate.sendLink">Send me a login link</button>
+        <input type="text" class="gate__input" id="gateLoginEmail" autocomplete="email">
+        <button class="btn btn--outline gate__submit" id="gateLoginSend" data-i18n="gate.sendLink">Continue Where You Left Off</button>
         <p class="gate__msg gate__msg--ok" id="gateLoginMsg" hidden></p>
       </div>
 
@@ -498,6 +498,27 @@
         <p class="sim-result-timing" id="simResultTiming" hidden></p>
         <p id="quizDoneText" data-i18n="state.done">You've gone through every question in this round. Great work!</p>
         <button class="btn btn--primary" id="restartBtn" data-i18n="btn.restart"><i class="fa-solid fa-rotate-right"></i> Start Over</button>
+
+        <!-- ═══ FEEDBACK CARD (non-blocking; appears after a round) ═══ -->
+        <div class="feedback-card" id="feedbackCard" hidden>
+          <div id="feedbackForm">
+            <p class="feedback-eyebrow" data-i18n="fb.eyebrow">Two quick taps? (optional)</p>
+            <p class="feedback-q" data-i18n="fb.qEase">How easy is the app to use?</p>
+            <div class="fb-scale" data-row="ease">
+              <button data-val="1">1</button><button data-val="2">2</button><button data-val="3">3</button><button data-val="4">4</button><button data-val="5">5</button>
+            </div>
+            <div class="fb-ends"><span data-i18n="fb.easeLow">Hard</span><span data-i18n="fb.easeHigh">Very easy</span></div>
+            <p class="feedback-q" data-i18n="fb.qHelp">Is it helping you prepare?</p>
+            <div class="fb-scale" data-row="help">
+              <button data-val="1">1</button><button data-val="2">2</button><button data-val="3">3</button><button data-val="4">4</button><button data-val="5">5</button>
+            </div>
+            <div class="fb-ends"><span data-i18n="fb.helpLow">Not really</span><span data-i18n="fb.helpHigh">A lot</span></div>
+            <button class="btn btn--primary gate__submit" id="feedbackSend" disabled><i class="fa-solid fa-paper-plane"></i> <span data-i18n="fb.send">Send Feedback</span></button>
+            <p class="feedback-skip"><a href="#" id="feedbackSkip" data-i18n="fb.skip">Skip — keep practicing</a></p>
+          </div>
+          <p id="feedbackThanks" class="feedback-thanks" hidden data-i18n="fb.thanks">Thank you — this helps us make the app better! 🙌</p>
+        </div>
+        <p class="feedback-reopen" id="feedbackReopen" hidden><a href="#" data-i18n="fb.reopen">★ Rate the app</a></p>
       </div>
     </section>
     <!-- ═══ WEBSITE CALL-TO-ACTION ═══ -->
