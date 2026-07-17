@@ -200,24 +200,20 @@
 
           <div class="account-panel" id="accountPanel" hidden>
             <div id="accountLoggedOut">
-              <p class="account-panel__prompt" data-i18n="account.prompt">Log in with your email to save your flagged questions and quiz results across devices.</p>
-              <input type="email" class="account-panel__input" id="accountEmailInput" placeholder="you@example.com" autocomplete="email">
-              <input type="tel" class="account-panel__input" id="accountPhoneInput" placeholder="Phone number (optional)" autocomplete="tel">
-              <button class="btn btn--primary account-panel__btn" id="accountSendLinkBtn" data-i18n="account.sendLink">Send Magic Link</button>
-              <p class="account-panel__msg account-panel__msg--ok" id="accountSentMsg" data-i18n="account.sentMsg" hidden>Check your email for a login link!</p>
-              <p class="account-panel__msg account-panel__msg--error" id="accountErrorMsg" hidden></p>
+              <p class="account-panel__prompt" data-i18n="account.notRegistered">Register from the start screen to create your profile.</p>
               <p class="account-panel__help" data-i18n="account.help">Need help? Contact us at <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a></p>
             </div>
             <div id="accountLoggedIn" hidden>
-              <p class="account-panel__name" id="accountNameDisplay" hidden></p>
-              <p class="account-panel__email" id="accountEmailDisplay"></p>
+              <p class="account-panel__title" data-i18n="account.profileTitle">Your Profile</p>
+              <p class="account-panel__name" id="accountNameDisplay"></p>
+              <p class="account-panel__row" id="accountPhoneDisplay" hidden></p>
+              <p class="account-panel__row" id="accountLocationDisplay" hidden></p>
               <div class="account-panel__results" id="accountResults"></div>
-              <input type="tel" class="account-panel__input" id="accountPhoneInputLoggedIn" placeholder="Phone number (optional)" autocomplete="tel">
               <select class="account-panel__input" id="accountStateInput" aria-label="State"></select>
               <p class="account-panel__hint" id="accountStateHint" data-i18n="account.stateHint">Set your state to see the correct answers for your Governor, Senators, and state capital in the Civics Test.</p>
               <button class="btn btn--outline account-panel__btn" id="accountSavePhoneBtn" data-i18n="account.saveProfile">Save</button>
               <p class="account-panel__msg account-panel__msg--ok" id="accountPhoneSavedMsg" data-i18n="account.phoneSaved" hidden>Saved!</p>
-              <button class="btn btn--outline account-panel__btn" id="accountLogoutBtn" data-i18n="account.logout">Log Out</button>
+              <button class="btn btn--outline account-panel__btn" id="accountLogoutBtn" data-i18n="account.signOut">Sign Out</button>
               <p class="account-panel__help" data-i18n="account.help">Need help? Contact us at <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a></p>
             </div>
           </div>
@@ -238,15 +234,6 @@
       <p class="intro__desc" data-i18n="intro.desc">Practice with real questions officers commonly ask. Pick a category, quiz yourself, and reveal tips or answers when you're ready.</p>
     </div>
 
-    <!-- ═══ LOGIN CALL-TO-ACTION (hidden when signed in) ═══ -->
-    <div class="cta-login" id="ctaLogin">
-      <span class="cta-login__icon"><i class="fa-solid fa-bookmark"></i></span>
-      <div class="cta-login__text">
-        <p class="cta-login__title" data-i18n="cta.title">Use more than one device?</p>
-        <p class="cta-login__sub" data-i18n="cta.sub">Your progress is already saved on this device. Log in with your email only if you'd like to sync it across your phone, tablet, and computer — it's optional.</p>
-      </div>
-      <button class="btn cta-login__btn" id="ctaLoginBtn" data-i18n="cta.btn"><i class="fa-regular fa-envelope"></i> Sync Devices</button>
-    </div>
 
     <!-- ═══ HOME VIEW: progress summary + service selector ═══ -->
     <div id="homeView">

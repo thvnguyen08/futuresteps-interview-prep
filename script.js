@@ -149,6 +149,9 @@ const translations = {
     "eng.result.needsPractice": "📚 Cần Luyện Thêm — Đúng {pct}%. Hãy luyện tập thêm phần nói, đọc và viết.",
     "account.login": "Đăng Nhập",
     "account.prompt": "Đăng nhập bằng email để lưu câu hỏi đã đánh dấu và kết quả luyện tập trên mọi thiết bị.",
+    "account.notRegistered": "Hãy đăng ký từ màn hình bắt đầu để tạo hồ sơ của bạn.",
+    "account.profileTitle": "Hồ Sơ Của Bạn",
+    "account.signOut": "Đăng Xuất",
     "account.sendLink": "Gửi Liên Kết Đăng Nhập",
     "account.sentMsg": "Hãy kiểm tra email để nhận liên kết đăng nhập!",
     "account.error": "Có lỗi xảy ra. Vui lòng thử lại.",
@@ -459,6 +462,8 @@ const REG_EMAIL_KEY = "interviewPrepRegEmail";
 const REG_NAME_KEY  = "interviewPrepRegName";
 const REG_PHONE_KEY = "interviewPrepRegPhone";
 const REG_LOCATION_KEY = "interviewPrepRegLocation";
+const PROFILE_STATE_KEY = "interviewPrepProfileState";
+function lsGet(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
 const PENDING_EMAIL_KEY = "interviewPrepPendingActivationEmail";
 const PROGRESS_KEY  = "interviewPrepProgress";
 const SESSION_ID_KEY = "interviewPrepSessionId";
@@ -669,6 +674,7 @@ function isValidPhone(v) {
 function enterAppAfterGate() {
   try { localStorage.removeItem(PENDING_EMAIL_KEY); } catch (e) {}
   closeGate();
+  renderAccountUI();   // show their name at the profile icon right away
   showHome();
 }
 
@@ -896,7 +902,10 @@ function localizableCivicsKind(q) {
    or null if we should fall back to the generic database answer. */
 function buildLocalizedCivicsAnswer(kind, lang) {
   const meta = (currentUser && currentUser.user_metadata) || {};
-  const code = meta.state || STATE_NAME_TO_CODE[meta.location] || "";
+  // Works for gate-registered users too: fall back to the locally saved state,
+  // then to the state implied by their registration location.
+  const code = meta.state || lsGet(PROFILE_STATE_KEY)
+    || STATE_NAME_TO_CODE[meta.location] || STATE_NAME_TO_CODE[lsGet(REG_LOCATION_KEY)] || "";
   const o = code && stateOfficials[code];
   if (!o) return null;
   const name = o.name;
@@ -1000,67 +1009,68 @@ async function signInWithEmail(email, phone) {
 }
 
 async function signOutUser() {
-  if (!supabaseClient) return;
-  await supabaseClient.auth.signOut();
+  try { if (supabaseClient) await supabaseClient.auth.signOut(); } catch (e) {}
+  currentUser = null;
+  // Clear the local registration so the start screen (gate) shows again. Keeps
+  // the device client_id and saved progress so a re-register continues cleanly.
+  try {
+    [REGISTERED_STORAGE_KEY, REG_NAME_KEY, REG_EMAIL_KEY, REG_PHONE_KEY,
+     REG_LOCATION_KEY, PROFILE_STATE_KEY].forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
   document.getElementById("accountPanel").hidden = true;
+  renderAccountUI();
+  showGateIfNeeded();
 }
 
+// Saves the profile's state selection (drives civics localization). Persists to
+// localStorage for gate-registered users, and to auth metadata if signed in.
 async function saveProfile() {
-  if (!currentUser || !supabaseClient) return;
-  const phone = document.getElementById("accountPhoneInputLoggedIn").value.trim();
   const state = document.getElementById("accountStateInput").value;
   const savedMsg = document.getElementById("accountPhoneSavedMsg");
-  try {
-    const { data, error } = await supabaseClient.auth.updateUser({ data: { phone, state } });
-    if (error) throw error;
-    currentUser = data.user;
-    savedMsg.hidden = false;
-    setTimeout(() => { savedMsg.hidden = true; }, 3000);
-    // If the user is currently on a state-specific civics question, refresh it
-    // so the newly-saved state's answer shows immediately.
-    if (quizSet.length && currentIndex < quizSet.length) renderCurrentQuestion();
-  } catch (err) {
-    console.error("Failed to save profile:", err);
+  try { localStorage.setItem(PROFILE_STATE_KEY, state || ""); } catch (e) {}
+  if (currentUser && supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient.auth.updateUser({ data: { state } });
+      if (!error && data) currentUser = data.user;
+    } catch (err) { console.error("Failed to save profile:", err); }
   }
+  savedMsg.hidden = false;
+  setTimeout(() => { savedMsg.hidden = true; }, 3000);
+  if (quizSet.length && currentIndex < quizSet.length) renderCurrentQuestion();
+}
+
+function setAccountRow(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = !text;
 }
 
 function renderAccountUI() {
   const btnLabel = document.getElementById("accountBtnLabel");
   const loggedOutEl = document.getElementById("accountLoggedOut");
   const loggedInEl = document.getElementById("accountLoggedIn");
-  const emailDisplay = document.getElementById("accountEmailDisplay");
-  const phoneInput = document.getElementById("accountPhoneInput");
-  const phoneInputLoggedIn = document.getElementById("accountPhoneInputLoggedIn");
-  const phonePlaceholder = currentLang === "vi" ? translations.vi["account.phonePlaceholder"] : "Phone number (optional)";
-  phoneInput.placeholder = phonePlaceholder;
-  phoneInputLoggedIn.placeholder = phonePlaceholder;
   const stateSelect = document.getElementById("accountStateInput");
   if (stateSelect && stateSelect.options.length) stateSelect.options[0].textContent = statePlaceholderText();
 
-  const ctaLogin = document.getElementById("ctaLogin");
+  // Profile info: prefer any auth metadata, else the gate registration on this device.
+  const meta = (currentUser && currentUser.user_metadata) || {};
+  const name = meta.name || lsGet(REG_NAME_KEY);
+  const phone = meta.phone || lsGet(REG_PHONE_KEY);
+  const location = lsGet(REG_LOCATION_KEY);
 
-  if (currentUser) {
-    const displayName = (currentUser.user_metadata && currentUser.user_metadata.name) || "";
-    const nameDisplay = document.getElementById("accountNameDisplay");
-    btnLabel.textContent = displayName || currentUser.email;
-    loggedOutEl.hidden = true;
+  if (isRegistered()) {
+    btnLabel.textContent = name || (currentLang === "vi" ? "Hồ sơ" : "Profile");
+    if (loggedOutEl) loggedOutEl.hidden = true;
     loggedInEl.hidden = false;
-    if (displayName) {
-      nameDisplay.textContent = displayName;
-      nameDisplay.hidden = false;
-    } else {
-      nameDisplay.hidden = true;
-    }
-    emailDisplay.textContent = currentUser.email;
-    phoneInputLoggedIn.value = (currentUser.user_metadata && currentUser.user_metadata.phone) || "";
-    const stateInput = document.getElementById("accountStateInput");
-    if (stateInput) stateInput.value = (currentUser.user_metadata && currentUser.user_metadata.state) || "";
-    if (ctaLogin) ctaLogin.hidden = true;
+    setAccountRow("accountNameDisplay", name);
+    setAccountRow("accountPhoneDisplay", phone ? "📞 " + phone : "");
+    setAccountRow("accountLocationDisplay", location ? "📍 " + location : "");
+    if (stateSelect) stateSelect.value = meta.state || lsGet(PROFILE_STATE_KEY) || STATE_NAME_TO_CODE[location] || "";
   } else {
     btnLabel.textContent = currentLang === "vi" ? translations.vi["account.login"] : "Log In";
-    loggedOutEl.hidden = false;
+    if (loggedOutEl) loggedOutEl.hidden = false;
     loggedInEl.hidden = true;
-    if (ctaLogin) ctaLogin.hidden = appView !== "home";
   }
   // Progress card visibility depends on login state.
   if (typeof renderProgress === "function") renderProgress();
@@ -2344,32 +2354,12 @@ document.addEventListener("DOMContentLoaded", () => {
     e.stopPropagation();
     document.getElementById("accountPanel").hidden = !document.getElementById("accountPanel").hidden;
   });
-  document.getElementById("ctaLoginBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    document.getElementById("accountPanel").hidden = false;
-    const emailInput = document.getElementById("accountEmailInput");
-    if (emailInput) emailInput.focus();
-  });
   document.addEventListener("click", (e) => {
     const panel = document.getElementById("accountPanel");
     const btn = document.getElementById("accountBtn");
     if (!panel.hidden && !panel.contains(e.target) && !btn.contains(e.target)) panel.hidden = true;
   });
-  document.getElementById("accountSendLinkBtn").addEventListener("click", () => {
-    const email = document.getElementById("accountEmailInput").value.trim();
-    const phone = document.getElementById("accountPhoneInput").value.trim();
-    if (email) signInWithEmail(email, phone);
-  });
-  document.getElementById("accountEmailInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") document.getElementById("accountSendLinkBtn").click();
-  });
-  document.getElementById("accountPhoneInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") document.getElementById("accountSendLinkBtn").click();
-  });
   document.getElementById("accountSavePhoneBtn").addEventListener("click", saveProfile);
-  document.getElementById("accountPhoneInputLoggedIn").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") document.getElementById("accountSavePhoneBtn").click();
-  });
   document.getElementById("accountLogoutBtn").addEventListener("click", signOutUser);
 
   populateStateSelect();
