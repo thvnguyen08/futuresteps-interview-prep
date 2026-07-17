@@ -925,6 +925,48 @@ body {
 /* The auto-detected verdict is pre-highlighted so the user just confirms. */
 .btn--suggested { box-shadow: 0 0 0 3px rgba(37, 99, 235, .35); }
 
+/* ── Marriage Mock Interview: record & self-review ── */
+.quiz__mock { margin-top: 8px; }
+.quiz__mock-tools { margin-bottom: 12px; }
+.quiz__mock-record { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.quiz__mock-recording {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+.quiz__mock-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #dc2626;
+  animation: pulse 1s ease-in-out infinite;
+}
+.quiz__mock-timer { font-variant-numeric: tabular-nums; color: #dc2626; font-weight: 700; }
+.quiz__mock-error { color: #dc2626; font-weight: 600; font-size: .9rem; margin-top: 10px; }
+.quiz__mock-review { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.quiz__mock-audio { width: 100%; max-width: 420px; height: 40px; }
+.quiz__mock-rate-label { font-weight: 700; margin: 4px 0 0; }
+.quiz__mock-rate { display: flex; flex-wrap: wrap; gap: 12px; }
+.quiz__mock-tips {
+  margin-top: 16px;
+  background: var(--clr-surface2);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+}
+.quiz__mock-tips summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+.quiz__mock-tips .quiz__answer-text { margin-top: 10px; }
+
+@media (max-width: 640px) {
+  .quiz__mock-record { flex-direction: column; align-items: stretch; }
+  .quiz__mock-record .btn { width: 100%; justify-content: center; }
+  .quiz__mock-rate { flex-direction: column; }
+  .quiz__mock-rate .btn { width: 100%; justify-content: center; }
+}
+
 /* ── Study multiple choice ── */
 .quiz__choices { margin-top: 4px; }
 

@@ -356,6 +356,16 @@
       </button>
     </div>
 
+    <!-- ═══ MARRIAGE MOCK-INTERVIEW TOGGLE (Study / Record & Review) ═══ -->
+    <div class="sim-toggle" id="mockToggle" hidden>
+      <button class="sim-toggle__btn sim-toggle__btn--active" id="mockStudyBtn" data-i18n="mock.study">
+        <i class="fa-solid fa-book-open"></i> Study Questions
+      </button>
+      <button class="sim-toggle__btn" id="mockInterviewBtn" data-i18n="mock.interview">
+        <i class="fa-solid fa-microphone-lines"></i> Mock Interview · Record &amp; Review
+      </button>
+    </div>
+
     <!-- ═══ ENGLISH TEST SECTION TOGGLE (Speaking / Reading / Writing) ═══ -->
     <div class="sim-toggle" id="englishSectionToggle" hidden>
       <button class="sim-toggle__btn sim-toggle__btn--active" id="speakingSectionBtn" data-i18n="eng.speaking">
@@ -441,6 +451,37 @@
               <button class="btn btn--wrong" id="typedWrongBtn"><i class="fa-solid fa-xmark"></i> <span data-i18n="spoken.incorrect">Incorrect</span></button>
             </div>
           </div>
+        </div>
+
+        <!-- ═══ MOCK INTERVIEW — RECORD & SELF-REVIEW ═══ -->
+        <div class="quiz__mock" id="quizMock" hidden>
+          <div class="quiz__mock-tools">
+            <button class="btn btn--outline" id="mockHearBtn"><i class="fa-solid fa-volume-high"></i> <span data-i18n="mock.hear">Hear Question</span></button>
+          </div>
+          <div class="quiz__mock-record" id="mockRecordPhase">
+            <button class="btn btn--primary btn--mic" id="mockRecordBtn"><i class="fa-solid fa-microphone"></i> <span data-i18n="mock.record">Record Your Answer</span></button>
+            <div class="quiz__mock-recording" id="mockRecording" hidden>
+              <span class="quiz__mock-dot"></span>
+              <span data-i18n="mock.recording">Recording…</span>
+              <span class="quiz__mock-timer" id="mockTimer">0:00</span>
+              <button class="btn btn--wrong" id="mockStopBtn"><i class="fa-solid fa-stop"></i> <span data-i18n="mock.stop">Stop</span></button>
+            </div>
+            <p class="quiz__mock-error" id="mockError" hidden data-i18n="mock.error">Microphone access is needed to record. Please allow it and try again.</p>
+          </div>
+          <div class="quiz__mock-review" id="mockReviewPhase" hidden>
+            <audio id="mockAudio" controls class="quiz__mock-audio"></audio>
+            <button class="btn btn--outline" id="mockRedoBtn"><i class="fa-solid fa-rotate-left"></i> <span data-i18n="mock.redo">Re-record</span></button>
+            <p class="quiz__mock-rate-label" data-i18n="mock.rateLabel">How did that feel?</p>
+            <div class="quiz__mock-rate">
+              <button class="btn btn--correct" data-rating="confident" data-i18n="mock.confident"><i class="fa-solid fa-face-smile"></i> Confident</button>
+              <button class="btn btn--outline" data-rating="okay" data-i18n="mock.okay"><i class="fa-solid fa-face-meh"></i> Okay</button>
+              <button class="btn btn--wrong" data-rating="needs_work" data-i18n="mock.needsWork"><i class="fa-solid fa-face-frown"></i> Needs work</button>
+            </div>
+          </div>
+          <details class="quiz__mock-tips" id="mockTips">
+            <summary data-i18n="mock.tipsSummary">See a strong sample answer</summary>
+            <p class="quiz__answer-text" id="mockTipsText"></p>
+          </details>
         </div>
 
         <div class="quiz__actions">

@@ -90,6 +90,19 @@ const translations = {
     "sim.test": '<i class="fa-solid fa-stopwatch"></i> Mô Phỏng Thi Thật (20 Câu)',
     "sim.spoken": '<i class="fa-solid fa-microphone-lines"></i> Thi Nói (Tự Chấm Điểm)',
     "sim.review": "Ôn Câu Sai",
+    "mock.study": '<i class="fa-solid fa-book-open"></i> Học Câu Hỏi',
+    "mock.interview": '<i class="fa-solid fa-microphone-lines"></i> Phỏng Vấn Thử · Ghi Âm & Nghe Lại',
+    "mock.hear": "Nghe Câu Hỏi",
+    "mock.record": "Ghi Âm Câu Trả Lời",
+    "mock.recording": "Đang ghi âm…",
+    "mock.stop": "Dừng",
+    "mock.error": "Cần quyền truy cập micro để ghi âm. Vui lòng cho phép và thử lại.",
+    "mock.redo": "Ghi Âm Lại",
+    "mock.rateLabel": "Anh/chị thấy thế nào?",
+    "mock.confident": '<i class="fa-solid fa-face-smile"></i> Tự Tin',
+    "mock.okay": '<i class="fa-solid fa-face-meh"></i> Tạm Ổn',
+    "mock.needsWork": '<i class="fa-solid fa-face-frown"></i> Cần Cải Thiện',
+    "mock.tipsSummary": "Xem câu trả lời mẫu",
     "review.badgeSuffix": " — Ôn Câu Sai",
     "review.done": "Đã ôn xong — anh/chị đã nắm được {cleared}/{total} câu. Còn {remaining} câu cần ôn.",
     "review.again": '<i class="fa-solid fa-rotate-right"></i> Ôn Lại',
@@ -1082,6 +1095,12 @@ let simScore = { correct: 0, total: 0 };
 let simTimes = [];
 let natTestType = "civics"; // "civics" | "english" — only meaningful while currentCategory === "naturalization"
 let natEnglishSection = "eng_speaking"; // "eng_speaking" | "eng_reading" | "eng_writing"
+// Marriage "Mock Interview" — record your spoken answer, play it back, self-rate.
+// Open-ended answers can't be auto-scored, so this is a confidence-building loop.
+let mockMode = false;
+let mockRecorder = null, mockStream = null, mockChunks = [], mockBlobUrl = null;
+let mockTimerInt = null, mockStartTs = 0, mockRatings = [];
+const MOCK_MIN_Q = 5, MOCK_MAX_Q = 7, MOCK_MAX_SECONDS = 120;
 let timerInterval = null;
 let questionStartTime = 0;
 let currentUser = null;
@@ -1186,6 +1205,18 @@ function updateContentTypeToggle() {
   document.getElementById("documentsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "checklist");
 }
 
+// The Mock Interview toggle is marriage-only and only for the plain question set.
+function updateMockToggle() {
+  const toggle = document.getElementById("mockToggle");
+  if (!toggle) return;
+  const show = currentCategory === "marriage" && contentType === "question";
+  toggle.hidden = !show;
+  if (show) {
+    document.getElementById("mockStudyBtn").classList.toggle("sim-toggle__btn--active", !mockMode);
+    document.getElementById("mockInterviewBtn").classList.toggle("sim-toggle__btn--active", mockMode);
+  }
+}
+
 /* ── Home ↔ Service navigation ──
    Home shows the colorful service grid (+ progress for signed-in users).
    Picking a service focuses it: the grid is replaced by that service's
@@ -1193,7 +1224,7 @@ function updateContentTypeToggle() {
 let appView = "home";                 // "home" | "service"
 let currentServiceCategory = null;
 
-const SERVICE_TOGGLE_IDS = ["contentTypeToggle", "natTestTypeToggle", "simToggle", "englishSectionToggle"];
+const SERVICE_TOGGLE_IDS = ["contentTypeToggle", "natTestTypeToggle", "simToggle", "mockToggle", "englishSectionToggle"];
 
 function setServiceHeaderTitle() {
   const el = document.getElementById("serviceHeaderTitle");
@@ -1302,6 +1333,15 @@ function setNatTestType(type) {
   startRound("naturalization");
 }
 
+function setMockMode(on) {
+  mockMode = on;
+  simMode = false;
+  spokenMode = false;
+  reviewMode = false;
+  contentType = "question";
+  startRound("marriage");
+}
+
 function setEnglishSection(section) {
   natEnglishSection = section;
   startRound("naturalization");
@@ -1309,11 +1349,15 @@ function setEnglishSection(section) {
 
 function startRound(category) {
   clearInterval(timerInterval);
+  cleanupMockRecording();
   currentCategory = category;
   if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
+  // Mock interview is marriage-only, and only for the plain question set.
+  if (category !== "marriage" || contentType !== "question") mockMode = false;
   if (!MAIN_CATEGORIES.includes(category)) contentType = "question";
   updateNaturalizationUI();
   updateContentTypeToggle();
+  updateMockToggle();
 
   let pool;
   if (category === "flagged") pool = allQuestions.filter(q => flaggedIds.has(q.id));
@@ -1330,6 +1374,11 @@ function startRound(category) {
 
   quizSet = shuffle(pool);
   if (category === "naturalization" && natTestType === "civics" && simMode) quizSet = quizSet.slice(0, SIM_QUESTION_COUNT);
+  if (mockMode && category === "marriage") {
+    const n = MOCK_MIN_Q + Math.floor(Math.random() * (MOCK_MAX_Q - MOCK_MIN_Q + 1));
+    quizSet = quizSet.slice(0, n);
+    mockRatings = [];
+  }
   simScore = { correct: 0, total: 0 };
   simTimes = [];
   currentIndex = 0;
@@ -1454,6 +1503,7 @@ function renderCurrentQuestion() {
     : CATEGORY_LABEL_EN[q.category];
   if (simMode) badge.textContent += currentLang === "vi" ? translations.vi["sim.badgeSuffix"] : SIM_BADGE_SUFFIX_EN;
   if (reviewMode) badge.textContent += currentLang === "vi" ? translations.vi["review.badgeSuffix"] : REVIEW_BADGE_SUFFIX_EN;
+  if (mockMode) badge.textContent += currentLang === "vi" ? " · Phỏng Vấn Thử" : " · Mock Interview";
   if (ct !== "question") badge.textContent += currentLang === "vi" ? translations.vi["content.badge." + ct] : CONTENT_BADGE_SUFFIX_EN[ct];
 
   if (isSelfScored()) {
@@ -1502,7 +1552,8 @@ function renderCurrentQuestion() {
   renderFlagButton();
   renderActionButtons();
   renderTimer();
-  if (simMode && spokenMode) enterSpokenAsk(q);
+  if (mockMode && currentCategory === "marriage") enterMockAsk(q);
+  else if (simMode && spokenMode) enterSpokenAsk(q);
   else if (simMode && !spokenMode) enterTypedAsk(q);
   else if (studyMCActive(q)) renderChoices(q);
 }
@@ -1512,17 +1563,19 @@ function renderActionButtons() {
   const spoken = simMode && spokenMode;     // Spoken Test — answer aloud
   const typed = simMode && !spokenMode;      // Simulate — typed answer
   const mc = studyMCActive(q);               // Study — multiple choice
+  const mock = mockMode && currentCategory === "marriage"; // Mock Interview — record & review
   const selfScored = isSelfScored();
   document.getElementById("quizSpoken").hidden = !spoken;
   document.getElementById("quizTyped").hidden = !typed;
   document.getElementById("quizChoices").hidden = !mc;
-  // spoken/typed/mc reveal the answer themselves; hide the plain reveal button.
-  document.getElementById("revealBtn").hidden = spoken || typed || mc;
+  document.getElementById("quizMock").hidden = !mock;
+  // spoken/typed/mc/mock handle their own flow; hide the plain reveal button.
+  document.getElementById("revealBtn").hidden = spoken || typed || mc || mock;
   // Next shows for plain reveal; for MC it's toggled on after a choice (renderChoices).
-  document.getElementById("nextBtn").hidden = selfScored || spoken || typed || mc;
+  document.getElementById("nextBtn").hidden = selfScored || spoken || typed || mc || mock;
   // I Knew It / I Missed It only for the remaining self-scored modes (English, Review).
-  document.getElementById("gotItBtn").hidden = !selfScored || spoken || typed || mc;
-  document.getElementById("missedBtn").hidden = !selfScored || spoken || typed || mc;
+  document.getElementById("gotItBtn").hidden = !selfScored || spoken || typed || mc || mock;
+  document.getElementById("missedBtn").hidden = !selfScored || spoken || typed || mc || mock;
 }
 
 // Reset the spoken card to its "ask" phase and read the question aloud.
@@ -1842,11 +1895,137 @@ function revealAnswer() {
   document.getElementById("quizWritingPrompt").hidden = true;
 }
 
+// ── Marriage Mock Interview: record → play back → self-rate ─────────────
+// Audio never leaves the device (an in-memory blob URL); we only log that a
+// mock round happened, so the dashboard's Practice conversion reflects it.
+function enterMockAsk(q) {
+  cleanupMockRecording();
+  document.getElementById("quizMock").hidden = false;
+  document.getElementById("mockRecordPhase").hidden = false;
+  document.getElementById("mockRecording").hidden = true;
+  document.getElementById("mockReviewPhase").hidden = true;
+  document.getElementById("mockRecordBtn").hidden = false;
+  document.getElementById("mockRecordBtn").disabled = false;
+  document.getElementById("mockError").hidden = true;
+  document.getElementById("quizAnswer").hidden = true;
+  const tips = document.getElementById("mockTipsText");
+  if (tips) tips.textContent = currentLang === "vi" ? q.answer_vi : q.answer_en;
+  const det = document.getElementById("mockTips");
+  if (det) det.open = false;
+  speakText(q.question_en);
+}
+
+async function startMockRecording() {
+  const errEl = document.getElementById("mockError");
+  errEl.hidden = true;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+    errEl.hidden = false; return;
+  }
+  try {
+    mockStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    errEl.hidden = false; return;
+  }
+  mockChunks = [];
+  try { mockRecorder = new MediaRecorder(mockStream); }
+  catch (err) { errEl.hidden = false; return; }
+  mockRecorder.ondataavailable = (e) => { if (e.data && e.data.size) mockChunks.push(e.data); };
+  mockRecorder.onstop = finalizeMockRecording;
+  mockRecorder.start();
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  document.getElementById("mockRecordBtn").hidden = true;
+  document.getElementById("mockRecording").hidden = false;
+  mockStartTs = Date.now();
+  const t = document.getElementById("mockTimer");
+  t.textContent = "0:00";
+  clearInterval(mockTimerInt);
+  mockTimerInt = setInterval(() => {
+    const s = Math.floor((Date.now() - mockStartTs) / 1000);
+    t.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    if (s >= MOCK_MAX_SECONDS) stopMockRecording();
+  }, 250);
+}
+
+function stopMockRecording() {
+  clearInterval(mockTimerInt);
+  if (mockRecorder && mockRecorder.state !== "inactive") {
+    try { mockRecorder.stop(); } catch (e) {}
+  }
+}
+
+function finalizeMockRecording() {
+  clearInterval(mockTimerInt);
+  const type = (mockRecorder && mockRecorder.mimeType) || "audio/webm";
+  if (mockStream) { mockStream.getTracks().forEach(t => t.stop()); mockStream = null; }
+  if (mockBlobUrl) { URL.revokeObjectURL(mockBlobUrl); mockBlobUrl = null; }
+  mockBlobUrl = URL.createObjectURL(new Blob(mockChunks, { type }));
+  document.getElementById("mockAudio").src = mockBlobUrl;
+  document.getElementById("mockRecordPhase").hidden = true;
+  document.getElementById("mockRecording").hidden = true;
+  document.getElementById("mockReviewPhase").hidden = false;
+}
+
+function redoMock() {
+  const q = quizSet[currentIndex];
+  if (q) enterMockAsk(q);
+}
+
+function rateMock(rating) {
+  mockRatings.push(rating);
+  cleanupMockRecording();
+  nextQuestion();
+}
+
+// Stop any in-flight recording and release the mic.
+function cleanupMockRecording() {
+  clearInterval(mockTimerInt);
+  if (mockRecorder && mockRecorder.state !== "inactive") {
+    try { mockRecorder.onstop = null; mockRecorder.stop(); } catch (e) {}
+  }
+  mockRecorder = null;
+  if (mockStream) { mockStream.getTracks().forEach(t => t.stop()); mockStream = null; }
+}
+
+function renderMockDone() {
+  const badgeEl = document.getElementById("simResultBadge");
+  const timingEl = document.getElementById("simResultTiming");
+  const textEl = document.getElementById("quizDoneText");
+  const restartBtn = document.getElementById("restartBtn");
+  const iconEl = document.getElementById("quizDoneIcon");
+  badgeEl.classList.remove("sim-result-badge--pass", "sim-result-badge--fail", "sim-result-badge--warn");
+  const conf = mockRatings.filter(r => r === "confident").length;
+  const okay = mockRatings.filter(r => r === "okay").length;
+  const needs = mockRatings.filter(r => r === "needs_work").length;
+  const total = mockRatings.length;
+  badgeEl.textContent = currentLang === "vi"
+    ? `Đã luyện ${total} câu · Tự tin ${conf} · Ổn ${okay} · Cần cải thiện ${needs}`
+    : `Practiced ${total} · Confident ${conf} · Okay ${okay} · Needs work ${needs}`;
+  badgeEl.classList.add(total > 0 && needs === 0 ? "sim-result-badge--pass" : "sim-result-badge--warn");
+  badgeEl.hidden = false;
+  timingEl.hidden = true;
+  textEl.hidden = false;
+  textEl.textContent = currentLang === "vi"
+    ? "Nghe lại chính giọng mình giúp bạn tự tin hơn khi phỏng vấn. Hãy luyện thường xuyên!"
+    : "Hearing your own answers back builds real interview confidence. Practice a fresh set often!";
+  iconEl.className = "fa-solid fa-circle-check";
+  iconEl.style.color = "";
+  restartBtn.innerHTML = currentLang === "vi" ? translations.vi["btn.tryAgain"] : '<i class="fa-solid fa-rotate-right"></i> New Random Set';
+  restartBtn.style.display = "";
+}
+
 function nextQuestion() {
   // Advancing past the free preview question requires registering.
   if (!isRegistered()) { openGate(); return; }
   currentIndex++;
   if (currentIndex >= quizSet.length) {
+    if (mockMode && currentCategory === "marriage") {
+      logActivity("practice", "marriage", { mode: "mock", content_type: "question", correct: 0, total: 0 });
+      cleanupMockRecording();
+      renderMockDone();
+      document.getElementById("quizCard").hidden = true;
+      document.getElementById("quizDone").hidden = false;
+      return;
+    }
     let kind = "finished";
     if (simMode) kind = "simResult";
     else if (reviewMode) kind = "reviewDone";
@@ -1982,6 +2161,20 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("simModeBtn").addEventListener("click", () => setSimMode(true));
   document.getElementById("spokenTestBtn").addEventListener("click", setSpokenTest);
   document.getElementById("reviewMissedBtn").addEventListener("click", setReviewMode);
+  // ── Marriage Mock Interview wiring ──
+  document.getElementById("mockStudyBtn").addEventListener("click", () => setMockMode(false));
+  document.getElementById("mockInterviewBtn").addEventListener("click", () => setMockMode(true));
+  document.getElementById("mockHearBtn").addEventListener("click", () => {
+    const q = quizSet[currentIndex];
+    if (q) speakText(q.question_en);
+  });
+  document.getElementById("mockRecordBtn").addEventListener("click", startMockRecording);
+  document.getElementById("mockStopBtn").addEventListener("click", stopMockRecording);
+  document.getElementById("mockRedoBtn").addEventListener("click", redoMock);
+  document.querySelector(".quiz__mock-rate").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-rating]");
+    if (btn) rateMock(btn.dataset.rating);
+  });
   document.getElementById("micBtn").addEventListener("click", startListening);
   document.getElementById("repeatQuestionBtn").addEventListener("click", () => {
     const q = quizSet[currentIndex];
