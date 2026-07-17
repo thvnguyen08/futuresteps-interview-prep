@@ -481,7 +481,10 @@ begin
   from events e
   left join person_anon_map m on m.anon_id = e.anon_id
   left join persons p on p.id = m.person_id
-  where p.email is null or lower(p.email) <> all(excluded_emails)
+  -- Skip events from devices that never identified (no name/email resolved
+  -- yet) -- an admin can't act on a blank WHO row anyway.
+  where (p.name is not null or p.email is not null)
+    and (p.email is null or lower(p.email) <> all(excluded_emails))
   order by e.occurred_at desc
   limit greatest(1, least(p_limit, 5000));
 end;
