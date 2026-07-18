@@ -189,6 +189,7 @@ const translations = {
     "install.title": "Thêm FutureSteps vào Màn Hình Chính",
     "install.ios": 'Nhấn nút Chia Sẻ <i class="fa-solid fa-arrow-up-from-bracket"></i> ở dưới, rồi chọn <strong>"Thêm vào MH chính"</strong>. Ứng dụng sẽ mở toàn màn hình như một app thật.',
     "install.android": "Cài đặt để luyện tập chỉ với một chạm — mở toàn màn hình và dùng được cả khi ngoại tuyến.",
+    "install.manual": 'Mở menu trình duyệt <i class="fa-solid fa-ellipsis-vertical"></i> rồi chọn <strong>"Thêm vào MH chính"</strong>. Ứng dụng sẽ mở toàn màn hình như một app thật.',
     "install.button": "Cài Đặt",
     "gate.haveAccount": "Đã luyện tập trước đây?",
     "gate.logIn": "Tiếp tục với email của bạn",
@@ -1032,6 +1033,9 @@ async function submitEmailCapture() {
   btn.disabled = false;
   document.getElementById("emailCaptureForm").hidden = true;
   document.getElementById("captureThanks").hidden = false;
+  // They just gave us their email — surface the feedback card right away so
+  // they don't have to hunt for the "Rate the app" link (unless already rated).
+  if (!hasGivenFeedback()) openFeedback();
 }
 
 function skipEmailCapture() {
@@ -1109,19 +1113,28 @@ function isStandalone() {
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
 }
+function isAndroid() {
+  return /android/i.test(navigator.userAgent);
+}
 
+/* Three presentations, so the hint is useful even when the browser never fires
+   beforeinstallprompt (iOS always, Android often):
+   1. native one-tap Install button (Chrome/Android/desktop fired the event),
+   2. iOS Safari manual Share → Add to Home Screen steps,
+   3. generic manual "browser menu → Add to Home screen" for any other phone. */
 function maybeShowInstallHint() {
   const el = document.getElementById("installHint");
   if (!el) return;
   let dismissed = false;
   try { dismissed = localStorage.getItem(INSTALL_DISMISS_KEY) === "1"; } catch (e) {}
+  const native = !!deferredInstallPrompt, ios = isIOS(), android = isAndroid();
   const canShow = isRegistered() && appView === "home" && !isStandalone() && !dismissed
-    && (!!deferredInstallPrompt || isIOS());
+    && (native || ios || android);
   if (!canShow) { el.hidden = true; return; }
-  const android = !!deferredInstallPrompt;
-  document.getElementById("installHintAndroid").hidden = !android;
-  document.getElementById("installHintIos").hidden = android;
-  document.getElementById("installBtn").hidden = !android;
+  document.getElementById("installBtn").hidden = !native;
+  document.getElementById("installHintAndroid").hidden = !native;         // pairs with the button
+  document.getElementById("installHintIos").hidden = !(ios && !native);
+  document.getElementById("installHintManual").hidden = !(!native && !ios); // Android/other, no native prompt
   el.hidden = false;
 }
 
