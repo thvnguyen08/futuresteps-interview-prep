@@ -1222,6 +1222,50 @@ body.gate-open { overflow: hidden; }
 }
 .feedback-eyebrow { font-family: var(--ff-heading); font-size: 1.05rem; color: var(--clr-white); margin: 0 0 4px; }
 .feedback-q { font-weight: 600; font-size: .92rem; color: var(--clr-text); margin: 14px 0 8px; }
+.capture-sub { font-size: .86rem; color: var(--clr-muted); margin: 4px 0 14px; line-height: 1.45; }
+
+/* ── Add to Home Screen hint ── */
+.install-hint {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto 18px;
+  padding: 12px 14px;
+  background: var(--clr-surface2);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+}
+.install-hint__icon {
+  flex: none;
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: var(--clr-primary);
+  color: #fff;
+  font-size: 1.05rem;
+}
+.install-hint__body { flex: 1; min-width: 0; }
+.install-hint__title { font-weight: 700; font-size: .92rem; color: var(--clr-text); margin: 0 0 2px; }
+.install-hint__ios,
+.install-hint__android { font-size: .82rem; color: var(--clr-muted); margin: 0; line-height: 1.4; }
+.install-hint__ios .fa-arrow-up-from-bracket { color: var(--clr-primary); margin: 0 1px; }
+.install-hint__btn { flex: none; padding: 8px 16px; font-size: .85rem; }
+.install-hint__close {
+  flex: none;
+  background: none; border: none;
+  color: var(--clr-muted);
+  font-size: 1.4rem; line-height: 1;
+  padding: 0 2px; cursor: pointer;
+  align-self: flex-start;
+}
+.install-hint__close:hover { color: var(--clr-text); }
+@media (max-width: 520px) {
+  .install-hint { flex-wrap: wrap; }
+  .install-hint__btn { width: 100%; order: 3; }
+}
+.email-capture .gate__input { margin: 0 0 10px; }
+.email-capture .gate__submit { margin-top: 4px; }
 .feedback-card .fb-scale { display: flex; gap: 8px; }
 .feedback-card .fb-scale button {
   flex: 1; aspect-ratio: 1; border: 1.5px solid var(--clr-border); background: #fff;

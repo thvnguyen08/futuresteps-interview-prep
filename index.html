@@ -135,17 +135,17 @@
         </button>
       </div>
 
-      <h2 class="gate__title" id="gateMainTitle" data-i18n="gate.title">Start your interview practice</h2>
-      <p class="gate__sub" id="gateMainSub" data-i18n="gate.sub">Tell us a little about you so Future Steps Services can support your case. Then start practicing right away — it's free.</p>
+      <h2 class="gate__title" id="gateMainTitle" data-i18n="gate.title">Start practicing — it's free</h2>
+      <p class="gate__sub" id="gateMainSub" data-i18n="gate.sub">First, which state do you live in? We'll quiz you on your own state's officials — governor, senators, and capital. No account needed — start in one tap.</p>
 
       <form id="gateForm" novalidate>
-        <input type="text" class="gate__input" id="gateName" autocomplete="name" required>
-        <input type="tel" class="gate__input" id="gatePhone" autocomplete="tel" required>
-        <input type="email" class="gate__input" id="gateEmail" autocomplete="email" required>
-        <p class="gate__hint" data-i18n="gate.contactHint">We use this so Future Steps can support your case. No verification — you start practicing the moment you tap below.</p>
+        <input type="text" class="gate__input" id="gateName" autocomplete="name" hidden>
+        <input type="tel" class="gate__input" id="gatePhone" autocomplete="tel" hidden>
+        <input type="email" class="gate__input" id="gateEmail" autocomplete="email" hidden>
         <select class="gate__input" id="gateLocation" required></select>
+        <p class="gate__hint" data-i18n="gate.locationHint">Live outside the U.S.? Choose Vietnam or Other country — you can still practice everything.</p>
         <p class="gate__error" id="gateError" hidden></p>
-        <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit" data-i18n="gate.start">Start Practicing Now</button>
+        <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit" data-i18n="gate.start">Start Practicing</button>
       </form>
 
       <!-- Shown after submitting the form, until the activation email is clicked -->
@@ -163,7 +163,7 @@
 
       <p class="gate__login-prompt" id="gateLoginPrompt">
         <span data-i18n="gate.haveAccount">Already practiced before?</span>
-        <a href="#" id="gateLoginLink" data-i18n="gate.logIn">Continue with your email or phone</a>
+        <a href="#" id="gateLoginLink" data-i18n="gate.logIn">Continue with your email</a>
       </p>
       <div class="gate__login-box" id="gateLoginBox" hidden>
         <input type="text" class="gate__input" id="gateLoginEmail" autocomplete="email">
@@ -178,6 +178,42 @@
         <div class="gate__welcome-stats" id="gateWelcomeStats"></div>
         <button class="btn btn--primary gate__submit" id="gateWelcomeContinue" data-i18n="gate.continue">Continue Practicing</button>
       </div>
+
+      <p class="gate__legal" data-i18n="gate.legal">This is practice material only, not legal advice. Your details are shared only with Future Steps Services.</p>
+    </div>
+  </div>
+
+  <!-- ═══ EMAIL GATE (blocking; appears before the 3rd round if no email yet) ═══ -->
+  <div class="gate" id="emailGate" hidden>
+    <div class="gate__card">
+      <div class="gate__head">
+        <span class="gate__logo">
+          <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="FutureSteps">
+            <rect width="48" height="48" rx="13" fill="url(#emailGateLogoGrad)"/>
+            <circle cx="24" cy="26" r="12.5" stroke="#fff" stroke-width="2.4" fill="none" opacity=".55"/>
+            <path d="M24 26 L17.5 33.5" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+            <path d="M24 26 L35 12" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M35 12 L28.7 13 M35 12 L34 18.3" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="26" r="2.4" fill="#fff"/>
+            <defs><linearGradient id="emailGateLogoGrad" x1="4" y1="4" x2="44" y2="44"><stop stop-color="#2bb673"/><stop offset="1" stop-color="#156943"/></linearGradient></defs>
+          </svg>
+          <span class="gate__logo-text">Future<strong>Steps</strong></span>
+        </span>
+        <button class="lang-toggle" id="emailGateLangToggle" aria-label="Switch language">
+          <span class="lang-toggle__flag" id="emailGateLangFlag">🇻🇳</span>
+          <span class="lang-toggle__label" id="emailGateLangLabel">Tiếng Việt</span>
+        </button>
+      </div>
+
+      <h2 class="gate__title" data-i18n="eg.title">You're on a roll! 🔥</h2>
+      <p class="gate__sub" data-i18n="eg.sub">Add your email to keep going. We'll save your progress across devices and send free study tips — no spam, unsubscribe anytime.</p>
+
+      <form id="emailGateForm" novalidate>
+        <input type="email" class="gate__input" id="emailGateEmail" autocomplete="email" placeholder="Email" required>
+        <input type="text" class="gate__input" id="emailGateName" autocomplete="name" placeholder="Name (optional)">
+        <p class="gate__error" id="emailGateError" hidden></p>
+        <button type="submit" class="btn btn--primary gate__submit" id="emailGateSubmit" data-i18n="eg.continue">Save & Keep Practicing</button>
+      </form>
 
       <p class="gate__legal" data-i18n="gate.legal">This is practice material only, not legal advice. Your details are shared only with Future Steps Services.</p>
     </div>
@@ -236,6 +272,17 @@
   </header>
 
   <main class="wrap">
+    <!-- ═══ ADD TO HOME SCREEN hint (dismissible; hidden when already installed) ═══ -->
+    <div class="install-hint" id="installHint" hidden>
+      <span class="install-hint__icon"><i class="fa-solid fa-mobile-screen-button"></i></span>
+      <div class="install-hint__body">
+        <p class="install-hint__title" data-i18n="install.title">Add FutureSteps to your Home Screen</p>
+        <p class="install-hint__ios" id="installHintIos" data-i18n="install.ios">Tap the Share button <i class="fa-solid fa-arrow-up-from-bracket"></i> below, then choose <strong>"Add to Home Screen"</strong>. It opens full-screen like a real app.</p>
+        <p class="install-hint__android" id="installHintAndroid" hidden data-i18n="install.android">Install it for one-tap practice — it opens full-screen and works offline.</p>
+      </div>
+      <button class="btn btn--primary install-hint__btn" id="installBtn" hidden data-i18n="install.button">Install</button>
+      <button class="install-hint__close" id="installClose" aria-label="Dismiss">&times;</button>
+    </div>
     <div class="intro" id="intro">
       <p class="home-greeting" id="homeGreeting" hidden></p>
       <p class="intro__tag" data-i18n="intro.tag">Your Journey Starts Here</p>
@@ -522,6 +569,21 @@
           <p id="feedbackThanks" class="feedback-thanks" hidden data-i18n="fb.thanks">Thank you — this helps us make the app better! 🙌</p>
         </div>
         <p class="feedback-reopen" id="feedbackReopen" hidden><a href="#" data-i18n="fb.reopen">★ Rate the app</a></p>
+
+        <!-- ═══ EMAIL CAPTURE (soft nudge; appears after a round until an email is saved) ═══ -->
+        <div class="feedback-card email-capture" id="emailCapture" hidden>
+          <div id="emailCaptureForm">
+            <p class="feedback-eyebrow" data-i18n="cap.eyebrow">Nice work! 🎉</p>
+            <p class="feedback-q" data-i18n="cap.title">Save your progress</p>
+            <p class="capture-sub" data-i18n="cap.sub">Add your email and we'll save where you left off and send free study tips for your interview.</p>
+            <input type="email" class="gate__input" id="captureEmail" autocomplete="email" placeholder="Email">
+            <input type="text" class="gate__input" id="captureName" autocomplete="name" placeholder="Name (optional)">
+            <p class="gate__error" id="captureError" hidden></p>
+            <button type="button" class="btn btn--primary gate__submit" id="captureSubmit" data-i18n="cap.save"><i class="fa-solid fa-bookmark"></i> Save My Progress</button>
+            <p class="feedback-skip"><a href="#" id="captureSkip" data-i18n="cap.skip">Not now — keep practicing</a></p>
+          </div>
+          <p id="captureThanks" class="feedback-thanks" hidden data-i18n="cap.thanks">You're all set — we saved your progress! 🙌</p>
+        </div>
       </div>
     </section>
     <!-- ═══ WEBSITE CALL-TO-ACTION ═══ -->

@@ -171,19 +171,34 @@ const translations = {
     "account.stateHint": "Chọn tiểu bang của bạn để xem đáp án đúng cho câu hỏi về Thống Đốc, Thượng Nghị Sĩ và thủ phủ tiểu bang trong phần Thi Dân Sự.",
     "account.phoneSaved": "Đã lưu!",
     "account.help": 'Cần hỗ trợ? Liên hệ chúng tôi qua <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>',
-    "gate.title": "Bắt đầu luyện phỏng vấn",
-    "gate.sub": "Hãy cho chúng tôi biết đôi chút về bạn để Future Steps Services có thể hỗ trợ hồ sơ của bạn. Sau đó bạn có thể luyện tập ngay — hoàn toàn miễn phí.",
+    "gate.title": "Bắt đầu luyện tập — miễn phí",
+    "gate.sub": "Trước tiên, bạn sống ở tiểu bang nào? Chúng tôi sẽ hỏi bạn về các quan chức của chính tiểu bang bạn — thống đốc, thượng nghị sĩ và thủ phủ. Không cần tài khoản — chỉ một chạm là bắt đầu.",
     "gate.contactHint": "Chúng tôi dùng thông tin này để Future Steps hỗ trợ hồ sơ của bạn. Không cần xác minh — bạn bắt đầu luyện tập ngay khi nhấn bên dưới.",
-    "gate.start": "Bắt Đầu Luyện Tập Ngay",
+    "gate.locationHint": "Sống ngoài Hoa Kỳ? Hãy chọn Việt Nam hoặc Quốc gia khác — bạn vẫn luyện tập được mọi thứ.",
+    "gate.start": "Bắt Đầu Luyện Tập",
+    "cap.eyebrow": "Làm tốt lắm! 🎉",
+    "cap.title": "Lưu tiến trình của bạn",
+    "cap.sub": "Thêm email để chúng tôi lưu lại chỗ bạn đang học và gửi mẹo ôn thi miễn phí cho buổi phỏng vấn của bạn.",
+    "cap.save": '<i class="fa-solid fa-bookmark"></i> Lưu Tiến Trình',
+    "cap.skip": "Để sau — tiếp tục luyện tập",
+    "cap.thanks": "Xong rồi — chúng tôi đã lưu tiến trình của bạn! 🙌",
+    "cap.ph.name": "Tên (không bắt buộc)",
+    "eg.title": "Bạn đang tiến bộ nhanh! 🔥",
+    "eg.sub": "Thêm email để tiếp tục. Chúng tôi sẽ lưu tiến trình trên mọi thiết bị và gửi mẹo ôn thi miễn phí — không spam, có thể hủy bất cứ lúc nào.",
+    "eg.continue": "Lưu & Tiếp Tục Luyện Tập",
+    "install.title": "Thêm FutureSteps vào Màn Hình Chính",
+    "install.ios": 'Nhấn nút Chia Sẻ <i class="fa-solid fa-arrow-up-from-bracket"></i> ở dưới, rồi chọn <strong>"Thêm vào MH chính"</strong>. Ứng dụng sẽ mở toàn màn hình như một app thật.',
+    "install.android": "Cài đặt để luyện tập chỉ với một chạm — mở toàn màn hình và dùng được cả khi ngoại tuyến.",
+    "install.button": "Cài Đặt",
     "gate.haveAccount": "Đã luyện tập trước đây?",
-    "gate.logIn": "Tiếp tục với email hoặc số điện thoại",
+    "gate.logIn": "Tiếp tục với email của bạn",
     "gate.sendLink": "Tiếp Tục Từ Chỗ Đã Dừng",
     "gate.continue": "Tiếp Tục Luyện Tập",
     "gate.legal": "Đây chỉ là tài liệu luyện tập, không phải tư vấn pháp lý. Thông tin của bạn chỉ được chia sẻ với Future Steps Services.",
     "gate.ph.name": "Họ và tên",
     "gate.ph.email": "Email",
     "gate.ph.phone": "Số điện thoại",
-    "gate.ph.restore": "Email hoặc số điện thoại bạn đã đăng ký",
+    "gate.ph.restore": "Email bạn đã đăng ký",
     "gate.ph.location": "Bạn đang ở đâu? (tiểu bang hoặc Việt Nam)",
     "gate.loc.vietnam": "Việt Nam",
     "gate.loc.other": "Quốc gia khác",
@@ -194,7 +209,7 @@ const translations = {
     "gate.err.phone": "Vui lòng nhập số điện thoại hợp lệ.",
     "gate.err.location": "Vui lòng chọn nơi bạn đang ở.",
     "gate.err.save": "Có lỗi xảy ra. Vui lòng thử lại.",
-    "gate.restoreNotFound": "Không tìm thấy tài khoản với email hoặc số điện thoại đó. Vui lòng thử lại, hoặc bắt đầu mới ở trên.",
+    "gate.restoreNotFound": "Không tìm thấy tài khoản với email đó. Vui lòng thử lại, hoặc bắt đầu mới ở trên.",
     "gate.welcomeBack": "Chào mừng trở lại",
     "gate.loginSent": "Hãy kiểm tra email để nhận liên kết đăng nhập!",
     "gate.pendingTitle": "Kiểm Tra Email Của Bạn",
@@ -358,7 +373,7 @@ const GATE_EN = {
   "gate.ph.name": "Full name",
   "gate.ph.email": "Email",
   "gate.ph.phone": "Phone number",
-  "gate.ph.restore": "Email or phone you registered with",
+  "gate.ph.restore": "Email you registered with",
   "gate.ph.location": "Where are you? (state or Vietnam)",
   "gate.loc.vietnam": "Vietnam",
   "gate.loc.other": "Other country",
@@ -371,8 +386,9 @@ const GATE_EN = {
   "gate.err.save": "Something went wrong. Please try again.",
   "gate.loginSent": "Check your email for a login link!",
   "gate.resendSent": "Activation email resent!",
-  "gate.restoreNotFound": "We couldn't find an account with that email or phone. Try again, or start fresh above.",
+  "gate.restoreNotFound": "We couldn't find an account with that email. Try again, or start fresh above.",
   "gate.welcomeBack": "Welcome back",
+  "cap.ph.name": "Name (optional)",
 };
 function gateText(key) {
   return currentLang === "vi" ? translations.vi[key] : GATE_EN[key];
@@ -455,8 +471,9 @@ function populateStateSelect() {
 }
 
 /* ── Registration gate ──
-   Customers must give a name + (email or phone) + location before practicing.
-   The lead is saved to Supabase and they start immediately (no verification).
+   The front door asks only for location (needed to serve state-specific civics
+   answers) — everyone starts practicing immediately. Email is captured later,
+   after the user has felt some value (see the delayed email capture below).
    Logged-in users and returning visitors on this device skip the gate. */
 
 function isRegistered() {
@@ -708,45 +725,26 @@ function enterAppAfterGate() {
   showHome();
 }
 
+// Front door: location only. It's the one thing the app genuinely needs up
+// front (to serve state-specific civics answers), so it reads as practice setup,
+// not a contact form. Name/email/phone are captured later, after the user has
+// felt some value (see the post-round email capture). No lead row is written
+// here — anonymous trials live in analytics (identify/events) until we have an
+// email, keeping the `leads` table = real, warm leads for the morning emails.
 async function submitRegistration(e) {
   if (e) e.preventDefault();
   const errEl = document.getElementById("gateError");
   const btn = document.getElementById("gateSubmit");
-  const name = document.getElementById("gateName").value.trim();
-  const email = document.getElementById("gateEmail").value.trim();
-  const phone = document.getElementById("gatePhone").value.trim();
   const location = document.getElementById("gateLocation").value;
 
-  const fail = (key) => { errEl.textContent = gateText(key); errEl.hidden = false; };
   errEl.hidden = true;
-  if (!name) return fail("gate.err.name");
-  if (!phone) return fail("gate.err.phoneRequired");
-  if (!isValidPhone(phone)) return fail("gate.err.phone");
-  if (!email) return fail("gate.err.emailRequired");
-  if (!isValidEmail(email)) return fail("gate.err.email");
-  if (!location) return fail("gate.err.location");
+  if (!location) { errEl.textContent = gateText("gate.err.location"); errEl.hidden = false; return; }
 
   btn.disabled = true;
-  // Remember who they are on this device so we recognise them next time.
-  try {
-    localStorage.setItem(REG_EMAIL_KEY, email);
-    localStorage.setItem(REG_NAME_KEY, name);
-    localStorage.setItem(REG_PHONE_KEY, phone);
-    localStorage.setItem(REG_LOCATION_KEY, location);
-  } catch (e) {}
-  try {
-    if (supabaseClient) {
-      const { error } = await supabaseClient.from("leads")
-        .insert({ name, email, phone, location, client_id: getClientId() });
-      if (error) throw error;
-    }
-  } catch (err) {
-    // Fail open on the lead record itself: never trap someone behind a
-    // transient DB error here.
-    console.error("Failed to save registration lead:", err);
-  }
-  identifyPerson({ name, email, phone, location });
-  // Front door: no activation email — let them start practicing immediately.
+  try { localStorage.setItem(REG_LOCATION_KEY, location); } catch (e2) {}
+  // Anonymous person row: location + device id now; email/name attach later.
+  identifyPerson({ location });
+  logEvent("setup_complete", { location });
   markRegistered();
   pushAllProgressUp();   // back up any progress already on this device
   btn.disabled = false;
@@ -936,6 +934,210 @@ function skipFeedback() {
   try { localStorage.setItem(FEEDBACK_DONE_KEY, "1"); } catch (e) {}
   document.getElementById("feedbackCard").hidden = true;
   document.getElementById("feedbackReopen").hidden = false;
+}
+
+/* ── Delayed email capture ──
+   The front door only asks for location. We ask for an email AFTER the user has
+   felt some value: a dismissible nudge on the done screen after each round, then
+   a hard (blocking) gate before the 3rd round. This is where a `leads` row is
+   actually created — so every lead is someone who has practiced, i.e. warm. */
+const ROUND_COUNT_KEY = "interviewPrepRoundCount";
+const EMAIL_GATE_AT_ROUND = 3;   // 3rd round requires an email before it starts
+let pendingAfterEmail = null;    // action to resume once the hard gate is cleared
+
+function hasEmailLead() {
+  return !!(currentUser && currentUser.email) || !!lsGet(REG_EMAIL_KEY);
+}
+
+function roundCount() {
+  try { return parseInt(localStorage.getItem(ROUND_COUNT_KEY) || "0", 10) || 0; }
+  catch (e) { return 0; }
+}
+
+function bumpRoundCount() {
+  const n = roundCount() + 1;
+  try { localStorage.setItem(ROUND_COUNT_KEY, String(n)); } catch (e) {}
+  return n;
+}
+
+/* Called at every round completion (replaces the bare maybeShowFeedback call).
+   Primary card, one per done screen: users who owe us an email see the capture
+   card; everyone else sees the usual feedback card. Feedback is never fully
+   hidden though — in the pre-email phase we still expose the small "Rate the
+   app" link so a user can leave feedback whenever they want. */
+function onRoundComplete() {
+  bumpRoundCount();
+  if (!hasEmailLead()) {
+    document.getElementById("feedbackCard").hidden = true;
+    maybeShowEmailCapture();
+    // Keep feedback reachable via the reopen link (unless already given).
+    const reopen = document.getElementById("feedbackReopen");
+    if (reopen) reopen.hidden = hasGivenFeedback();
+  } else {
+    document.getElementById("emailCapture").hidden = true;
+    maybeShowFeedback();
+  }
+}
+
+/* Persist an email lead. Writes the `leads` row (the first time we have a real
+   email for this device), links the person, and backs up on-device progress. */
+async function captureEmailLead(email, name) {
+  try {
+    localStorage.setItem(REG_EMAIL_KEY, email);
+    if (name) localStorage.setItem(REG_NAME_KEY, name);
+  } catch (e) {}
+  const location = lsGet(REG_LOCATION_KEY) || null;
+  const phone = lsGet(REG_PHONE_KEY) || null;
+  try {
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from("leads")
+        .insert({ name: name || null, email, phone, location, client_id: getClientId() });
+      if (error) throw error;
+    }
+  } catch (err) {
+    // Fail open — never trap someone behind a transient DB error.
+    console.error("Failed to save email lead:", err);
+  }
+  identifyPerson({ name: name || null, email, phone, location });
+  logEvent("email_captured");
+  pushAllProgressUp();
+  renderAccountUI();
+  renderHomeGreeting();
+}
+
+// ── Soft nudge: inline card on the done screen (skippable) ──
+function maybeShowEmailCapture() {
+  const card = document.getElementById("emailCapture");
+  if (!card) return;
+  document.getElementById("emailCaptureForm").hidden = false;
+  document.getElementById("captureThanks").hidden = true;
+  document.getElementById("captureEmail").value = lsGet(REG_EMAIL_KEY);
+  document.getElementById("captureName").value = lsGet(REG_NAME_KEY);
+  document.getElementById("captureEmail").placeholder = gateText("gate.ph.email");
+  document.getElementById("captureName").placeholder = gateText("cap.ph.name");
+  document.getElementById("captureError").hidden = true;
+  card.hidden = false;
+  logEvent("email_capture_shown", { round: roundCount() });
+}
+
+async function submitEmailCapture() {
+  const email = document.getElementById("captureEmail").value.trim();
+  const name = document.getElementById("captureName").value.trim();
+  const errEl = document.getElementById("captureError");
+  errEl.hidden = true;
+  if (!isValidEmail(email)) { errEl.textContent = gateText("gate.err.email"); errEl.hidden = false; return; }
+  const btn = document.getElementById("captureSubmit");
+  btn.disabled = true;
+  await captureEmailLead(email, name);
+  btn.disabled = false;
+  document.getElementById("emailCaptureForm").hidden = true;
+  document.getElementById("captureThanks").hidden = false;
+}
+
+function skipEmailCapture() {
+  document.getElementById("emailCapture").hidden = true;
+}
+
+// ── Hard gate: blocking overlay before the 3rd round (no skip) ──
+/* Returns true (and opens the blocking gate) when the user owes us an email
+   before starting another round; `resume` is replayed once they give it. */
+function emailGateBlocks(resume) {
+  if (hasEmailLead()) return false;
+  if (roundCount() < EMAIL_GATE_AT_ROUND - 1) return false;
+  pendingAfterEmail = resume || null;
+  openEmailGate();
+  return true;
+}
+
+function openEmailGate() {
+  document.getElementById("emailGateEmail").value = lsGet(REG_EMAIL_KEY);
+  document.getElementById("emailGateName").value = lsGet(REG_NAME_KEY);
+  document.getElementById("emailGateEmail").placeholder = gateText("gate.ph.email");
+  document.getElementById("emailGateName").placeholder = gateText("cap.ph.name");
+  document.getElementById("emailGateLangFlag").textContent = currentLang === "vi" ? "🇺🇸" : "🇻🇳";
+  document.getElementById("emailGateLangLabel").textContent = currentLang === "vi" ? "English" : "Tiếng Việt";
+  document.getElementById("emailGateError").hidden = true;
+  document.getElementById("emailGate").hidden = false;
+  document.body.classList.add("gate-open");
+  logEvent("email_gate_shown", { round: roundCount() });
+}
+
+function closeEmailGate() {
+  document.getElementById("emailGate").hidden = true;
+  document.body.classList.remove("gate-open");
+}
+
+async function submitEmailGate(e) {
+  if (e) e.preventDefault();
+  const email = document.getElementById("emailGateEmail").value.trim();
+  const name = document.getElementById("emailGateName").value.trim();
+  const errEl = document.getElementById("emailGateError");
+  errEl.hidden = true;
+  if (!isValidEmail(email)) { errEl.textContent = gateText("gate.err.email"); errEl.hidden = false; return; }
+  const btn = document.getElementById("emailGateSubmit");
+  btn.disabled = true;
+  await captureEmailLead(email, name);
+  btn.disabled = false;
+  closeEmailGate();
+  const resume = pendingAfterEmail;
+  pendingAfterEmail = null;
+  if (typeof resume === "function") resume();
+}
+
+/* ── "Add to Home Screen" hint ──
+   Chrome/Android fires beforeinstallprompt → we drive a one-tap Install button.
+   iOS Safari has no such API, so we show the manual Share → Add to Home Screen
+   steps instead. Shown only on home, after setup, when not already installed
+   and not previously dismissed. */
+const INSTALL_DISMISS_KEY = "interviewPrepInstallDismissed";
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  maybeShowInstallHint();
+});
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  const el = document.getElementById("installHint");
+  if (el) el.hidden = true;
+});
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+
+function maybeShowInstallHint() {
+  const el = document.getElementById("installHint");
+  if (!el) return;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem(INSTALL_DISMISS_KEY) === "1"; } catch (e) {}
+  const canShow = isRegistered() && appView === "home" && !isStandalone() && !dismissed
+    && (!!deferredInstallPrompt || isIOS());
+  if (!canShow) { el.hidden = true; return; }
+  const android = !!deferredInstallPrompt;
+  document.getElementById("installHintAndroid").hidden = !android;
+  document.getElementById("installHintIos").hidden = android;
+  document.getElementById("installBtn").hidden = !android;
+  el.hidden = false;
+}
+
+function dismissInstallHint() {
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, "1"); } catch (e) {}
+  const el = document.getElementById("installHint");
+  if (el) el.hidden = true;
+}
+
+async function triggerInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch (e) {}
+  deferredInstallPrompt = null;
+  const el = document.getElementById("installHint");
+  if (el) el.hidden = true;
 }
 
 /* Legacy magic-link sender — no longer used by the front door, kept for the
@@ -1534,12 +1736,15 @@ function showHome() {
   // Progress card is home-only.
   renderProgress();
   renderHomeGreeting();
+  maybeShowInstallHint();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function enterService(category) {
   if (!isRegistered()) { openGate(); return; }
+  if (emailGateBlocks(() => enterService(category))) return;
   appView = "service";
+  { const ih = document.getElementById("installHint"); if (ih) ih.hidden = true; }
   currentServiceCategory = category;
   document.getElementById("intro").hidden = true;
   document.getElementById("homeView").hidden = true;
@@ -1586,6 +1791,7 @@ function renderProgress() {
 
 function setContentType(type) {
   if (!isRegistered()) { openGate(); return; }
+  if (emailGateBlocks(() => setContentType(type))) return;
   contentType = type;
   startRound(currentCategory);
 }
@@ -2298,7 +2504,7 @@ function nextQuestion() {
       renderMockDone();
       document.getElementById("quizCard").hidden = true;
       document.getElementById("quizDone").hidden = false;
-      maybeShowFeedback();
+      onRoundComplete();
       return;
     }
     let kind = "finished";
@@ -2316,7 +2522,7 @@ function nextQuestion() {
     renderDoneState(kind);
     document.getElementById("quizCard").hidden = true;
     document.getElementById("quizDone").hidden = false;
-    maybeShowFeedback();
+    onRoundComplete();
   } else {
     renderCurrentQuestion();
   }
@@ -2430,7 +2636,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("revealBtn").addEventListener("click", revealAnswer);
   document.getElementById("nextBtn").addEventListener("click", nextQuestion);
-  document.getElementById("restartBtn").addEventListener("click", () => startRound(currentCategory));
+  document.getElementById("restartBtn").addEventListener("click", () => {
+    if (emailGateBlocks(() => startRound(currentCategory))) return;
+    startRound(currentCategory);
+  });
   // ── Feedback card wiring ──
   document.querySelectorAll("#feedbackCard .fb-scale").forEach((row) => {
     row.addEventListener("click", (e) => {
@@ -2441,6 +2650,19 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("feedbackSend").addEventListener("click", submitFeedback);
   document.getElementById("feedbackSkip").addEventListener("click", skipFeedback);
   document.getElementById("feedbackReopen").addEventListener("click", (e) => { e.preventDefault(); openFeedback(); });
+  // ── Email capture wiring (soft card + hard gate) ──
+  document.getElementById("captureSubmit").addEventListener("click", submitEmailCapture);
+  document.getElementById("captureEmail").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); submitEmailCapture(); }
+  });
+  document.getElementById("captureSkip").addEventListener("click", (e) => { e.preventDefault(); skipEmailCapture(); });
+  // ── Install hint wiring ──
+  document.getElementById("installBtn").addEventListener("click", triggerInstall);
+  document.getElementById("installClose").addEventListener("click", dismissInstallHint);
+  document.getElementById("emailGateForm").addEventListener("submit", submitEmailGate);
+  document.getElementById("emailGateLangToggle").addEventListener("click", () => {
+    switchLanguage(currentLang === "en" ? "vi" : "en");
+  });
   document.getElementById("flagBtn").addEventListener("click", toggleFlagCurrentQuestion);
   document.getElementById("gotItBtn").addEventListener("click", () => recordSimAnswer(true));
   document.getElementById("missedBtn").addEventListener("click", () => recordSimAnswer(false));
@@ -2509,6 +2731,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadQuestions();
   logFirstTouchIfNeeded();
   logEvent("page_view");
+  maybeShowInstallHint();   // iOS Safari (no beforeinstallprompt) + returning users
 });
 
 // Register the service worker so the app is installable ("Add to Home Screen")
