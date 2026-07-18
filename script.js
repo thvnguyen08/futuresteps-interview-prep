@@ -742,6 +742,7 @@ async function submitRegistration(e) {
   identifyPerson({ name, email, phone, location });
   // Front door: no activation email — let them start practicing immediately.
   markRegistered();
+  pushAllProgressUp();   // back up any progress already on this device
   btn.disabled = false;
   enterAppAfterGate();
 }
@@ -774,6 +775,7 @@ async function restoreFromContact() {
       else localStorage.setItem(REG_PHONE_KEY, val);
     } catch (e) {}
     markRegistered();
+    await pullProgressForContact(val);   // restore flagged + missed across devices
     btn.disabled = false;
     await showWelcomeBack(lead.name, lead.client_id || getClientId());
   } catch (err) {
@@ -1231,17 +1233,49 @@ async function markMissed(id, missed) {
   if (missed) missedIds.add(id); else missedIds.delete(id);
   saveMissedIds();
   if (currentCategory === "naturalization") updateNaturalizationUI();
-  if (!currentUser || !supabaseClient) return;
+  syncMissedUp(id, missed);
+}
+
+// ── Cross-device progress sync (flagged + missed), keyed by device client_id ──
+function syncFlagUp(id, on) {
+  if (!supabaseClient || !isRegistered()) return;
+  supabaseClient.rpc("save_flag", { p_client_id: getClientId(), p_question_id: id, p_flagged: on })
+    .then(({ error }) => { if (error) console.error("save_flag:", error.message); });
+}
+function syncMissedUp(id, on) {
+  if (!supabaseClient || !isRegistered()) return;
+  supabaseClient.rpc("save_missed", { p_client_id: getClientId(), p_question_id: id, p_missed: on })
+    .then(({ error }) => { if (error) console.error("save_missed:", error.message); });
+}
+// Back up whatever is already flagged/missed on this device to the server.
+function pushAllProgressUp() {
+  if (!supabaseClient || !isRegistered()) return;
+  flaggedIds.forEach(id => syncFlagUp(id, true));
+  missedIds.forEach(id => syncMissedUp(id, true));
+}
+// On restore, pull this person's flagged/missed from any device and merge in,
+// then push any local-only items up so all their devices converge.
+async function pullProgressForContact(contact) {
+  if (!supabaseClient || !contact) return;
   try {
-    if (missed) {
-      await supabaseClient.from("missed_questions")
-        .upsert({ user_id: currentUser.id, question_id: id }, { onConflict: "user_id,question_id" });
-    } else {
-      await supabaseClient.from("missed_questions")
-        .delete().eq("user_id", currentUser.id).eq("question_id", id);
-    }
+    const [f, m] = await Promise.all([
+      supabaseClient.rpc("get_my_flagged", { p_contact: contact }),
+      supabaseClient.rpc("get_my_missed", { p_contact: contact }),
+    ]);
+    const serverFlags = (f.data || []).map(r => r.question_id);
+    const serverMissed = (m.data || []).map(r => r.question_id);
+    const localOnlyFlags = [...flaggedIds].filter(id => !serverFlags.includes(id));
+    const localOnlyMissed = [...missedIds].filter(id => !serverMissed.includes(id));
+    serverFlags.forEach(id => flaggedIds.add(id));
+    serverMissed.forEach(id => missedIds.add(id));
+    saveFlaggedIds();
+    saveMissedIds();
+    localOnlyFlags.forEach(id => syncFlagUp(id, true));
+    localOnlyMissed.forEach(id => syncMissedUp(id, true));
+    if (quizSet.length && currentIndex < quizSet.length) renderFlagButton();
+    if (currentCategory === "naturalization") updateNaturalizationUI();
   } catch (err) {
-    console.error("Failed to sync missed question:", err);
+    console.error("Failed to restore progress:", err);
   }
 }
 
@@ -2106,19 +2140,7 @@ async function toggleFlagCurrentQuestion() {
   else flaggedIds.delete(q.id);
   saveFlaggedIds();
   renderFlagButton();
-
-  if (!currentUser || !supabaseClient) return;
-  try {
-    if (nowFlagged) {
-      await supabaseClient.from("flagged_questions")
-        .upsert({ user_id: currentUser.id, question_id: q.id }, { onConflict: "user_id,question_id" });
-    } else {
-      await supabaseClient.from("flagged_questions")
-        .delete().eq("user_id", currentUser.id).eq("question_id", q.id);
-    }
-  } catch (err) {
-    console.error("Failed to sync flag:", err);
-  }
+  syncFlagUp(q.id, nowFlagged);
 }
 
 function revealAnswer() {
