@@ -509,6 +509,13 @@
               <button data-val="1">1</button><button data-val="2">2</button><button data-val="3">3</button><button data-val="4">4</button><button data-val="5">5</button>
             </div>
             <div class="fb-ends"><span data-i18n="fb.helpLow">Not really</span><span data-i18n="fb.helpHigh">A lot</span></div>
+            <p class="feedback-q" data-i18n="fb.qRecommend">Would you recommend FutureSteps to a friend or family member? <span class="feedback-opt" data-i18n="fb.optional">(optional)</span></p>
+            <div class="fb-scale" data-row="recommend">
+              <button data-val="1">1</button><button data-val="2">2</button><button data-val="3">3</button><button data-val="4">4</button><button data-val="5">5</button>
+            </div>
+            <div class="fb-ends"><span data-i18n="fb.recLow">Not likely</span><span data-i18n="fb.recHigh">Definitely</span></div>
+            <p class="feedback-q" data-i18n="fb.qComment">What's one thing we could improve? <span class="feedback-opt" data-i18n="fb.optional">(optional)</span></p>
+            <textarea id="feedbackComment" class="feedback-comment" rows="2" maxlength="500" placeholder="Anything you'd like us to know…"></textarea>
             <button class="btn btn--primary gate__submit" id="feedbackSend" disabled><i class="fa-solid fa-paper-plane"></i> <span data-i18n="fb.send">Send Feedback</span></button>
             <p class="feedback-skip"><a href="#" id="feedbackSkip" data-i18n="fb.skip">Skip — keep practicing</a></p>
           </div>

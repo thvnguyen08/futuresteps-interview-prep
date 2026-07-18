@@ -1231,6 +1231,13 @@ body.gate-open { overflow: hidden; }
 .feedback-card .fb-scale button:hover { border-color: var(--clr-primary); }
 .feedback-card .fb-scale button.on { background: var(--clr-primary); border-color: var(--clr-primary); color: #fff; }
 .feedback-card .fb-ends { display: flex; justify-content: space-between; font-size: .72rem; color: var(--clr-muted); margin-top: 6px; }
+.feedback-opt { font-weight: 500; font-size: .82rem; color: var(--clr-muted); }
+.feedback-comment {
+  width: 100%; margin-top: 8px; padding: 10px 12px; resize: vertical; min-height: 46px;
+  border: 1.5px solid var(--clr-border); border-radius: 10px; background: #fff;
+  font-family: inherit; font-size: .9rem; color: var(--clr-text);
+}
+.feedback-comment:focus { outline: none; border-color: var(--clr-primary); }
 .feedback-card #feedbackSend { margin-top: 18px; }
 .feedback-card #feedbackSend:disabled { opacity: .5; cursor: not-allowed; }
 .feedback-skip { text-align: center; margin: 12px 0 0; }

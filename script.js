@@ -110,6 +110,12 @@ const translations = {
     "fb.qHelp": "Nó có giúp bạn chuẩn bị không?",
     "fb.helpLow": "Không hẳn",
     "fb.helpHigh": "Rất nhiều",
+    "fb.qRecommend": "Bạn có giới thiệu FutureSteps cho bạn bè hoặc người thân không? <span class=\"feedback-opt\">(không bắt buộc)</span>",
+    "fb.recLow": "Không giới thiệu",
+    "fb.recHigh": "Chắc chắn",
+    "fb.qComment": "Chúng tôi có thể cải thiện điều gì? <span class=\"feedback-opt\">(không bắt buộc)</span>",
+    "fb.optional": "(không bắt buộc)",
+    "fb.commentPh": "Bất cứ điều gì bạn muốn cho chúng tôi biết…",
     "fb.send": "Gửi Đánh Giá",
     "fb.skip": "Bỏ qua — tiếp tục luyện tập",
     "fb.thanks": "Cảm ơn bạn — điều này giúp chúng tôi cải thiện ứng dụng! 🙌",
@@ -859,7 +865,7 @@ function renderHomeGreeting() {
 
 // ── In-app feedback (ease + helpfulness), shown after a completed round ──
 const FEEDBACK_DONE_KEY = "interviewPrepFeedbackGiven";
-let fbEase = 0, fbHelpful = 0;
+let fbEase = 0, fbHelpful = 0, fbRecommend = 0;
 
 function hasGivenFeedback() {
   try { return localStorage.getItem(FEEDBACK_DONE_KEY) === "1"; } catch (e) { return false; }
@@ -882,13 +888,24 @@ function openFeedback() {
   card.hidden = false;
   document.getElementById("feedbackForm").hidden = false;
   document.getElementById("feedbackThanks").hidden = true;
-  fbEase = 0; fbHelpful = 0;
+  fbEase = 0; fbHelpful = 0; fbRecommend = 0;
   card.querySelectorAll(".fb-scale button").forEach(b => b.classList.remove("on"));
+  const comment = document.getElementById("feedbackComment");
+  if (comment) {
+    comment.value = "";
+    // Placeholder isn't a data-i18n innerHTML node, so translate it here on open.
+    comment.placeholder = currentLang === "vi"
+      ? translations.vi["fb.commentPh"]
+      : "Anything you'd like us to know…";
+  }
   document.getElementById("feedbackSend").disabled = true;
 }
 
+// ease + helpful are required (they gate Send); recommend is optional.
 function selectFbScale(row, val, btn) {
-  if (row === "ease") fbEase = val; else fbHelpful = val;
+  if (row === "ease") fbEase = val;
+  else if (row === "recommend") fbRecommend = val;
+  else fbHelpful = val;
   btn.parentElement.querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
   document.getElementById("feedbackSend").disabled = !(fbEase && fbHelpful);
 }
@@ -896,15 +913,18 @@ function selectFbScale(row, val, btn) {
 async function submitFeedback() {
   if (!fbEase || !fbHelpful) return;
   try {
+    const comment = (document.getElementById("feedbackComment")?.value || "").trim() || null;
     if (supabaseClient) {
       await supabaseClient.from("feedback").insert({
         client_id: getClientId(),
         email: registeredEmail(),
         phone: (localStorage.getItem(REG_PHONE_KEY) || null),
         ease: fbEase, helpful: fbHelpful,
+        recommend: fbRecommend || null,
+        comment,
       });
     }
-    logEvent("feedback_submitted", { ease: fbEase, helpful: fbHelpful });
+    logEvent("feedback_submitted", { ease: fbEase, helpful: fbHelpful, recommend: fbRecommend || null });
   } catch (err) { console.error("Feedback failed:", err); }
   try { localStorage.setItem(FEEDBACK_DONE_KEY, "1"); } catch (e) {}
   document.getElementById("feedbackForm").hidden = true;
