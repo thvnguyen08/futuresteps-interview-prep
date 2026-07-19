@@ -387,9 +387,53 @@
 
     <!-- ═══ SERVICE HEADER (shown when a single service is focused) ═══ -->
     <div class="service-header" id="serviceHeader" hidden>
+      <button class="home-btn" id="natBackBtn" aria-label="Back to quick actions" hidden><i class="fa-solid fa-arrow-left"></i></button>
       <button class="home-btn" id="homeBtn"><i class="fa-solid fa-house"></i> <span data-i18n="home.back">Home</span></button>
       <span class="service-header__title" id="serviceHeaderTitle"></span>
     </div>
+
+    <!-- ═══ NATURALIZATION QUICK ACTIONS (level 2: pick what to practice) ═══ -->
+    <section class="quick-actions" id="quickActions" hidden>
+      <p class="quick-actions__label" data-i18n="qa.title">Quick Actions</p>
+      <div class="qa-grid">
+        <button class="qa-tile" data-action="flash">
+          <i class="fa-solid fa-layer-group"></i>
+          <span data-i18n="qa.flash">128 Civic Questions</span>
+        </button>
+        <button class="qa-tile" data-action="mctest">
+          <i class="fa-solid fa-landmark"></i>
+          <span data-i18n="qa.mctest">Real Civics Test</span>
+        </button>
+        <button class="qa-tile" data-action="spoken">
+          <i class="fa-solid fa-microphone-lines"></i>
+          <span data-i18n="qa.spoken">Spoken Test</span>
+        </button>
+        <button class="qa-tile" data-action="writing">
+          <i class="fa-solid fa-pen"></i>
+          <span data-i18n="qa.writing">Writing Test</span>
+        </button>
+        <button class="qa-tile" data-action="speaking">
+          <i class="fa-solid fa-comment-dots"></i>
+          <span data-i18n="qa.speaking">Speaking Test</span>
+        </button>
+        <button class="qa-tile" data-action="reading">
+          <i class="fa-solid fa-book-open"></i>
+          <span data-i18n="qa.reading">Reading Test</span>
+        </button>
+        <button class="qa-tile" data-action="review">
+          <i class="fa-solid fa-rotate-left"></i>
+          <span><span data-i18n="qa.review">Review Missed</span> <span class="qa-tile__count" id="qaReviewCount" hidden></span></span>
+        </button>
+        <button class="qa-tile qa-tile--green" data-action="green">
+          <i class="fa-solid fa-circle-check"></i>
+          <span data-i18n="qa.green">Green Flags</span>
+        </button>
+        <button class="qa-tile qa-tile--red" data-action="red">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span data-i18n="qa.red">Red Flags</span>
+        </button>
+      </div>
+    </section>
 
     <!-- ═══ CONTENT-TYPE TOGGLE (Practice Questions / Red Flags / Documents) ═══
          Shown for the "open field" categories (marriage/asylum/F-1/B1B2) that
@@ -422,7 +466,7 @@
     <!-- ═══ CIVICS MODE TOGGLE (Study / Simulate) ═══ -->
     <div class="sim-toggle" id="simToggle" hidden>
       <button class="sim-toggle__btn sim-toggle__btn--active" id="practiceModeBtn" data-i18n="sim.practice">
-        <i class="fa-solid fa-book-open"></i> Study All 129 Questions
+        <i class="fa-solid fa-book-open"></i> Study All 128 Questions
       </button>
       <button class="sim-toggle__btn" id="simModeBtn" data-i18n="sim.test">
         <i class="fa-solid fa-stopwatch"></i> Simulate Real Test (20 Random)
@@ -493,6 +537,32 @@
         <div class="quiz__choices" id="quizChoices" hidden>
           <p class="quiz__choices-prompt" data-i18n="mc.prompt">Choose the answer you think is correct:</p>
           <div class="quiz__choices-list" id="quizChoicesList"></div>
+        </div>
+
+        <!-- ═══ CIVICS FLASHCARDS (128 questions: flip / sound / flag) ═══ -->
+        <div class="quiz__flash" id="quizFlash" hidden>
+          <div class="flash-card" id="flashCard">
+            <div class="flash-card__inner">
+              <div class="flash-card__face flash-card__front">
+                <span class="flash-card__side" data-i18n="flash.question">Question</span>
+                <p class="flash-card__text" id="flashQuestionText"></p>
+                <span class="flash-card__hint" data-i18n="flash.hint">Tap to flip</span>
+              </div>
+              <div class="flash-card__face flash-card__back">
+                <span class="flash-card__side" data-i18n="flash.answer">Answer</span>
+                <p class="flash-card__text" id="flashAnswerText"></p>
+                <span class="flash-card__hint" data-i18n="flash.hint">Tap to flip</span>
+              </div>
+            </div>
+          </div>
+          <div class="quiz__flash-controls">
+            <button class="btn btn--outline" id="flashSoundBtn"><i class="fa-solid fa-volume-high"></i> <span data-i18n="flash.sound">Sound</span></button>
+            <button class="btn btn--outline" id="flashFlipBtn"><i class="fa-solid fa-rotate"></i> <span data-i18n="flash.flip">Flip Card</span></button>
+          </div>
+          <div class="quiz__flash-nav">
+            <button class="btn btn--outline" id="flashPrevBtn"><i class="fa-solid fa-chevron-left"></i> <span data-i18n="flash.prev">Previous</span></button>
+            <button class="btn btn--primary" id="flashNextBtn"><span data-i18n="flash.next">Next</span> <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
         </div>
 
         <div class="quiz__answer" id="quizAnswer" hidden>

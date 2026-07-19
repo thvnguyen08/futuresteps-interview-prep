@@ -89,10 +89,27 @@ const translations = {
     "answer.label.eng_writing": "Gợi Ý Viết",
     "progress": "Câu {current} / {total}",
     "flag.ariaLabel": "Đánh dấu để ôn lại",
-    "sim.practice": '<i class="fa-solid fa-book-open"></i> Học Tất Cả 129 Câu',
+    "sim.practice": '<i class="fa-solid fa-book-open"></i> Học Tất Cả 128 Câu',
     "sim.test": '<i class="fa-solid fa-stopwatch"></i> Mô Phỏng Thi Thật (20 Câu)',
     "sim.spoken": '<i class="fa-solid fa-microphone-lines"></i> Thi Nói (Tự Chấm Điểm)',
     "sim.review": "Ôn Câu Sai",
+    "qa.title": "Thao Tác Nhanh",
+    "qa.flash": "128 Câu Dân Sự",
+    "qa.mctest": "Thi Dân Sự Như Thật",
+    "qa.spoken": "Thi Nói Dân Sự",
+    "qa.writing": "Thi Viết",
+    "qa.speaking": "Thi Nói Tiếng Anh",
+    "qa.reading": "Thi Đọc",
+    "qa.review": "Ôn Câu Sai",
+    "qa.green": "Điều Nên Làm",
+    "qa.red": "Điều Cần Tránh",
+    "flash.question": "Câu Hỏi",
+    "flash.answer": "Trả Lời",
+    "flash.hint": "Chạm để lật thẻ",
+    "flash.sound": "Nghe",
+    "flash.flip": "Lật Thẻ",
+    "flash.prev": "Trước",
+    "flash.next": "Tiếp",
     "mock.study": '<i class="fa-solid fa-book-open"></i> Học Câu Hỏi',
     "mock.interview": '<i class="fa-solid fa-microphone-lines"></i> Phỏng Vấn Thử · Ghi Âm & Nghe Lại',
     "mock.hear": "Nghe Câu Hỏi",
@@ -1713,6 +1730,11 @@ let allQuestions = [];
 let currentCategory = "marriage";
 let contentType = "question"; // "question" | "red_flag" | "checklist" — only meaningful for OPEN_FIELD categories
 let spokenMode = false; // civics "Spoken Test" — answer aloud, auto-scored
+// Naturalization quick actions (level 2 menu → level 3 single-action screens).
+// natAction is null while the tile menu is showing.
+let natAction = null;
+let flashMode = false;   // "128 Civic Questions" — flip-card study deck
+let mcTestMode = false;  // "Real Civics Test" — 20 random multiple choice, scored
 let spokenVerdict = null; // true | false | null(=manual) for the current spoken question
 let typedVerdict = null; // true | false | null(=manual) for the current typed (Simulate) question
 let mcState = { qid: null, options: [], answeredIndex: null }; // Study multiple-choice state
@@ -1798,33 +1820,12 @@ function shuffle(array) {
 }
 
 function updateNaturalizationUI() {
-  // The civics/English test flow only applies to the "question" content type.
-  // When a Green Flags / Red Flags tab is active, hide the naturalization
-  // toggles and just show the flag cards.
-  const isNat = currentCategory === "naturalization" && contentType === "question";
-  document.getElementById("natTestTypeToggle").hidden = !isNat;
-  document.getElementById("civicsTestBtn").classList.toggle("sim-toggle__btn--active", natTestType === "civics");
-  document.getElementById("englishTestBtn").classList.toggle("sim-toggle__btn--active", natTestType === "english");
-
-  const showCivicsSub = isNat && natTestType === "civics";
-  document.getElementById("simToggle").hidden = !showCivicsSub;
-  document.getElementById("practiceModeBtn").classList.toggle("sim-toggle__btn--active", !simMode && !reviewMode);
-  document.getElementById("simModeBtn").classList.toggle("sim-toggle__btn--active", simMode && !spokenMode);
-  const spokenBtn = document.getElementById("spokenTestBtn");
-  spokenBtn.hidden = !(showCivicsSub && SPEECH_SUPPORTED);
-  spokenBtn.classList.toggle("sim-toggle__btn--active", simMode && spokenMode);
-  // "Review Missed" appears only when there are missed civics questions to drill.
-  const reviewBtn = document.getElementById("reviewMissedBtn");
-  const missedCount = countMissedCivics();
-  document.getElementById("reviewMissedCount").textContent = missedCount;
-  reviewBtn.hidden = !(showCivicsSub && missedCount > 0);
-  reviewBtn.classList.toggle("sim-toggle__btn--active", reviewMode);
-
-  const showEnglishSub = isNat && natTestType === "english";
-  document.getElementById("englishSectionToggle").hidden = !showEnglishSub;
-  document.getElementById("speakingSectionBtn").classList.toggle("sim-toggle__btn--active", natEnglishSection === "eng_speaking");
-  document.getElementById("readingSectionBtn").classList.toggle("sim-toggle__btn--active", natEnglishSection === "eng_reading");
-  document.getElementById("writingSectionBtn").classList.toggle("sim-toggle__btn--active", natEnglishSection === "eng_writing");
+  // The naturalization quick-action menu replaced the civics/English, sim-mode,
+  // and English-section toggles — each tile jumps straight to one mode, so the
+  // in-quiz toggles stay hidden for naturalization.
+  document.getElementById("natTestTypeToggle").hidden = true;
+  document.getElementById("simToggle").hidden = true;
+  document.getElementById("englishSectionToggle").hidden = true;
 }
 
 function categoryHasContent(category, type) {
@@ -1833,7 +1834,8 @@ function categoryHasContent(category, type) {
 
 function updateContentTypeToggle() {
   const toggle = document.getElementById("contentTypeToggle");
-  const isMain = MAIN_CATEGORIES.includes(currentCategory);
+  // Naturalization's Green/Red Flags are quick-action tiles now, not tabs.
+  const isMain = MAIN_CATEGORIES.includes(currentCategory) && currentCategory !== "naturalization";
   const hasGreenFlags = isMain && categoryHasContent(currentCategory, "green_flag");
   const hasRedFlags = isMain && categoryHasContent(currentCategory, "red_flag");
   const hasChecklist = isMain && categoryHasContent(currentCategory, "checklist");
@@ -1881,6 +1883,8 @@ function showHome() {
   appView = "home";
   currentServiceCategory = null;
   clearInterval(timerInterval);
+  document.getElementById("quickActions").hidden = true;
+  document.getElementById("natBackBtn").hidden = true;
   document.getElementById("intro").hidden = false;
   document.getElementById("homeView").hidden = false;
   document.getElementById("serviceHeader").hidden = true;
@@ -1910,11 +1914,70 @@ function enterService(category) {
   header.hidden = false;
   header.style.setProperty("--svc", `var(--svc-${category})`);
   setServiceHeaderTitle();
-  document.getElementById("quiz").hidden = false;
   contentType = "question";
   logActivity("view", category);
+  // Naturalization gets the quick-action menu (level 2) instead of a round.
+  if (category === "naturalization") { showNatMenu(); return; }
+  document.getElementById("quickActions").hidden = true;
+  document.getElementById("natBackBtn").hidden = true;
+  document.getElementById("quiz").hidden = false;
   if (!allQuestions.length) { document.getElementById("quizLoading").hidden = false; return; }
   startRound(category);
+}
+
+/* ── Naturalization quick actions ──
+   Level 2: a flat tile menu of everything the service offers. Level 3: picking
+   a tile shows only that mode; the back arrow returns to the menu. */
+function showNatMenu() {
+  natAction = null;
+  clearInterval(timerInterval);
+  cleanupMockRecording();
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  simMode = false; spokenMode = false; reviewMode = false; mockMode = false;
+  flashMode = false; mcTestMode = false;
+  natTestType = "civics"; contentType = "question";
+  document.getElementById("quiz").hidden = true;
+  document.getElementById("natBackBtn").hidden = true;
+  SERVICE_TOGGLE_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  // Review Missed tile: show the count, gray out when there's nothing to drill.
+  const count = countMissedCivics();
+  const countEl = document.getElementById("qaReviewCount");
+  countEl.textContent = `(${count})`;
+  countEl.hidden = count === 0;
+  const reviewTile = document.querySelector('.qa-tile[data-action="review"]');
+  if (reviewTile) reviewTile.disabled = count === 0;
+  // Spoken Test needs browser speech recognition.
+  const spokenTile = document.querySelector('.qa-tile[data-action="spoken"]');
+  if (spokenTile) spokenTile.disabled = !SPEECH_SUPPORTED;
+  document.getElementById("quickActions").hidden = false;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function startNatAction(action) {
+  if (!isRegistered()) { openGate(); return; }
+  // Starting a round from a tile counts like any other round start for the
+  // email-capture funnel.
+  if (emailGateBlocks(() => startNatAction(action))) return;
+  if (!allQuestions.length) return;
+  natAction = action;
+  simMode = false; spokenMode = false; reviewMode = false; mockMode = false;
+  flashMode = false; mcTestMode = false;
+  natTestType = "civics"; contentType = "question";
+  switch (action) {
+    case "flash": flashMode = true; break;
+    case "mctest": simMode = true; mcTestMode = true; break;
+    case "spoken": simMode = true; spokenMode = true; break;
+    case "review": reviewMode = true; break;
+    case "speaking": natTestType = "english"; natEnglishSection = "eng_speaking"; break;
+    case "reading": natTestType = "english"; natEnglishSection = "eng_reading"; break;
+    case "writing": natTestType = "english"; natEnglishSection = "eng_writing"; break;
+    case "green": contentType = "green_flag"; break;
+    case "red": contentType = "red_flag"; break;
+  }
+  document.getElementById("quickActions").hidden = true;
+  document.getElementById("natBackBtn").hidden = false;
+  document.getElementById("quiz").hidden = false;
+  startRound("naturalization");
 }
 
 /* Aggregate correct/wrong across all saved quiz rounds for the progress card. */
@@ -2013,7 +2076,10 @@ function startRound(category) {
   clearInterval(timerInterval);
   cleanupMockRecording();
   currentCategory = category;
-  if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
+  if (category !== "naturalization") {
+    simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics";
+    flashMode = false; mcTestMode = false; natAction = null;
+  }
   // Mock interview applies only where mockAvailable() allows it.
   if (!mockAvailable(category)) mockMode = false;
   if (!MAIN_CATEGORIES.includes(category)) contentType = "question";
@@ -2166,6 +2232,7 @@ function renderCurrentQuestion() {
   if (simMode) badge.textContent += currentLang === "vi" ? translations.vi["sim.badgeSuffix"] : SIM_BADGE_SUFFIX_EN;
   if (reviewMode) badge.textContent += currentLang === "vi" ? translations.vi["review.badgeSuffix"] : REVIEW_BADGE_SUFFIX_EN;
   if (mockMode) badge.textContent += currentLang === "vi" ? " · Phỏng Vấn Thử" : " · Mock Interview";
+  if (flashMode) badge.textContent += currentLang === "vi" ? " · Thẻ Ghi Nhớ" : " · Flashcards";
   if (ct !== "question") badge.textContent += currentLang === "vi" ? translations.vi["content.badge." + ct] : CONTENT_BADGE_SUFFIX_EN[ct];
 
   // Mock mode never scores, so skip the "{correct} of {answered}" progress
@@ -2188,7 +2255,7 @@ function renderCurrentQuestion() {
 
   const isWriting = q.category === "eng_writing";
   questionEl.textContent = currentLang === "vi" ? q.question_vi : q.question_en;
-  questionEl.hidden = isWriting;
+  questionEl.hidden = isWriting || flashMode; // flashcards show the question on the card's front face
   writingPromptEl.hidden = !isWriting;
   document.getElementById("quizTtsRow").hidden = !(isWriting && "speechSynthesis" in window);
 
@@ -2217,7 +2284,9 @@ function renderCurrentQuestion() {
   renderActionButtons();
   renderTimer();
   if (mockMode && mockAvailable(currentCategory)) enterMockAsk(q);
+  else if (flashMode) enterFlashCard(q);
   else if (simMode && spokenMode) enterSpokenAsk(q);
+  else if (simMode && mcTestMode) renderChoices(q);
   else if (simMode && !spokenMode) enterTypedAsk(q);
   else if (studyMCActive(q)) renderChoices(q);
 }
@@ -2225,21 +2294,23 @@ function renderCurrentQuestion() {
 function renderActionButtons() {
   const q = quizSet[currentIndex];
   const spoken = simMode && spokenMode;     // Spoken Test — answer aloud
-  const typed = simMode && !spokenMode;      // Simulate — typed answer
-  const mc = studyMCActive(q);               // Study — multiple choice
+  const typed = simMode && !spokenMode && !mcTestMode; // Simulate — typed answer (legacy)
+  const mc = (simMode && mcTestMode) || studyMCActive(q); // multiple choice (test or study)
   const mock = mockMode && mockAvailable(currentCategory); // Mock Interview — record & review
+  const flash = flashMode;                   // Flashcards — flip/sound/nav
   const selfScored = isSelfScored();
   document.getElementById("quizSpoken").hidden = !spoken;
   document.getElementById("quizTyped").hidden = !typed;
   document.getElementById("quizChoices").hidden = !mc;
   document.getElementById("quizMock").hidden = !mock;
-  // spoken/typed/mc/mock handle their own flow; hide the plain reveal button.
-  document.getElementById("revealBtn").hidden = spoken || typed || mc || mock;
+  document.getElementById("quizFlash").hidden = !flash;
+  // spoken/typed/mc/mock/flash handle their own flow; hide the plain reveal button.
+  document.getElementById("revealBtn").hidden = spoken || typed || mc || mock || flash;
   // Next shows for plain reveal; for MC it's toggled on after a choice (renderChoices).
-  document.getElementById("nextBtn").hidden = selfScored || spoken || typed || mc || mock;
+  document.getElementById("nextBtn").hidden = selfScored || spoken || typed || mc || mock || flash;
   // I Knew It / I Missed It only for the remaining self-scored modes (English, Review).
-  document.getElementById("gotItBtn").hidden = !selfScored || spoken || typed || mc || mock;
-  document.getElementById("missedBtn").hidden = !selfScored || spoken || typed || mc || mock;
+  document.getElementById("gotItBtn").hidden = !selfScored || spoken || typed || mc || mock || flash;
+  document.getElementById("missedBtn").hidden = !selfScored || spoken || typed || mc || mock || flash;
 }
 
 // Reset the spoken card to its "ask" phase and read the question aloud.
@@ -2328,7 +2399,7 @@ function escapeHtml(s) {
 // ── Study multiple choice ──────────────────────────────────────────────
 // Shown only in civics Study mode, for questions with a fixed correct answer.
 function studyMCActive(q) {
-  return !simMode && !reviewMode && !spokenMode
+  return !simMode && !reviewMode && !spokenMode && !flashMode
     && currentCategory === "naturalization" && natTestType === "civics"
     && contentType === "question"
     && !!q && q.category === "naturalization" && (q.content_type || "question") === "question"
@@ -2430,7 +2501,49 @@ function renderChoices(q) {
 function selectChoice(idx) {
   if (mcState.answeredIndex !== null) return;
   mcState.answeredIndex = idx;
+  // Real Civics Test: multiple choice is scored toward the 12/20 result and
+  // feeds adaptive review, unlike the unscored study MC.
+  if (simMode && mcTestMode) {
+    stopTimerAndRecord();
+    const correct = !!mcState.options[idx].correct;
+    simScore.total++;
+    if (correct) simScore.correct++;
+    const q = quizSet[currentIndex];
+    if (q && q.category === "naturalization") markMissed(q.id, !correct);
+  }
   renderChoices(quizSet[currentIndex]);
+}
+
+// ── Civics flashcards (128 questions: flip / sound / flag / prev-next) ──
+function enterFlashCard(q) {
+  document.getElementById("flashCard").classList.remove("is-flipped");
+  // Faces mirror the already-rendered (and state-localized) question/answer text.
+  document.getElementById("flashQuestionText").textContent = document.getElementById("quizQuestion").textContent;
+  document.getElementById("flashAnswerText").textContent = document.getElementById("quizAnswerText").textContent;
+  document.getElementById("quizAnswer").hidden = true;
+  document.getElementById("flashPrevBtn").disabled = currentIndex === 0;
+}
+
+function flipFlashCard() {
+  document.getElementById("flashCard").classList.toggle("is-flipped");
+}
+
+// Read the visible face aloud — always in English (the interview language),
+// with the state-localized civics answer where one applies.
+function speakFlashCard() {
+  const q = quizSet[currentIndex];
+  if (!q) return;
+  const flipped = document.getElementById("flashCard").classList.contains("is-flipped");
+  if (!flipped) { speakText(q.question_en); return; }
+  const kind = localizableCivicsKind(q);
+  const localized = kind ? buildLocalizedCivicsAnswer(kind, "en") : null;
+  speakText(localized || q.answer_en);
+}
+
+function flashPrev() {
+  if (currentIndex === 0) return;
+  currentIndex--;
+  renderCurrentQuestion();
 }
 
 // ── Simulate: typed answer (auto-scored) ───────────────────────────────
@@ -2808,6 +2921,19 @@ document.addEventListener("DOMContentLoaded", () => {
   // Home button and logo both return to the service grid.
   document.getElementById("homeBtn").addEventListener("click", showHome);
   document.getElementById("homeLogoLink").addEventListener("click", (e) => { e.preventDefault(); showHome(); });
+
+  // Naturalization quick actions: tiles enter an action, the back arrow
+  // returns to the tile menu.
+  document.querySelectorAll(".qa-tile").forEach(t =>
+    t.addEventListener("click", () => startNatAction(t.dataset.action)));
+  document.getElementById("natBackBtn").addEventListener("click", showNatMenu);
+
+  // Flashcards: tap the card (or the Flip button) to flip it.
+  document.getElementById("flashCard").addEventListener("click", flipFlashCard);
+  document.getElementById("flashFlipBtn").addEventListener("click", flipFlashCard);
+  document.getElementById("flashSoundBtn").addEventListener("click", speakFlashCard);
+  document.getElementById("flashPrevBtn").addEventListener("click", flashPrev);
+  document.getElementById("flashNextBtn").addEventListener("click", nextQuestion);
 
   document.getElementById("questionsTabBtn").addEventListener("click", () => setContentType("question"));
   document.getElementById("greenFlagsTabBtn").addEventListener("click", () => setContentType("green_flag"));
