@@ -59,6 +59,7 @@ const translations = {
     "progress.rounds": "Lượt luyện",
     "progress.reviewed": "Đã ôn",
     "progress.accuracy": "Độ chính xác",
+    "progress.byCategory": "Luyện theo chủ đề",
     "state.loading": "Đang tải câu hỏi…",
     "state.error": "Không thể tải ngân hàng câu hỏi. Hãy đảm bảo URL và khóa Supabase đã được thiết lập trong <code>script.js</code>, và cơ sở dữ liệu đã có dữ liệu.",
     "state.done": "Bạn đã hoàn thành tất cả câu hỏi trong lượt này. Làm tốt lắm!",
@@ -174,7 +175,11 @@ const translations = {
     "account.phoneSaved": "Đã lưu!",
     "account.help": 'Cần hỗ trợ? Liên hệ chúng tôi qua <a href="mailto:futuresteps.dallas@gmail.com">futuresteps.dallas@gmail.com</a>',
     "gate.title": "Bắt đầu luyện tập — miễn phí",
-    "gate.sub": "Trước tiên, bạn sống ở tiểu bang nào? Chúng tôi sẽ hỏi bạn về các quan chức của chính tiểu bang bạn — thống đốc, thượng nghị sĩ và thủ phủ. Không cần tài khoản — chỉ một chạm là bắt đầu.",
+    "gate.sub": "Luyện tập với những câu hỏi thật mà nhân viên thường hỏi — chọn bất kỳ chủ đề nào và bắt đầu chỉ với một chạm. Không cần tài khoản.",
+    "loc.title": "Bạn sống ở tiểu bang nào?",
+    "loc.sub": "Bài thi Quốc tịch (Civics) hỏi về các quan chức của chính tiểu bang bạn — thống đốc, thượng nghị sĩ và thủ phủ. Hãy cho biết tiểu bang để chúng tôi hỏi đúng đáp án.",
+    "loc.start": "Bắt Đầu Luyện Quốc Tịch",
+    "loc.back": "← Quay lại danh mục",
     "gate.contactHint": "Chúng tôi dùng thông tin này để Future Steps hỗ trợ hồ sơ của bạn. Không cần xác minh — bạn bắt đầu luyện tập ngay khi nhấn bên dưới.",
     "gate.locationHint": "Sống ngoài Hoa Kỳ? Hãy chọn Việt Nam hoặc Quốc gia khác — bạn vẫn luyện tập được mọi thứ.",
     "gate.start": "Bắt Đầu Luyện Tập",
@@ -232,6 +237,7 @@ const CATEGORY_LABEL_EN = {
   eng_speaking: "Naturalization — English Test (Speaking)",
   eng_reading: "Naturalization — English Test (Reading)",
   eng_writing: "Naturalization — English Test (Writing)",
+  flagged: "Flagged",
 };
 
 const ANSWER_LABEL_EN = {
@@ -617,9 +623,12 @@ function registeredEmail() {
 }
 
 function loadLocalProgress() {
-  const empty = { correct: 0, total: 0, rounds: 0, reviewed: 0 };
-  try { return Object.assign(empty, JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}); }
-  catch (e) { return empty; }
+  const empty = { correct: 0, total: 0, rounds: 0, reviewed: 0, cats: {} };
+  try {
+    const p = Object.assign(empty, JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {});
+    if (!p.cats || typeof p.cats !== "object") p.cats = {};   // tolerate pre-cats saves
+    return p;
+  } catch (e) { return empty; }
 }
 
 // Scored rounds only: add correct/total, which drive the accuracy stat. The
@@ -631,12 +640,58 @@ function addLocalProgress(correct, total) {
 }
 
 // Every completed round counts toward the home Progress card — scored tests and
-// plain flashcard practice alike: one round, plus the questions it contained.
-function recordRoundProgress(reviewed) {
+// plain flashcard practice alike: one round, plus the questions it contained,
+// tallied both overall and per category (for the category chips).
+function recordRoundProgress(category, reviewed) {
   const p = loadLocalProgress();
+  const n = reviewed || 0;
   p.rounds += 1;
-  p.reviewed += (reviewed || 0);
+  p.reviewed += n;
+  if (category) {
+    const c = p.cats[category] || { rounds: 0, reviewed: 0 };
+    c.rounds += 1;
+    c.reviewed += n;
+    p.cats[category] = c;
+  }
   try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch (e) {}
+}
+
+// Pull this device's cross-device practice totals (rounds / reviewed / accuracy /
+// per-category) from the backend and adopt them when they're ahead of what's on
+// this device — e.g. right after "Continue with your email" restores a user on a
+// new phone. Keyed by client_id, which restore makes the same across devices.
+async function syncProgressAcrossDevices() {
+  if (!supabaseClient || !isRegistered()) return;
+  try {
+    const { data, error } = await supabaseClient.rpc("get_my_summary", { p_client_id: getClientId() });
+    if (error) throw error;
+    const s = (data && data[0]) || null;
+    if (!s) return;
+    // Deploy-order safe: the by_category field only exists once the SQL migration
+    // (add_crossdevice_progress.sql) has run. Until then, don't touch local totals.
+    if (typeof s.by_category === "undefined") { renderProgress(); return; }
+    const serverRounds = Number(s.practice_rounds || 0);
+    const local = loadLocalProgress();
+    // Only adopt when the server is ahead, so we never clobber fresher local work.
+    if (serverRounds > (local.rounds || 0)) {
+      local.rounds = serverRounds;
+      local.reviewed = Number(s.questions_reviewed || 0);
+      local.total = Number(s.questions_done || 0);
+      local.correct = Number(s.questions_right || 0);
+      const byCat = s.by_category || {};
+      local.cats = {};
+      Object.keys(byCat).forEach(k => {
+        local.cats[k] = {
+          rounds: Number((byCat[k] && byCat[k].rounds) || 0),
+          reviewed: Number((byCat[k] && byCat[k].reviewed) || 0),
+        };
+      });
+      try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(local)); } catch (e) {}
+    }
+    renderProgress();
+  } catch (err) {
+    console.error("Cross-device progress sync failed:", err);
+  }
 }
 
 /* Log a practice/view event to the backend, keyed to the device + lead.
@@ -653,6 +708,7 @@ async function logActivity(activityType, category, data = {}) {
       content_type: data.content_type || null,
       correct: (data.correct ?? null),
       total: (data.total ?? null),
+      reviewed: (data.reviewed ?? null), // questions seen this round (cross-device counts)
     });
   } catch (err) {
     console.error("Failed to log practice activity:", err);
@@ -666,11 +722,12 @@ async function logActivity(activityType, category, data = {}) {
       : { category: category || null, content_type: data.content_type || null });
 }
 
-function populateGateLocation() {
-  const sel = document.getElementById("gateLocation");
+// Fill a location <select> (US states + Vietnam + Other). Used by the
+// Naturalization-only location gate. value = canonical English label (CRM-stored).
+function populateLocationSelect(id) {
+  const sel = document.getElementById(id);
   if (!sel) return;
   const selected = sel.value;
-  // value = canonical English label (stored in the CRM); US states + Vietnam + Other.
   sel.innerHTML =
     `<option value="" disabled selected>${gateText("gate.ph.location")}</option>` +
     STATES.map(s => `<option value="${s.name}">${s.name}</option>`).join("") +
@@ -678,6 +735,7 @@ function populateGateLocation() {
     `<option value="Other country">${gateText("gate.loc.other")}</option>`;
   sel.value = selected;
 }
+function populateGateLocation() { populateLocationSelect("natLocation"); }
 
 function renderGateLang() {
   const g = document.getElementById("regGate");
@@ -740,6 +798,45 @@ function enterAppAfterGate() {
   showHome();
 }
 
+// ── Location gate (Naturalization only) ──
+// Naturalization is the one category whose civics answers are state-specific, so
+// we ask for the state the first time it's opened. Other categories skip this.
+function hasLocation() {
+  return !!lsGet(REG_LOCATION_KEY);
+}
+function openLocationGate() {
+  const err = document.getElementById("locationError");
+  if (err) err.hidden = true;
+  populateLocationSelect("natLocation");
+  document.getElementById("locationGate").hidden = false;
+  document.body.classList.add("gate-open");
+}
+function closeLocationGate() {
+  document.getElementById("locationGate").hidden = true;
+  document.body.classList.remove("gate-open");
+}
+function submitNatLocation(e) {
+  if (e) e.preventDefault();
+  const err = document.getElementById("locationError");
+  const location = document.getElementById("natLocation").value;
+  if (err) err.hidden = true;
+  if (!location) {
+    if (err) { err.textContent = gateText("gate.err.location"); err.hidden = false; }
+    return;
+  }
+  try {
+    localStorage.setItem(REG_LOCATION_KEY, location);
+    // A US state also sets the civics-localization state code right away.
+    const code = STATE_NAME_TO_CODE[location];
+    if (code) localStorage.setItem(PROFILE_STATE_KEY, code);
+  } catch (e2) {}
+  identifyPerson({ location });
+  logEvent("location_set", { location });
+  renderAccountUI();
+  closeLocationGate();
+  enterService("naturalization");   // now that we have a state, go in
+}
+
 // Front door: location only. It's the one thing the app genuinely needs up
 // front (to serve state-specific civics answers), so it reads as practice setup,
 // not a contact form. Name/email/phone are captured later, after the user has
@@ -748,20 +845,16 @@ function enterAppAfterGate() {
 // email, keeping the `leads` table = real, warm leads for the morning emails.
 async function submitRegistration(e) {
   if (e) e.preventDefault();
-  const errEl = document.getElementById("gateError");
   const btn = document.getElementById("gateSubmit");
-  const location = document.getElementById("gateLocation").value;
-
-  errEl.hidden = true;
-  if (!location) { errEl.textContent = gateText("gate.err.location"); errEl.hidden = false; return; }
-
+  // The front door no longer asks for location — most categories don't need it.
+  // (Naturalization asks for the state only when it's actually chosen.) So this
+  // is just a one-tap "start": mark the device registered and drop them in.
   btn.disabled = true;
-  try { localStorage.setItem(REG_LOCATION_KEY, location); } catch (e2) {}
-  // Anonymous person row: location + device id now; email/name attach later.
-  identifyPerson({ location });
-  logEvent("setup_complete", { location });
+  identifyPerson({});                 // anonymous person row (device id only)
+  logEvent("setup_complete", {});
   markRegistered();
-  pushAllProgressUp();   // back up any progress already on this device
+  pushAllProgressUp();                // back up any progress already on this device
+  syncProgressAcrossDevices();        // pull cross-device rounds/counts if any
   btn.disabled = false;
   enterAppAfterGate();
 }
@@ -980,9 +1073,20 @@ function bumpRoundCount() {
    card; everyone else sees the usual feedback card. Feedback is never fully
    hidden though — in the pre-email phase we still expose the small "Rate the
    app" link so a user can leave feedback whenever they want. */
-function onRoundComplete() {
+function onRoundComplete(scored = {}) {
   bumpRoundCount();
-  recordRoundProgress(quizSet.length);   // count this round for the Progress card
+  const reviewed = quizSet.length;
+  recordRoundProgress(currentCategory, reviewed);   // count this round locally
+  // Log EVERY round to the backend (not just scored tests) so rounds + review
+  // counts follow the user across devices via get_my_summary(). `correct`/`total`
+  // stay null for un-scored practice so they don't dilute the accuracy stat.
+  logActivity("practice", currentCategory, {
+    reviewed,
+    mode: scored.mode || (simMode ? "simulate" : reviewMode ? "review" : mockMode ? "mock" : "practice"),
+    content_type: scored.content_type || contentType,
+    correct: (scored.correct ?? null),
+    total: (scored.total ?? null),
+  });
   if (!hasEmailLead()) {
     document.getElementById("feedbackCard").hidden = true;
     maybeShowEmailCapture();
@@ -1331,7 +1435,8 @@ function initAuth() {
         .then(loadFlaggedIdsFromAccount)
         .then(mergeLocalMissedToAccount)
         .then(loadMissedIdsFromAccount)
-        .then(loadRecentResults);
+        .then(loadRecentResults)
+        .then(syncProgressAcrossDevices);
     }
   });
 }
@@ -1527,6 +1632,8 @@ async function pullProgressForContact(contact) {
     localOnlyMissed.forEach(id => syncMissedUp(id, true));
     if (quizSet.length && currentIndex < quizSet.length) renderFlagButton();
     if (currentCategory === "naturalization") updateNaturalizationUI();
+    // Bring the rounds / review counts over to this device too.
+    await syncProgressAcrossDevices();
   } catch (err) {
     console.error("Failed to restore progress:", err);
   }
@@ -1534,10 +1641,9 @@ async function pullProgressForContact(contact) {
 
 async function recordQuizResult(category, mode, correct, total) {
   // Save progress for EVERY registered user — on the device (works instantly
-  // and offline) and in the backend activity log (keyed to their lead). This
-  // no longer requires the magic-link login.
+  // and offline). The backend practice_activity log is written once per round in
+  // onRoundComplete() (which runs right after this), so we don't log it here.
   addLocalProgress(correct, total);
-  logActivity("practice", category, { mode, correct, total });
 
   // Signed-in users also get the cross-device quiz_results history.
   if (!currentUser || !supabaseClient) return;
@@ -1773,6 +1879,8 @@ function showHome() {
 
 function enterService(category) {
   if (!isRegistered()) { openGate(); return; }
+  // Naturalization needs the user's state for its civics answers — ask once.
+  if (category === "naturalization" && !hasLocation()) { openLocationGate(); return; }
   if (emailGateBlocks(() => enterService(category))) return;
   appView = "service";
   { const ih = document.getElementById("installHint"); if (ih) ih.hidden = true; }
@@ -1799,15 +1907,18 @@ function renderProgress() {
   // Signed-in users: use their cross-device backend history. Everyone else who
   // has registered: use the on-device progress log (no login needed).
   let correct, total, rounds, reviewed;
+  const catCounts = {};                     // category → rounds practiced
   if (currentUser && (lastResultsCache || []).length) {
     const rows = lastResultsCache;
     correct = rows.reduce((s, r) => s + (r.correct || 0), 0);
     total = rows.reduce((s, r) => s + (r.total || 0), 0);
     rounds = rows.length;
     reviewed = total;                       // signed-in history is all scored tests
+    rows.forEach(r => { if (r.category) catCounts[r.category] = (catCounts[r.category] || 0) + 1; });
   } else {
     const p = loadLocalProgress();
     correct = p.correct; total = p.total; rounds = p.rounds; reviewed = p.reviewed;
+    Object.keys(p.cats).forEach(k => { catCounts[k] = p.cats[k].rounds || 0; });
   }
   const show = isRegistered() && appView === "home" && rounds > 0;
   card.hidden = !show;
@@ -1820,6 +1931,15 @@ function renderProgress() {
   document.getElementById("statAccuracy").textContent = pct === null ? "—" : pct + "%";
   const tmpl = currentLang === "vi" ? translations.vi["progress.sub"] : PROGRESS_SUB_EN;
   document.getElementById("progressSub").textContent = tmpl.replace("{rounds}", rounds);
+  // Category chips — which services they've practiced, most-practiced first.
+  const catsEl = document.getElementById("progressCats");
+  const catsWrap = document.getElementById("progressCatsWrap");
+  if (catsEl) {
+    const entries = Object.entries(catCounts).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+    catsEl.innerHTML = entries.map(([cat, n]) =>
+      `<span class="progress-cat">${catLabelFor(cat)}<b>${n}</b></span>`).join("");
+    if (catsWrap) catsWrap.hidden = entries.length === 0;
+  }
 }
 
 function setContentType(type) {
@@ -2532,19 +2652,19 @@ function nextQuestion() {
   currentIndex++;
   if (currentIndex >= quizSet.length) {
     if (mockMode && MOCK_CATEGORIES.includes(currentCategory)) {
-      logActivity("practice", currentCategory, { mode: "mock", content_type: "question", correct: 0, total: 0 });
       cleanupMockRecording();
       renderMockDone();
       document.getElementById("quizCard").hidden = true;
       document.getElementById("quizDone").hidden = false;
-      onRoundComplete();
+      onRoundComplete({ mode: "mock", content_type: "question" });
       return;
     }
     let kind = "finished";
     if (simMode) kind = "simResult";
     else if (reviewMode) kind = "reviewDone";
     else if (isSelfScored()) kind = "englishResult";
-    if (kind === "simResult" || kind === "englishResult") {
+    const isScored = (kind === "simResult" || kind === "englishResult");
+    if (isScored) {
       recordQuizResult(
         simMode ? "naturalization" : natEnglishSection,
         simMode ? "simulate" : "english",
@@ -2555,7 +2675,9 @@ function nextQuestion() {
     renderDoneState(kind);
     document.getElementById("quizCard").hidden = true;
     document.getElementById("quizDone").hidden = false;
-    onRoundComplete();
+    onRoundComplete(isScored
+      ? { mode: simMode ? "simulate" : "english", correct: simScore.correct, total: simScore.total }
+      : {});
   } else {
     renderCurrentQuestion();
   }
@@ -2614,6 +2736,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Registration gate wiring ──
   document.getElementById("gateForm").addEventListener("submit", submitRegistration);
+  // Naturalization-only location gate.
+  document.getElementById("locationForm").addEventListener("submit", submitNatLocation);
+  document.getElementById("locationCancel").addEventListener("click", (e) => {
+    e.preventDefault();
+    closeLocationGate();   // back out to the home categories (already behind the modal)
+  });
   document.getElementById("gateLangToggle").addEventListener("click", () => {
     switchLanguage(currentLang === "en" ? "vi" : "en");
   });
@@ -2755,13 +2883,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   populateStateSelect();
   renderGateLang();
-  // Gate on load — registration is required before practicing (unless already
-  // registered on this device or logged in, which initAuth also handles).
+  // Slim welcome on load — one tap to start (unless already registered on this
+  // device or logged in, which initAuth also handles). Location is asked later,
+  // only when Naturalization is opened.
   showGateIfNeeded();
   loadStateOfficials();
   renderAccountUI();
   initAuth();
   loadQuestions();
+  syncProgressAcrossDevices();   // adopt cross-device rounds/counts for returning devices
   logFirstTouchIfNeeded();
   logEvent("page_view");
   maybeShowInstallHint();   // iOS Safari (no beforeinstallprompt) + returning users

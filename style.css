@@ -574,6 +574,30 @@ body {
   color: rgba(255,255,255,.85);
 }
 
+/* Per-category breakdown chips (which services the user has practiced) */
+.progress-cats-wrap { margin-top: 18px; }
+.progress-cats__label {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  color: rgba(255,255,255,.7); margin-bottom: 9px;
+}
+.progress-cats { display: flex; flex-wrap: wrap; gap: 8px; }
+.progress-cat {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  font-size: .82rem; font-weight: 600;
+  color: #fff;
+}
+.progress-cat b {
+  display: inline-grid; place-items: center;
+  min-width: 20px; height: 20px; padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  color: var(--clr-primary-dk);
+  font-size: .74rem; font-weight: 800;
+}
+
 /* ── Service header (focused-service view) ── */
 .service-header {
   display: flex;

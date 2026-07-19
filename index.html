@@ -136,14 +136,12 @@
       </div>
 
       <h2 class="gate__title" id="gateMainTitle" data-i18n="gate.title">Start practicing — it's free</h2>
-      <p class="gate__sub" id="gateMainSub" data-i18n="gate.sub">First, which state do you live in? We'll quiz you on your own state's officials — governor, senators, and capital. No account needed — start in one tap.</p>
+      <p class="gate__sub" id="gateMainSub" data-i18n="gate.sub">Practice the real questions officers ask — pick any category and start in one tap. No account needed.</p>
 
       <form id="gateForm" novalidate>
         <input type="text" class="gate__input" id="gateName" autocomplete="name" hidden>
         <input type="tel" class="gate__input" id="gatePhone" autocomplete="tel" hidden>
         <input type="email" class="gate__input" id="gateEmail" autocomplete="email" hidden>
-        <select class="gate__input" id="gateLocation" required></select>
-        <p class="gate__hint" data-i18n="gate.locationHint">Live outside the U.S.? Choose Vietnam or Other country — you can still practice everything.</p>
         <p class="gate__error" id="gateError" hidden></p>
         <button type="submit" class="btn btn--primary gate__submit" id="gateSubmit" data-i18n="gate.start">Start Practicing</button>
       </form>
@@ -180,6 +178,39 @@
       </div>
 
       <p class="gate__legal" data-i18n="gate.legal">This is practice material only, not legal advice. Your details are shared only with Future Steps Services.</p>
+    </div>
+  </div>
+
+  <!-- ═══ LOCATION GATE (only for Naturalization — needs the state for civics) ═══ -->
+  <div class="gate" id="locationGate" hidden>
+    <div class="gate__card">
+      <div class="gate__head">
+        <span class="gate__logo">
+          <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="FutureSteps">
+            <rect width="48" height="48" rx="13" fill="url(#locGateLogoGrad)"/>
+            <circle cx="24" cy="26" r="12.5" stroke="#fff" stroke-width="2.4" fill="none" opacity=".55"/>
+            <path d="M24 26 L17.5 33.5" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+            <path d="M24 26 L35 12" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M35 12 L28.7 13 M35 12 L34 18.3" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="26" r="2.4" fill="#fff"/>
+            <defs><linearGradient id="locGateLogoGrad" x1="4" y1="4" x2="44" y2="44"><stop stop-color="#2bb673"/><stop offset="1" stop-color="#156943"/></linearGradient></defs>
+          </svg>
+          <span class="gate__logo-text">Future<strong>Steps</strong></span>
+        </span>
+      </div>
+
+      <h2 class="gate__title" data-i18n="loc.title">Which state do you live in?</h2>
+      <p class="gate__sub" data-i18n="loc.sub">The Civics Test asks about your own state's officials — governor, senators, and capital. Tell us your state so we quiz you on the right answers.</p>
+
+      <form id="locationForm" novalidate>
+        <select class="gate__input" id="natLocation" required></select>
+        <p class="gate__hint" data-i18n="gate.locationHint">Live outside the U.S.? Choose Vietnam or Other country — you can still practice everything.</p>
+        <p class="gate__error" id="locationError" hidden></p>
+        <button type="submit" class="btn btn--primary gate__submit" id="locationSubmit" data-i18n="loc.start">Start Practicing Naturalization</button>
+      </form>
+      <p class="gate__login-prompt">
+        <a href="#" id="locationCancel" data-i18n="loc.back">← Back to categories</a>
+      </p>
     </div>
   </div>
 
@@ -316,6 +347,10 @@
             <span class="progress-stat__num progress-stat__num--accuracy" id="statAccuracy">—</span>
             <span class="progress-stat__label" data-i18n="progress.accuracy">Accuracy</span>
           </div>
+        </div>
+        <div class="progress-cats-wrap" id="progressCatsWrap" hidden>
+          <p class="progress-cats__label" id="progressCatsLabel" data-i18n="progress.byCategory">Practice by category</p>
+          <div class="progress-cats" id="progressCats"></div>
         </div>
       </section>
 
