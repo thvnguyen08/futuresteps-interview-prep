@@ -1124,7 +1124,20 @@ body {
   .topbar__logo-text { font-size: 1rem; }
   .topbar__actions { gap: 6px; }
   .lang-toggle, .account-btn { padding: 7px 11px; font-size: .8rem; gap: 6px; }
-  .account-panel { width: min(300px, calc(100vw - 24px)); padding: 16px; }
+  /* Center the profile panel under the header instead of anchoring it to the
+     account button (which isn't the rightmost control, so `right:0` shoved it
+     far to the left off-center). Fixed + translateX centers it in the viewport. */
+  .account-panel {
+    position: fixed;
+    top: 60px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(340px, calc(100vw - 24px));
+    padding: 16px;
+    max-height: calc(100vh - 76px);
+    overflow-y: auto;
+  }
 
   /* Content */
   .intro { margin-bottom: 24px; }

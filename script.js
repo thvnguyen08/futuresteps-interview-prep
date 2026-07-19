@@ -1005,6 +1005,9 @@ function openFeedback() {
       : "Anything you'd like us to know…";
   }
   document.getElementById("feedbackSend").disabled = true;
+  // Make sure it's actually visible — the card sits above the email-capture card,
+  // so on a phone it can open off-screen unless we bring it into view.
+  requestAnimationFrame(() => card.scrollIntoView({ behavior: "smooth", block: "center" }));
 }
 
 // ease + helpful are required (they gate Send); recommend is optional.
@@ -1154,10 +1157,15 @@ async function submitEmailCapture() {
   await captureEmailLead(email, name);
   btn.disabled = false;
   document.getElementById("emailCaptureForm").hidden = true;
-  document.getElementById("captureThanks").hidden = false;
-  // They just gave us their email — surface the feedback card right away so
-  // they don't have to hunt for the "Rate the app" link (unless already rated).
-  if (!hasGivenFeedback()) openFeedback();
+  // They just gave us their email — surface the rating card right away so they
+  // don't have to hunt for the "Rate the app" link. Swap the email card out for
+  // it (and scroll it into view) so the prompt is unmissable on a phone.
+  if (!hasGivenFeedback()) {
+    document.getElementById("emailCapture").hidden = true;
+    openFeedback();
+  } else {
+    document.getElementById("captureThanks").hidden = false;
+  }
 }
 
 function skipEmailCapture() {
