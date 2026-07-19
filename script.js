@@ -2434,13 +2434,20 @@ function isNumericAnswer(text) {
 
 // True when the correct answer is a specific person's name, so the distractors
 // should also be people's names rather than concepts or numbers. The official
-// civics answers that are a bare name all come from these question stems.
+// civics answers that are a bare name all come from these question stems —
+// including the current-officials questions (President / Vice President /
+// Speaker / Chief Justice "now"), whose answers hold real names since the
+// update_current_officials.sql migration.
 function isPersonAnswer(q) {
   const s = (q.question_en || "").toLowerCase();
   return /\bwho wrote\b/.test(s)
     || /\bwho was president\b/.test(s)
     || /name one of the writers/.test(s)
-    || /name one leader of the women/.test(s);
+    || /name one leader of the women/.test(s)
+    || /name of the president of the united states now/.test(s)
+    || /name of the vice president of the united states now/.test(s)
+    || /speaker of the house of representatives now/.test(s)
+    || /chief justice of the united states now/.test(s);
 }
 
 // Coarse answer type used to keep multiple-choice distractors the same kind as
