@@ -56,6 +56,8 @@ const translations = {
     "progress.sub": "Qua {rounds} lượt luyện tập",
     "progress.correct": "Đúng",
     "progress.wrong": "Sai",
+    "progress.rounds": "Lượt luyện",
+    "progress.reviewed": "Đã ôn",
     "progress.accuracy": "Độ chính xác",
     "state.loading": "Đang tải câu hỏi…",
     "state.error": "Không thể tải ngân hàng câu hỏi. Hãy đảm bảo URL và khóa Supabase đã được thiết lập trong <code>script.js</code>, và cơ sở dữ liệu đã có dữ liệu.",
@@ -615,13 +617,25 @@ function registeredEmail() {
 }
 
 function loadLocalProgress() {
-  try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)) || { correct: 0, total: 0, rounds: 0 }; }
-  catch (e) { return { correct: 0, total: 0, rounds: 0 }; }
+  const empty = { correct: 0, total: 0, rounds: 0, reviewed: 0 };
+  try { return Object.assign(empty, JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {}); }
+  catch (e) { return empty; }
 }
 
+// Scored rounds only: add correct/total, which drive the accuracy stat. The
+// round + reviewed counts are recorded for EVERY round in recordRoundProgress().
 function addLocalProgress(correct, total) {
   const p = loadLocalProgress();
-  p.correct += correct; p.total += total; p.rounds += 1;
+  p.correct += correct; p.total += total;
+  try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch (e) {}
+}
+
+// Every completed round counts toward the home Progress card — scored tests and
+// plain flashcard practice alike: one round, plus the questions it contained.
+function recordRoundProgress(reviewed) {
+  const p = loadLocalProgress();
+  p.rounds += 1;
+  p.reviewed += (reviewed || 0);
   try { localStorage.setItem(PROGRESS_KEY, JSON.stringify(p)); } catch (e) {}
 }
 
@@ -968,6 +982,7 @@ function bumpRoundCount() {
    app" link so a user can leave feedback whenever they want. */
 function onRoundComplete() {
   bumpRoundCount();
+  recordRoundProgress(quizSet.length);   // count this round for the Progress card
   if (!hasEmailLead()) {
     document.getElementById("feedbackCard").hidden = true;
     maybeShowEmailCapture();
@@ -1002,6 +1017,9 @@ async function captureEmailLead(email, name) {
   identifyPerson({ name: name || null, email, phone, location });
   logEvent("email_captured");
   pushAllProgressUp();
+  // Cross-device: pull any flagged/missed questions this person saved on another
+  // device, so "we'll save where you left off" is actually true.
+  await pullProgressForContact(email);
   renderAccountUI();
   renderHomeGreeting();
 }
@@ -1780,24 +1798,26 @@ function renderProgress() {
   if (!card) return;
   // Signed-in users: use their cross-device backend history. Everyone else who
   // has registered: use the on-device progress log (no login needed).
-  let correct, total, rounds;
+  let correct, total, rounds, reviewed;
   if (currentUser && (lastResultsCache || []).length) {
     const rows = lastResultsCache;
     correct = rows.reduce((s, r) => s + (r.correct || 0), 0);
     total = rows.reduce((s, r) => s + (r.total || 0), 0);
     rounds = rows.length;
+    reviewed = total;                       // signed-in history is all scored tests
   } else {
     const p = loadLocalProgress();
-    correct = p.correct; total = p.total; rounds = p.rounds;
+    correct = p.correct; total = p.total; rounds = p.rounds; reviewed = p.reviewed;
   }
   const show = isRegistered() && appView === "home" && rounds > 0;
   card.hidden = !show;
   if (!show) return;
-  const wrong = Math.max(0, total - correct);
-  const pct = total ? Math.round((correct / total) * 100) : 0;
-  document.getElementById("statCorrect").textContent = correct;
-  document.getElementById("statWrong").textContent = wrong;
-  document.getElementById("statAccuracy").textContent = pct + "%";
+  // Rounds + questions reviewed apply to all practice; accuracy only exists once
+  // there's a scored test (civics Test mode / English test) to average.
+  const pct = total ? Math.round((correct / total) * 100) : null;
+  document.getElementById("statRounds").textContent = rounds;
+  document.getElementById("statReviewed").textContent = reviewed;
+  document.getElementById("statAccuracy").textContent = pct === null ? "—" : pct + "%";
   const tmpl = currentLang === "vi" ? translations.vi["progress.sub"] : PROGRESS_SUB_EN;
   document.getElementById("progressSub").textContent = tmpl.replace("{rounds}", rounds);
 }

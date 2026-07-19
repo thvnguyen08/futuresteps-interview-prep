@@ -566,6 +566,8 @@ body {
 .progress-stat__num { display: block; font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
 .progress-stat__num--correct  { color: #d1fae5; }
 .progress-stat__num--wrong    { color: #fecaca; }
+.progress-stat__num--rounds   { color: #d1fae5; }
+.progress-stat__num--reviewed { color: #d1fae5; }
 .progress-stat__num--accuracy { color: #fff; }
 .progress-stat__label {
   font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
