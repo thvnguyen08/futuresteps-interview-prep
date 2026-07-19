@@ -1732,9 +1732,17 @@ let mockMode = false;
 let mockRecorder = null, mockStream = null, mockChunks = [], mockBlobUrl = null;
 let mockTimerInt = null, mockStartTs = 0, mockRatings = [];
 const MOCK_MIN_Q = 5, MOCK_MAX_Q = 7, MOCK_MAX_SECONDS = 120;
-// Categories with open-ended answers that use record-and-review (everything
-// except naturalization, which has civics auto-scoring).
+// Categories whose whole question set is open-ended record-and-review.
+// Naturalization joins via mockAvailable(): only its English → Speaking
+// section (N-400-style personal questions) — civics keeps auto-scoring.
 const MOCK_CATEGORIES = ["marriage", "asylum", "f1", "b1b2"];
+
+// True when the current selection supports the Mock Interview flow.
+function mockAvailable(category) {
+  if (contentType !== "question") return false;
+  if (MOCK_CATEGORIES.includes(category)) return true;
+  return category === "naturalization" && natTestType === "english" && natEnglishSection === "eng_speaking";
+}
 let timerInterval = null;
 let questionStartTime = 0;
 let currentUser = null;
@@ -1839,11 +1847,12 @@ function updateContentTypeToggle() {
   document.getElementById("documentsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "checklist");
 }
 
-// The Mock Interview toggle shows for open-ended categories, plain question set only.
+// The Mock Interview toggle shows wherever mockAvailable() says the current
+// selection has open-ended questions to record (incl. nat English → Speaking).
 function updateMockToggle() {
   const toggle = document.getElementById("mockToggle");
   if (!toggle) return;
-  const show = MOCK_CATEGORIES.includes(currentCategory) && contentType === "question";
+  const show = mockAvailable(currentCategory);
   toggle.hidden = !show;
   if (show) {
     document.getElementById("mockStudyBtn").classList.toggle("sim-toggle__btn--active", !mockMode);
@@ -2005,8 +2014,8 @@ function startRound(category) {
   cleanupMockRecording();
   currentCategory = category;
   if (category !== "naturalization") { simMode = false; spokenMode = false; reviewMode = false; natTestType = "civics"; }
-  // Mock interview applies to the open-ended categories, plain question set only.
-  if (!MOCK_CATEGORIES.includes(category) || contentType !== "question") mockMode = false;
+  // Mock interview applies only where mockAvailable() allows it.
+  if (!mockAvailable(category)) mockMode = false;
   if (!MAIN_CATEGORIES.includes(category)) contentType = "question";
   updateNaturalizationUI();
   updateContentTypeToggle();
@@ -2027,7 +2036,7 @@ function startRound(category) {
 
   quizSet = shuffle(pool);
   if (category === "naturalization" && natTestType === "civics" && simMode) quizSet = quizSet.slice(0, SIM_QUESTION_COUNT);
-  if (mockMode && MOCK_CATEGORIES.includes(category)) {
+  if (mockMode && mockAvailable(category)) {
     const n = MOCK_MIN_Q + Math.floor(Math.random() * (MOCK_MAX_Q - MOCK_MIN_Q + 1));
     quizSet = quizSet.slice(0, n);
     mockRatings = [];
@@ -2159,7 +2168,9 @@ function renderCurrentQuestion() {
   if (mockMode) badge.textContent += currentLang === "vi" ? " · Phỏng Vấn Thử" : " · Mock Interview";
   if (ct !== "question") badge.textContent += currentLang === "vi" ? translations.vi["content.badge." + ct] : CONTENT_BADGE_SUFFIX_EN[ct];
 
-  if (isSelfScored()) {
+  // Mock mode never scores, so skip the "{correct} of {answered}" progress
+  // even where the underlying section (nat English) is normally self-scored.
+  if (isSelfScored() && !mockMode) {
     const template = currentLang === "vi" ? translations.vi["sim.progress"] : SIM_PROGRESS_EN;
     progress.textContent = template
       .replace("{current}", currentIndex + 1)
@@ -2205,7 +2216,7 @@ function renderCurrentQuestion() {
   renderFlagButton();
   renderActionButtons();
   renderTimer();
-  if (mockMode && MOCK_CATEGORIES.includes(currentCategory)) enterMockAsk(q);
+  if (mockMode && mockAvailable(currentCategory)) enterMockAsk(q);
   else if (simMode && spokenMode) enterSpokenAsk(q);
   else if (simMode && !spokenMode) enterTypedAsk(q);
   else if (studyMCActive(q)) renderChoices(q);
@@ -2216,7 +2227,7 @@ function renderActionButtons() {
   const spoken = simMode && spokenMode;     // Spoken Test — answer aloud
   const typed = simMode && !spokenMode;      // Simulate — typed answer
   const mc = studyMCActive(q);               // Study — multiple choice
-  const mock = mockMode && MOCK_CATEGORIES.includes(currentCategory); // Mock Interview — record & review
+  const mock = mockMode && mockAvailable(currentCategory); // Mock Interview — record & review
   const selfScored = isSelfScored();
   document.getElementById("quizSpoken").hidden = !spoken;
   document.getElementById("quizTyped").hidden = !typed;
@@ -2659,7 +2670,7 @@ function nextQuestion() {
   if (!isRegistered()) { openGate(); return; }
   currentIndex++;
   if (currentIndex >= quizSet.length) {
-    if (mockMode && MOCK_CATEGORIES.includes(currentCategory)) {
+    if (mockMode && mockAvailable(currentCategory)) {
       cleanupMockRecording();
       renderMockDone();
       document.getElementById("quizCard").hidden = true;
