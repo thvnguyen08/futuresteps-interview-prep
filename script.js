@@ -119,6 +119,10 @@ const translations = {
     "flash.next": "Tiếp",
     "news.label": "Tin Tức Di Trú Mới Nhất",
     "news.note": "Chạm vào tin để đọc thêm · cập nhật hàng tuần",
+    "news.breaking": "Tin Nóng",
+    "news.faqTitle": "Câu hỏi bạn có thể được hỏi về việc này",
+    "news.faqNote": "Chỉ là tài liệu luyện tập — không phải tư vấn pháp lý. Hãy hỏi Future Steps về trường hợp của bạn.",
+    "news.practiceHint": "câu hỏi luyện tập",
     "cd.prompt": "Buổi phỏng vấn của bạn là ngày nào?",
     "cd.save": "Lưu",
     "cd.skip": "Chưa có lịch — nhắc tôi sau",
@@ -827,6 +831,7 @@ function enterAppAfterGate() {
   closeGate();
   renderAccountUI();   // show their name at the profile icon right away
   showHome();
+  maybeShowNewsPopup();   // surface any unseen big news now that they're in
 }
 
 // ── Location gate (Naturalization only) ──
@@ -1013,35 +1018,129 @@ async function loadNews() {
     if (error) throw error;
     newsItems = data || [];
     renderNews();
+    maybeShowNewsPopup();
   } catch (err) {
     console.error("Failed to load news:", err); // e.g. table not migrated yet — section just stays hidden
   }
 }
 
 const NEWS_TAG_ICON = { alert: "fa-triangle-exclamation", warning: "fa-scale-balanced", info: "fa-circle-info" };
+const NEWS_SEEN_KEY = "interviewPrepNewsSeen";
+let currentNewsItem = null;
+
+function newsType(n) {
+  return ["alert", "warning", "info"].includes(n.tag_type) ? n.tag_type : "info";
+}
+function newsFaqs(n) {
+  return Array.isArray(n.faqs) ? n.faqs : [];
+}
+function featuredNews() {
+  return newsItems.find(n => n.is_featured) || null;
+}
+function newsDateLabel(n) {
+  return n.news_date
+    ? new Date(n.news_date + "T12:00:00").toLocaleDateString(currentLang === "vi" ? "vi-VN" : "en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "";
+}
 
 function renderNews() {
+  renderBreakingBanner();
   const sec = document.getElementById("newsSection");
   const list = document.getElementById("newsCards");
   if (!sec || !list) return;
   if (!newsItems.length) { sec.hidden = true; return; }
   const vi = currentLang === "vi";
   list.innerHTML = newsItems.map(n => {
-    const date = n.news_date
-      ? new Date(n.news_date + "T12:00:00").toLocaleDateString(vi ? "vi-VN" : "en-US", { month: "short", day: "numeric", year: "numeric" })
-      : "";
+    const type = newsType(n);
     const src = n.source_url
       ? `<a href="${escapeHtml(n.source_url)}" target="_blank" rel="noopener">${escapeHtml(n.source_name || "Source")} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
       : "";
-    const type = ["alert", "warning", "info"].includes(n.tag_type) ? n.tag_type : "info";
-    return `<article class="news-card news-card--${type}">
+    const nFaq = newsFaqs(n).length;
+    const faqPill = nFaq
+      ? `<span class="news-card__faq-pill"><i class="fa-solid fa-comments"></i> ${nFaq} ${vi ? translations.vi["news.practiceHint"] : "practice questions"}</span>`
+      : "";
+    const ribbon = n.is_featured
+      ? `<span class="news-card__ribbon"><i class="fa-solid fa-bolt"></i> ${vi ? translations.vi["news.breaking"] : "Breaking"}</span>`
+      : "";
+    return `<article class="news-card news-card--${type}${n.is_featured ? " news-card--featured" : ""}" data-slot="${n.slot}" tabindex="0" role="button">
+      ${ribbon}
       <span class="news-card__tag"><i class="fa-solid ${NEWS_TAG_ICON[type]}"></i> ${escapeHtml(vi ? n.tag_vi : n.tag_en)}</span>
       <h4 class="news-card__title">${escapeHtml(vi ? n.title_vi : n.title_en)}</h4>
       <p class="news-card__desc">${escapeHtml(vi ? n.desc_vi : n.desc_en)}</p>
-      <div class="news-card__meta"><span><i class="fa-regular fa-calendar"></i> ${date}</span>${src}</div>
+      ${faqPill}
+      <div class="news-card__meta"><span><i class="fa-regular fa-calendar"></i> ${newsDateLabel(n)}</span>${src}</div>
     </article>`;
   }).join("");
   sec.hidden = false;
+}
+
+// The featured story gets a highlighted banner at the top of home.
+function renderBreakingBanner() {
+  const banner = document.getElementById("breakingBanner");
+  if (!banner) return;
+  const f = featuredNews();
+  if (!f || appView !== "home") { banner.hidden = true; return; }
+  document.getElementById("breakingBannerTitle").textContent = currentLang === "vi" ? f.title_vi : f.title_en;
+  banner.hidden = false;
+}
+
+// News detail modal: full story, source, and the practice Q&A accordion.
+function openNewsModal(n) {
+  if (!n) return;
+  currentNewsItem = n;
+  const vi = currentLang === "vi";
+  const type = newsType(n);
+  const tagEl = document.getElementById("newsModalTag");
+  tagEl.className = `news-modal__tag news-modal__tag--${type}`;
+  tagEl.innerHTML = `<i class="fa-solid ${NEWS_TAG_ICON[type]}"></i> ${escapeHtml(vi ? n.tag_vi : n.tag_en)}`;
+  document.getElementById("newsModalTitle").textContent = vi ? n.title_vi : n.title_en;
+  const src = n.source_url
+    ? ` · <a href="${escapeHtml(n.source_url)}" target="_blank" rel="noopener">${escapeHtml(n.source_name || "Source")} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
+    : "";
+  document.getElementById("newsModalMeta").innerHTML = `<i class="fa-regular fa-calendar"></i> ${newsDateLabel(n)}${src}`;
+  document.getElementById("newsModalDesc").textContent = vi ? n.desc_vi : n.desc_en;
+
+  const faqWrap = document.getElementById("newsModalFaq");
+  const faqList = document.getElementById("newsModalFaqList");
+  const faqs = newsFaqs(n);
+  if (faqs.length) {
+    faqList.innerHTML = faqs.map((f, i) => `
+      <div class="news-faq" data-i="${i}">
+        <button class="news-faq__q" type="button">
+          <span>${escapeHtml(vi ? f.q_vi : f.q_en)}</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="news-faq__a">${escapeHtml(vi ? f.a_vi : f.a_en)}</div>
+      </div>`).join("");
+    faqWrap.hidden = false;
+  } else {
+    faqWrap.hidden = true;
+  }
+
+  document.getElementById("newsModal").hidden = false;
+  document.body.classList.add("gate-open");
+  document.querySelector(".news-modal__card").scrollTop = 0;
+}
+
+function closeNewsModal() {
+  document.getElementById("newsModal").hidden = true;
+  document.body.classList.remove("gate-open");
+  currentNewsItem = null;
+}
+
+// Auto-pop the featured story once per version (keyed by slot + date), so a big
+// change surfaces itself. Self-guarded, so it is safe to call more than once.
+function maybeShowNewsPopup() {
+  if (!isRegistered() || document.body.classList.contains("gate-open")) return;
+  const f = featuredNews();
+  if (!f) return;
+  const key = "s" + f.slot + ":" + (f.news_date || f.updated_at || "");
+  let seen = "";
+  try { seen = localStorage.getItem(NEWS_SEEN_KEY) || ""; } catch (e) {}
+  if (seen === key) return;
+  try { localStorage.setItem(NEWS_SEEN_KEY, key); } catch (e) {}
+  openNewsModal(f);
+  logEvent("news_popup_shown", { slot: f.slot });
 }
 
 /* ── Interview-date countdown ──
@@ -2051,6 +2150,7 @@ function switchLanguage(lang) {
   setServiceHeaderTitle();
   renderProgress();
   renderNews();
+  if (!document.getElementById("newsModal").hidden && currentNewsItem) openNewsModal(currentNewsItem);
   renderCountdown();
 }
 
@@ -2141,6 +2241,7 @@ function showHome() {
   renderProgress();
   renderHomeGreeting();
   renderCountdown();
+  renderBreakingBanner();
   maybeShowInstallHint();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -2152,6 +2253,7 @@ function enterService(category) {
   if (emailGateBlocks(() => enterService(category))) return;
   appView = "service";
   { const ih = document.getElementById("installHint"); if (ih) ih.hidden = true; }
+  { const bb = document.getElementById("breakingBanner"); if (bb) bb.hidden = true; }
   currentServiceCategory = category;
   document.getElementById("intro").hidden = true;
   document.getElementById("homeView").hidden = true;
@@ -3260,11 +3362,27 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("countdownSnooze").addEventListener("click", (e) => { e.preventDefault(); snoozeCountdown(); });
   document.getElementById("countdownEdit").addEventListener("click", (e) => { e.preventDefault(); editInterviewDate(); });
   document.getElementById("countdownClear").addEventListener("click", (e) => { e.preventDefault(); clearInterviewDate(); });
-  // ── News cards: tap to expand/collapse (links inside still navigate) ──
+  // ── News: cards, breaking banner, and the detail modal ──
+  const newsItemBySlot = (slot) => newsItems.find(n => String(n.slot) === String(slot)) || null;
   document.getElementById("newsCards").addEventListener("click", (e) => {
-    if (e.target.closest("a")) return;
+    if (e.target.closest("a")) return; // source links navigate; card body opens the modal
     const card = e.target.closest(".news-card");
-    if (card) card.classList.toggle("news-card--open");
+    if (card) openNewsModal(newsItemBySlot(card.dataset.slot));
+  });
+  document.getElementById("newsCards").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const card = e.target.closest(".news-card");
+    if (card) { e.preventDefault(); openNewsModal(newsItemBySlot(card.dataset.slot)); }
+  });
+  document.getElementById("breakingBanner").addEventListener("click", () => openNewsModal(featuredNews()));
+  document.getElementById("newsModalClose").addEventListener("click", closeNewsModal);
+  document.getElementById("newsModalBackdrop").addEventListener("click", closeNewsModal);
+  document.getElementById("newsModalFaqList").addEventListener("click", (e) => {
+    const q = e.target.closest(".news-faq__q");
+    if (q) q.parentElement.classList.toggle("news-faq--open");
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("newsModal").hidden) closeNewsModal();
   });
   document.getElementById("emailGateForm").addEventListener("submit", submitEmailGate);
   document.getElementById("emailGateLangToggle").addEventListener("click", () => {

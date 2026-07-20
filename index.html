@@ -250,6 +250,23 @@
     </div>
   </div>
 
+  <!-- ═══ NEWS DETAIL MODAL (full story + practice Q&A) ═══ -->
+  <div class="news-modal" id="newsModal" hidden>
+    <div class="news-modal__backdrop" id="newsModalBackdrop"></div>
+    <div class="news-modal__card" role="dialog" aria-modal="true" aria-labelledby="newsModalTitle">
+      <button class="news-modal__close" id="newsModalClose" aria-label="Close">&times;</button>
+      <span class="news-modal__tag" id="newsModalTag"></span>
+      <h3 class="news-modal__title" id="newsModalTitle"></h3>
+      <p class="news-modal__meta" id="newsModalMeta"></p>
+      <p class="news-modal__desc" id="newsModalDesc"></p>
+      <div class="news-modal__faq" id="newsModalFaq" hidden>
+        <p class="news-modal__faq-title"><i class="fa-solid fa-comments"></i> <span data-i18n="news.faqTitle">Questions you may be asked about this</span></p>
+        <div id="newsModalFaqList"></div>
+        <p class="news-modal__faq-note" data-i18n="news.faqNote">Practice material only — not legal advice. Ask Future Steps about your own case.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ HEADER ═══ -->
   <header class="topbar">
     <div class="topbar__inner">
@@ -325,6 +342,14 @@
 
     <!-- ═══ HOME VIEW: progress summary + service selector ═══ -->
     <div id="homeView">
+      <!-- Breaking-news banner — highlights the current featured story; tap to
+           open its detail + practice questions -->
+      <button class="breaking-banner" id="breakingBanner" hidden>
+        <span class="breaking-banner__badge"><i class="fa-solid fa-bolt"></i> <span data-i18n="news.breaking">Breaking</span></span>
+        <span class="breaking-banner__title" id="breakingBannerTitle"></span>
+        <i class="fa-solid fa-chevron-right breaking-banner__arrow"></i>
+      </button>
+
       <!-- Progress summary — shown to signed-in users who have practiced before -->
       <section class="progress-card" id="progressCard" hidden>
         <div class="progress-card__head">
