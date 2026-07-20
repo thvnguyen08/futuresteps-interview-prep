@@ -120,10 +120,10 @@ const translations = {
     "news.label": "Tin Tức Di Trú Mới Nhất",
     "news.note": "Chạm vào tin để đọc thêm · cập nhật hàng tuần",
     "news.breaking": "Tin Nóng",
-    "news.readMore": "Đọc thêm & câu hỏi luyện tập",
+    "news.readMore": "Đọc thêm",
     "news.faqTitle": "Câu hỏi bạn có thể được hỏi về việc này",
     "news.faqNote": "Chỉ là tài liệu luyện tập — không phải tư vấn pháp lý. Hãy hỏi Future Steps về trường hợp của bạn.",
-    "news.practiceHint": "câu hỏi luyện tập",
+    "news.practiceHint": "câu hỏi thường gặp",
     "cd.prompt": "Buổi phỏng vấn của bạn là ngày nào?",
     "cd.save": "Lưu",
     "cd.skip": "Chưa có lịch — nhắc tôi sau",
@@ -1055,7 +1055,7 @@ function renderNews() {
       : "";
     const nFaq = newsFaqs(n).length;
     const faqPill = nFaq
-      ? `<span class="news-card__faq-pill"><i class="fa-solid fa-comments"></i> ${nFaq} ${vi ? translations.vi["news.practiceHint"] : "practice questions"}</span>`
+      ? `<span class="news-card__faq-pill"><i class="fa-solid fa-comments"></i> ${nFaq} ${vi ? translations.vi["news.practiceHint"] : "FAQs"}</span>`
       : "";
     const ribbon = n.is_featured
       ? `<span class="news-card__ribbon"><i class="fa-solid fa-bolt"></i> ${vi ? translations.vi["news.breaking"] : "Breaking"}</span>`
@@ -1087,7 +1087,7 @@ function renderBreakingBanner() {
   if (pill) {
     const n = newsFaqs(f).length;
     if (n) {
-      pill.innerHTML = `<i class="fa-solid fa-comments"></i> ${n} ${vi ? translations.vi["news.practiceHint"] : "practice questions"}`;
+      pill.innerHTML = `<i class="fa-solid fa-comments"></i> ${n} ${vi ? translations.vi["news.practiceHint"] : "FAQs"}`;
       pill.hidden = false;
     } else {
       pill.hidden = true;
