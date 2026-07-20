@@ -120,6 +120,7 @@ const translations = {
     "news.label": "Tin Tức Di Trú Mới Nhất",
     "news.note": "Chạm vào tin để đọc thêm · cập nhật hàng tuần",
     "news.breaking": "Tin Nóng",
+    "news.readMore": "Đọc thêm & câu hỏi luyện tập",
     "news.faqTitle": "Câu hỏi bạn có thể được hỏi về việc này",
     "news.faqNote": "Chỉ là tài liệu luyện tập — không phải tư vấn pháp lý. Hãy hỏi Future Steps về trường hợp của bạn.",
     "news.practiceHint": "câu hỏi luyện tập",
@@ -831,7 +832,6 @@ function enterAppAfterGate() {
   closeGate();
   renderAccountUI();   // show their name at the profile icon right away
   showHome();
-  maybeShowNewsPopup();   // surface any unseen big news now that they're in
 }
 
 // ── Location gate (Naturalization only) ──
@@ -1018,14 +1018,12 @@ async function loadNews() {
     if (error) throw error;
     newsItems = data || [];
     renderNews();
-    maybeShowNewsPopup();
   } catch (err) {
     console.error("Failed to load news:", err); // e.g. table not migrated yet — section just stays hidden
   }
 }
 
 const NEWS_TAG_ICON = { alert: "fa-triangle-exclamation", warning: "fa-scale-balanced", info: "fa-circle-info" };
-const NEWS_SEEN_KEY = "interviewPrepNewsSeen";
 let currentNewsItem = null;
 
 function newsType(n) {
@@ -1074,13 +1072,27 @@ function renderNews() {
   sec.hidden = false;
 }
 
-// The featured story gets a highlighted banner at the top of home.
+// The featured story gets a big highlighted hero card, right above the
+// interview-date box on home.
 function renderBreakingBanner() {
   const banner = document.getElementById("breakingBanner");
   if (!banner) return;
   const f = featuredNews();
   if (!f || appView !== "home") { banner.hidden = true; return; }
-  document.getElementById("breakingBannerTitle").textContent = currentLang === "vi" ? f.title_vi : f.title_en;
+  const vi = currentLang === "vi";
+  document.getElementById("breakingBannerTitle").textContent = vi ? f.title_vi : f.title_en;
+  const descEl = document.getElementById("breakingHeroDesc");
+  if (descEl) descEl.textContent = vi ? f.desc_vi : f.desc_en;
+  const pill = document.getElementById("breakingHeroPill");
+  if (pill) {
+    const n = newsFaqs(f).length;
+    if (n) {
+      pill.innerHTML = `<i class="fa-solid fa-comments"></i> ${n} ${vi ? translations.vi["news.practiceHint"] : "practice questions"}`;
+      pill.hidden = false;
+    } else {
+      pill.hidden = true;
+    }
+  }
   banner.hidden = false;
 }
 
@@ -1126,21 +1138,6 @@ function closeNewsModal() {
   document.getElementById("newsModal").hidden = true;
   document.body.classList.remove("gate-open");
   currentNewsItem = null;
-}
-
-// Auto-pop the featured story once per version (keyed by slot + date), so a big
-// change surfaces itself. Self-guarded, so it is safe to call more than once.
-function maybeShowNewsPopup() {
-  if (!isRegistered() || document.body.classList.contains("gate-open")) return;
-  const f = featuredNews();
-  if (!f) return;
-  const key = "s" + f.slot + ":" + (f.news_date || f.updated_at || "");
-  let seen = "";
-  try { seen = localStorage.getItem(NEWS_SEEN_KEY) || ""; } catch (e) {}
-  if (seen === key) return;
-  try { localStorage.setItem(NEWS_SEEN_KEY, key); } catch (e) {}
-  openNewsModal(f);
-  logEvent("news_popup_shown", { slot: f.slot });
 }
 
 /* ── Interview-date countdown ──

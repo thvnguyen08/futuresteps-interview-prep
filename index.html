@@ -342,14 +342,6 @@
 
     <!-- ═══ HOME VIEW: progress summary + service selector ═══ -->
     <div id="homeView">
-      <!-- Breaking-news banner — highlights the current featured story; tap to
-           open its detail + practice questions -->
-      <button class="breaking-banner" id="breakingBanner" hidden>
-        <span class="breaking-banner__badge"><i class="fa-solid fa-bolt"></i> <span data-i18n="news.breaking">Breaking</span></span>
-        <span class="breaking-banner__title" id="breakingBannerTitle"></span>
-        <i class="fa-solid fa-chevron-right breaking-banner__arrow"></i>
-      </button>
-
       <!-- Progress summary — shown to signed-in users who have practiced before -->
       <section class="progress-card" id="progressCard" hidden>
         <div class="progress-card__head">
@@ -378,6 +370,18 @@
           <div class="progress-cats" id="progressCats"></div>
         </div>
       </section>
+
+      <!-- Breaking-news hero — the featured story, big + highlighted, sitting
+           right above the interview-date box; tap to open its detail + Q&A -->
+      <button class="breaking-hero" id="breakingBanner" hidden>
+        <span class="breaking-hero__badge"><i class="fa-solid fa-bolt"></i> <span data-i18n="news.breaking">Breaking</span></span>
+        <span class="breaking-hero__title" id="breakingBannerTitle"></span>
+        <span class="breaking-hero__desc" id="breakingHeroDesc"></span>
+        <span class="breaking-hero__cta">
+          <span class="breaking-hero__pill" id="breakingHeroPill" hidden></span>
+          <span class="breaking-hero__more"><span data-i18n="news.readMore">Read more &amp; practice questions</span> <i class="fa-solid fa-arrow-right"></i></span>
+        </span>
+      </button>
 
       <!-- Interview-date countdown — ask once, then show a daily pacing nudge -->
       <section class="countdown-card" id="countdownCard" hidden>
