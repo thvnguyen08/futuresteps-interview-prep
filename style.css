@@ -1382,7 +1382,10 @@ body.gate-open { overflow: hidden; }
   padding: 16px 12px;
   border: none;
   border-radius: var(--radius-sm);
-  background: linear-gradient(150deg, var(--clr-primary) 0%, var(--clr-primary-dk) 100%);
+  /* Service identity color (set as --svc on #quickActions); the gradient
+     endpoint darkens it via color-mix, with a solid fallback for old browsers. */
+  background: var(--svc, var(--clr-primary));
+  background: linear-gradient(150deg, var(--svc, var(--clr-primary)) 0%, color-mix(in srgb, var(--svc, var(--clr-primary)) 72%, black) 100%);
   color: #fff;
   font-family: inherit;
   font-size: .95rem;
@@ -1390,11 +1393,11 @@ body.gate-open { overflow: hidden; }
   line-height: 1.3;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(21, 105, 67, .18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .16);
   transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
 }
 .qa-tile i { font-size: 1.35rem; opacity: .92; }
-.qa-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(21, 105, 67, .28); }
+.qa-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .24); }
 .qa-tile:active { transform: translateY(0); }
 .qa-tile:disabled { filter: grayscale(.55); opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
 .qa-tile--green { background: linear-gradient(150deg, #2bb673 0%, #1b8f5a 100%); }

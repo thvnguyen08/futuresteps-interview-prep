@@ -94,6 +94,9 @@ const translations = {
     "sim.spoken": '<i class="fa-solid fa-microphone-lines"></i> Thi Nói (Tự Chấm Điểm)',
     "sim.review": "Ôn Câu Sai",
     "qa.title": "Thao Tác Nhanh",
+    "qa.questions": "Câu Hỏi Luyện Tập",
+    "qa.mock": "Phỏng Vấn Thử",
+    "qa.docs": "Giấy Tờ Cần Mang",
     "qa.flash": "128 Câu Dân Sự",
     "qa.mctest": "Thi Dân Sự Như Thật",
     "qa.spoken": "Thi Nói Dân Sự",
@@ -1834,8 +1837,9 @@ function categoryHasContent(category, type) {
 
 function updateContentTypeToggle() {
   const toggle = document.getElementById("contentTypeToggle");
-  // Naturalization's Green/Red Flags are quick-action tiles now, not tabs.
-  const isMain = MAIN_CATEGORIES.includes(currentCategory) && currentCategory !== "naturalization";
+  // Green/Red Flags and Documents are quick-action tiles now for every main
+  // category, so the in-quiz tab bar never shows.
+  const isMain = false;
   const hasGreenFlags = isMain && categoryHasContent(currentCategory, "green_flag");
   const hasRedFlags = isMain && categoryHasContent(currentCategory, "red_flag");
   const hasChecklist = isMain && categoryHasContent(currentCategory, "checklist");
@@ -1849,12 +1853,13 @@ function updateContentTypeToggle() {
   document.getElementById("documentsTabBtn").classList.toggle("sim-toggle__btn--active", contentType === "checklist");
 }
 
-// The Mock Interview toggle shows wherever mockAvailable() says the current
-// selection has open-ended questions to record (incl. nat English → Speaking).
+// The open-ended categories launch Mock Interview from its own quick-action
+// tile now, so the Study/Mock toggle only remains inside naturalization's
+// Speaking Test screen (where Mock shares the screen with flashcard-style study).
 function updateMockToggle() {
   const toggle = document.getElementById("mockToggle");
   if (!toggle) return;
-  const show = mockAvailable(currentCategory);
+  const show = mockAvailable(currentCategory) && currentCategory === "naturalization";
   toggle.hidden = !show;
   if (show) {
     document.getElementById("mockStudyBtn").classList.toggle("sim-toggle__btn--active", !mockMode);
@@ -1916,8 +1921,8 @@ function enterService(category) {
   setServiceHeaderTitle();
   contentType = "question";
   logActivity("view", category);
-  // Naturalization gets the quick-action menu (level 2) instead of a round.
-  if (category === "naturalization") { showNatMenu(); return; }
+  // Main categories get the quick-action menu (level 2) instead of a round.
+  if (MAIN_CATEGORIES.includes(category)) { showServiceMenu(category); return; }
   document.getElementById("quickActions").hidden = true;
   document.getElementById("natBackBtn").hidden = true;
   document.getElementById("quiz").hidden = false;
@@ -1925,10 +1930,11 @@ function enterService(category) {
   startRound(category);
 }
 
-/* ── Naturalization quick actions ──
+/* ── Quick actions ──
    Level 2: a flat tile menu of everything the service offers. Level 3: picking
-   a tile shows only that mode; the back arrow returns to the menu. */
-function showNatMenu() {
+   a tile shows only that mode; the back arrow returns to the menu.
+   Naturalization has its own tile set; the open-ended categories share one. */
+function showServiceMenu(category) {
   natAction = null;
   clearInterval(timerInterval);
   cleanupMockRecording();
@@ -1939,45 +1945,70 @@ function showNatMenu() {
   document.getElementById("quiz").hidden = true;
   document.getElementById("natBackBtn").hidden = true;
   SERVICE_TOGGLE_IDS.forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
-  // Review Missed tile: show the count, gray out when there's nothing to drill.
-  const count = countMissedCivics();
-  const countEl = document.getElementById("qaReviewCount");
-  countEl.textContent = `(${count})`;
-  countEl.hidden = count === 0;
-  const reviewTile = document.querySelector('.qa-tile[data-action="review"]');
-  if (reviewTile) reviewTile.disabled = count === 0;
-  // Spoken Test needs browser speech recognition.
-  const spokenTile = document.querySelector('.qa-tile[data-action="spoken"]');
-  if (spokenTile) spokenTile.disabled = !SPEECH_SUPPORTED;
+  const isNat = category === "naturalization";
+  document.getElementById("qaGridNat").hidden = !isNat;
+  document.getElementById("qaGridOpen").hidden = isNat;
+  if (isNat) {
+    // Review Missed tile: show the count, gray out when there's nothing to drill.
+    const count = countMissedCivics();
+    const countEl = document.getElementById("qaReviewCount");
+    countEl.textContent = `(${count})`;
+    countEl.hidden = count === 0;
+    const reviewTile = document.querySelector('.qa-tile[data-action="review"]');
+    if (reviewTile) reviewTile.disabled = count === 0;
+    // Spoken Test needs browser speech recognition.
+    const spokenTile = document.querySelector('.qa-tile[data-action="spoken"]');
+    if (spokenTile) spokenTile.disabled = !SPEECH_SUPPORTED;
+  } else {
+    // Only offer content the category actually has seeded.
+    ["green_flag", "red_flag", "checklist"].forEach((type, i) => {
+      const tile = document.querySelector(`#qaGridOpen [data-action="${["green", "red", "docs"][i]}"]`);
+      if (tile) tile.hidden = !categoryHasContent(category, type);
+    });
+  }
+  // Tiles pick up the service's identity color (emerald for naturalization).
+  document.getElementById("quickActions").style.setProperty("--svc", `var(--svc-${category})`);
   document.getElementById("quickActions").hidden = false;
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function startNatAction(action) {
+function startServiceAction(action) {
   if (!isRegistered()) { openGate(); return; }
   // Starting a round from a tile counts like any other round start for the
   // email-capture funnel.
-  if (emailGateBlocks(() => startNatAction(action))) return;
+  if (emailGateBlocks(() => startServiceAction(action))) return;
   if (!allQuestions.length) return;
+  const category = currentServiceCategory;
+  if (!MAIN_CATEGORIES.includes(category)) return;
   natAction = action;
   simMode = false; spokenMode = false; reviewMode = false; mockMode = false;
   flashMode = false; mcTestMode = false;
   natTestType = "civics"; contentType = "question";
-  switch (action) {
-    case "flash": flashMode = true; break;
-    case "mctest": simMode = true; mcTestMode = true; break;
-    case "spoken": simMode = true; spokenMode = true; break;
-    case "review": reviewMode = true; break;
-    case "speaking": natTestType = "english"; natEnglishSection = "eng_speaking"; break;
-    case "reading": natTestType = "english"; natEnglishSection = "eng_reading"; break;
-    case "writing": natTestType = "english"; natEnglishSection = "eng_writing"; break;
-    case "green": contentType = "green_flag"; break;
-    case "red": contentType = "red_flag"; break;
+  if (category === "naturalization") {
+    switch (action) {
+      case "flash": flashMode = true; break;
+      case "mctest": simMode = true; mcTestMode = true; break;
+      case "spoken": simMode = true; spokenMode = true; break;
+      case "review": reviewMode = true; break;
+      case "speaking": natTestType = "english"; natEnglishSection = "eng_speaking"; break;
+      case "reading": natTestType = "english"; natEnglishSection = "eng_reading"; break;
+      case "writing": natTestType = "english"; natEnglishSection = "eng_writing"; break;
+      case "green": contentType = "green_flag"; break;
+      case "red": contentType = "red_flag"; break;
+    }
+  } else {
+    switch (action) {
+      case "mock": mockMode = true; break;
+      case "green": contentType = "green_flag"; break;
+      case "red": contentType = "red_flag"; break;
+      case "docs": contentType = "checklist"; break;
+      // "questions" is the default flags-off state.
+    }
   }
   document.getElementById("quickActions").hidden = true;
   document.getElementById("natBackBtn").hidden = false;
   document.getElementById("quiz").hidden = false;
-  startRound("naturalization");
+  startRound(category);
 }
 
 /* Aggregate correct/wrong across all saved quiz rounds for the progress card. */
@@ -2929,11 +2960,11 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("homeBtn").addEventListener("click", showHome);
   document.getElementById("homeLogoLink").addEventListener("click", (e) => { e.preventDefault(); showHome(); });
 
-  // Naturalization quick actions: tiles enter an action, the back arrow
-  // returns to the tile menu.
+  // Quick actions: tiles enter an action, the back arrow returns to the menu.
   document.querySelectorAll(".qa-tile").forEach(t =>
-    t.addEventListener("click", () => startNatAction(t.dataset.action)));
-  document.getElementById("natBackBtn").addEventListener("click", showNatMenu);
+    t.addEventListener("click", () => startServiceAction(t.dataset.action)));
+  document.getElementById("natBackBtn").addEventListener("click", () =>
+    showServiceMenu(currentServiceCategory || "naturalization"));
 
   // Flashcards: tap the card (or the Flip button) to flip it.
   document.getElementById("flashCard").addEventListener("click", flipFlashCard);

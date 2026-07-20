@@ -392,10 +392,12 @@
       <span class="service-header__title" id="serviceHeaderTitle"></span>
     </div>
 
-    <!-- ═══ NATURALIZATION QUICK ACTIONS (level 2: pick what to practice) ═══ -->
+    <!-- ═══ QUICK ACTIONS (level 2: pick what to practice) ═══
+         Every main category shows a tile menu; naturalization has its own set,
+         the open-ended categories share one. -->
     <section class="quick-actions" id="quickActions" hidden>
       <p class="quick-actions__label" data-i18n="qa.title">Quick Actions</p>
-      <div class="qa-grid">
+      <div class="qa-grid" id="qaGridNat" hidden>
         <button class="qa-tile" data-action="flash">
           <i class="fa-solid fa-layer-group"></i>
           <span data-i18n="qa.flash">128 Civic Questions</span>
@@ -431,6 +433,28 @@
         <button class="qa-tile qa-tile--red" data-action="red">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <span data-i18n="qa.red">Red Flags</span>
+        </button>
+      </div>
+      <div class="qa-grid" id="qaGridOpen" hidden>
+        <button class="qa-tile" data-action="questions">
+          <i class="fa-solid fa-comments"></i>
+          <span data-i18n="qa.questions">Practice Questions</span>
+        </button>
+        <button class="qa-tile" data-action="mock">
+          <i class="fa-solid fa-microphone-lines"></i>
+          <span data-i18n="qa.mock">Mock Interview</span>
+        </button>
+        <button class="qa-tile qa-tile--green" data-action="green">
+          <i class="fa-solid fa-circle-check"></i>
+          <span data-i18n="qa.green">Green Flags</span>
+        </button>
+        <button class="qa-tile qa-tile--red" data-action="red">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span data-i18n="qa.red">Red Flags</span>
+        </button>
+        <button class="qa-tile" data-action="docs">
+          <i class="fa-solid fa-folder-open"></i>
+          <span data-i18n="qa.docs">Documents</span>
         </button>
       </div>
     </section>
