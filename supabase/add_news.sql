@@ -26,13 +26,15 @@ create table if not exists news (
   is_featured boolean not null default false,   -- big change → banner + pop-up
   category    text,                             -- most-affected service (marriage/f1/…), optional
   faqs        jsonb not null default '[]'::jsonb, -- [{q_en,q_vi,a_en,a_vi}, …] practice Q&A
+  locked      boolean not null default false,   -- pinned/curated → weekly sync must not overwrite
   updated_at  timestamptz not null default now()
 );
 
--- Upgrade older installs that predate the featured/category/faqs columns.
+-- Upgrade older installs that predate the featured/category/faqs/locked columns.
 alter table news add column if not exists is_featured boolean not null default false;
 alter table news add column if not exists category text;
 alter table news add column if not exists faqs jsonb not null default '[]'::jsonb;
+alter table news add column if not exists locked boolean not null default false;
 
 alter table news enable row level security;
 
@@ -45,6 +47,11 @@ grant select on news to anon, authenticated;
 -- Guarded write path for the weekly news-sync scheduled task (same shared
 -- secret as get_crm_data_service in add_crm_service.sql). Items is a JSON
 -- array of objects with the table's columns; rows upsert by slot.
+--
+-- Locked rows (`locked = true`) are pinned/curated content the weekly sync
+-- must never overwrite. An item may set "force": true to override the lock —
+-- used only for deliberate manual curation of a pinned story, never by the
+-- automated task.
 create or replace function upsert_news_service(api_secret text, items jsonb)
 returns void
 language plpgsql
@@ -52,15 +59,17 @@ security definer
 as $$
 declare
   it jsonb;
+  do_force boolean;
 begin
   if api_secret is null or api_secret != 'RYm1pAxn_SzSAeCh5w-9_Uz62X7NXfbwiSgGyEEL2Os' then
     return;
   end if;
 
   for it in select * from jsonb_array_elements(items) loop
+    do_force := coalesce((it->>'force')::boolean, false);
     insert into news (slot, tag_type, tag_en, tag_vi, title_en, title_vi,
                       desc_en, desc_vi, news_date, source_name, source_url,
-                      is_featured, category, faqs, updated_at)
+                      is_featured, category, faqs, locked, updated_at)
     values (
       (it->>'slot')::int,
       coalesce(it->>'tag_type', 'info'),
@@ -72,6 +81,7 @@ begin
       coalesce((it->>'is_featured')::boolean, false),
       it->>'category',
       coalesce(it->'faqs', '[]'::jsonb),
+      coalesce((it->>'locked')::boolean, false),
       now()
     )
     on conflict (slot) do update set
@@ -88,7 +98,9 @@ begin
       is_featured = excluded.is_featured,
       category    = excluded.category,
       faqs        = excluded.faqs,
-      updated_at  = now();
+      locked      = excluded.locked,
+      updated_at  = now()
+    where news.locked is not true or do_force;   -- never clobber a pinned row unless forced
   end loop;
 end;
 $$;
@@ -98,7 +110,7 @@ grant execute on function upsert_news_service(text, jsonb) to anon;
 -- ── Seed: the website's current three stories (2026-07-20 refresh), with
 --    practice Q&A on the two interview-relevant rule changes ──
 
-insert into news (slot, tag_type, tag_en, tag_vi, title_en, title_vi, desc_en, desc_vi, news_date, source_name, source_url, is_featured, category, faqs)
+insert into news (slot, tag_type, tag_en, tag_vi, title_en, title_vi, desc_en, desc_vi, news_date, source_name, source_url, is_featured, category, faqs, locked)
 values
 (1, 'alert', 'Policy Update', 'Cập Nhật Chính Sách',
  'DHS Rescinds 2022 Public Charge Rule, Giving USCIS Officers Broader Discretion on Green Card Cases',
@@ -111,7 +123,7 @@ values
  '[
    {"q_en":"How will USCIS decide whether you might become a public charge?","a_en":"From September 18, 2026, officers weigh your overall self-sufficiency case-by-case — age, health, income, assets, education, and the Affidavit of Support from your sponsor. Be ready to show that you and your sponsor can support your household without relying on public benefits.","q_vi":"USCIS sẽ quyết định như thế nào về việc bạn có thể trở thành gánh nặng xã hội hay không?","a_vi":"Từ ngày 18/9/2026, viên chức sẽ xem xét tổng thể khả năng tự lập của bạn theo từng trường hợp — tuổi tác, sức khỏe, thu nhập, tài sản, học vấn và Bản Cam Kết Bảo Trợ Tài Chính từ người bảo lãnh. Hãy sẵn sàng chứng minh rằng bạn và người bảo lãnh có thể chu cấp cho gia đình mà không cần trợ cấp công."},
    {"q_en":"Which form is now required for a green card application?","a_en":"A revised Form I-485 is required for green card applications filed on or after September 18, 2026. Always download the current edition from USCIS.gov before you file.","q_vi":"Mẫu đơn nào hiện bắt buộc cho hồ sơ xin thẻ xanh?","a_vi":"Mẫu I-485 phiên bản mới bắt buộc áp dụng cho hồ sơ xin thẻ xanh nộp từ ngày 18/9/2026 trở đi. Hãy luôn tải phiên bản hiện hành từ USCIS.gov trước khi nộp."}
- ]'::jsonb),
+ ]'::jsonb, false),
 (2, 'warning', 'Student Visa Alert', 'Cảnh Báo Visa Du Học',
  'DHS Ends "Duration of Status" for F-1 Students — Fixed Admission Periods Start September 15',
  'DHS Chấm Dứt Chế Độ "Lưu Trú Không Xác Định Thời Hạn" Cho Du Học Sinh F-1 — Áp Dụng Thời Hạn Cố Định Từ 15/9',
@@ -133,7 +145,7 @@ values
    {"q_en":"How long is my grace period after I finish my program now?","a_en":"The post-completion grace period is cut from 60 to 30 days — you have 30 days after finishing your program (or authorized practical training) to depart, transfer, or change status. Students who fall out of status get no grace period and must leave immediately.","q_vi":"Sau khi hoàn thành chương trình, thời gian ân hạn của tôi là bao lâu?","a_vi":"Thời gian ân hạn sau khi hoàn thành chương trình bị rút từ 60 xuống còn 30 ngày — bạn có 30 ngày sau khi kết thúc chương trình học (hoặc thực tập được cấp phép) để rời đi, chuyển trường hoặc chuyển đổi tình trạng. Sinh viên bị mất tình trạng hợp lệ không có thời gian ân hạn và phải rời đi ngay lập tức."},
    {"q_en":"What happens if I miss my I-94 \"admit-until\" date?","a_en":"If your I-94 \"admit until\" date passes and you have not filed an extension, departed, or otherwise maintained status, you begin accruing unlawful presence — which can trigger 3-year or 10-year bars on returning to the US. Track your date closely.","q_vi":"Điều gì xảy ra nếu tôi để quá ngày kết thúc lưu trú trên I-94?","a_vi":"Nếu ngày kết thúc lưu trú trên I-94 đã qua mà bạn chưa nộp đơn gia hạn, chưa rời đi, hoặc không duy trì tình trạng hợp lệ, bạn sẽ bắt đầu tích lũy thời gian cư trú bất hợp pháp — điều này có thể dẫn đến lệnh cấm nhập cảnh 3 năm hoặc 10 năm. Hãy theo dõi sát ngày của bạn."},
    {"q_en":"How is \"unlawful presence\" different under the new rule?","a_en":"Under the old D/S system, unlawful presence usually started only after a formal finding by USCIS or an immigration judge. Now it starts automatically the day after your I-94 \"admit until\" date if you have not extended or departed — so tracking that date is critical to avoid the 3-year and 10-year re-entry bars.","q_vi":"Khái niệm \"cư trú bất hợp pháp\" khác thế nào theo quy định mới?","a_vi":"Theo chế độ D/S cũ, thời gian cư trú bất hợp pháp thường chỉ bắt đầu sau khi USCIS hoặc thẩm phán di trú ra phán quyết chính thức. Giờ đây, nó bắt đầu tự động ngay ngày hôm sau ngày kết thúc lưu trú trên I-94 nếu bạn chưa gia hạn hoặc chưa rời đi — vì vậy việc theo dõi ngày đó là rất quan trọng để tránh lệnh cấm nhập cảnh 3 năm và 10 năm."}
- ]'::jsonb),
+ ]'::jsonb, true),
 (3, 'info', 'Work Visa Update', 'Cập Nhật Visa Lao Động',
  'USCIS Confirms FY 2027 H-1B Cap Reached — No Second Lottery',
  'USCIS Xác Nhận Đã Đủ Chỉ Tiêu H-1B Năm Tài Khóa 2027 — Không Tổ Chức Bốc Thăm Vòng Hai',
@@ -141,7 +153,7 @@ values
  'USCIS thông báo ngày 17/7/2026 rằng cơ quan đã nhận đủ hồ sơ để lấp đầy cả hạn ngạch H-1B thường niên 65.000 suất và diện miễn trừ bằng thạc sĩ Hoa Kỳ 20.000 suất cho năm tài khóa 2027, và sẽ không tổ chức thêm vòng bốc thăm bổ sung. Đây là chu kỳ đầu tiên áp dụng hệ thống chọn lọc theo mức lương mới của DHS, với gần 72% người được chọn có bằng thạc sĩ Hoa Kỳ trở lên, tăng so với 57% ở chu kỳ trước.',
  '2026-07-17', 'USCIS.gov',
  'https://www.uscis.gov/newsroom/alerts/uscis-reaches-fiscal-year-2027-h-1b-cap',
- false, null, '[]'::jsonb)
+ false, null, '[]'::jsonb, false)
 on conflict (slot) do update set
   tag_type    = excluded.tag_type,
   tag_en      = excluded.tag_en,
@@ -156,4 +168,8 @@ on conflict (slot) do update set
   is_featured = excluded.is_featured,
   category    = excluded.category,
   faqs        = excluded.faqs,
-  updated_at  = now();
+  locked      = excluded.locked,
+  updated_at  = now()
+-- Re-running this migration re-seeds the rotating stories but never clobbers a
+-- pinned row (slot 2 locks itself on the first run, preserving its curated Q&A).
+where news.locked is not true;
