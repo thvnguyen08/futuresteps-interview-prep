@@ -354,6 +354,26 @@
         </div>
       </section>
 
+      <!-- Interview-date countdown — ask once, then show a daily pacing nudge -->
+      <section class="countdown-card" id="countdownCard" hidden>
+        <div id="countdownSet" hidden>
+          <p class="countdown-card__q"><i class="fa-regular fa-calendar-check"></i> <span data-i18n="cd.prompt">When is your interview?</span></p>
+          <div class="countdown-card__row">
+            <input type="date" class="countdown-card__input" id="interviewDateInput" aria-label="Interview date">
+            <button class="btn btn--primary countdown-card__btn" id="interviewDateSave" data-i18n="cd.save">Save</button>
+          </div>
+          <p class="countdown-card__links"><a href="#" id="countdownSnooze" data-i18n="cd.skip">No date yet — remind me later</a></p>
+        </div>
+        <div id="countdownShow" hidden>
+          <p class="countdown-card__days" id="countdownDays"></p>
+          <p class="countdown-card__nudge" id="countdownNudge"></p>
+          <p class="countdown-card__links">
+            <a href="#" id="countdownEdit" data-i18n="cd.change">Change date</a>
+            <a href="#" id="countdownClear" data-i18n="cd.clear">Clear</a>
+          </p>
+        </div>
+      </section>
+
       <p class="home-prompt" data-i18n="home.prompt">Which service are you here for?</p>
 
       <!-- Service selector grid — pick one to focus on it -->
@@ -383,6 +403,14 @@
           <span class="service-card__label" data-i18n="cat.flagged">Flagged</span>
         </button>
       </div>
+
+      <!-- Latest immigration news (bilingual) — read from the Supabase `news`
+           table, kept in sync weekly with the website's news section -->
+      <section class="news-sec" id="newsSection" hidden>
+        <p class="news-sec__label"><i class="fa-regular fa-newspaper"></i> <span data-i18n="news.label">Latest Immigration News</span></p>
+        <div class="news-cards" id="newsCards"></div>
+        <p class="news-sec__note" data-i18n="news.note">Tap a story to read more · updated weekly</p>
+      </section>
     </div>
 
     <!-- ═══ SERVICE HEADER (shown when a single service is focused) ═══ -->

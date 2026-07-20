@@ -1464,3 +1464,148 @@ body.gate-open { overflow: hidden; }
   .flash-card__face { min-height: 180px; padding: 20px 14px; }
   .flash-card__text { font-size: 1.1rem; }
 }
+
+/* ═══ INTERVIEW-DATE COUNTDOWN (home) ═══ */
+.countdown-card {
+  max-width: 640px;
+  margin: 0 auto 22px;
+  padding: 18px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.countdown-card__q {
+  font-weight: 600;
+  color: var(--clr-white);
+  margin-bottom: 12px;
+}
+.countdown-card__q i { color: var(--clr-primary); margin-right: 6px; }
+.countdown-card__row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.countdown-card__input {
+  padding: 10px 14px;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--ff-body);
+  font-size: .95rem;
+  color: var(--clr-text);
+  background: var(--clr-bg);
+}
+.countdown-card__btn { padding: 10px 22px; }
+.countdown-card__links {
+  margin-top: 12px;
+  font-size: .82rem;
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+.countdown-card__links a { color: var(--clr-muted); text-decoration: underline; }
+.countdown-card__links a:hover { color: var(--clr-primary); }
+.countdown-card__days {
+  font-family: var(--ff-heading);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--clr-primary-dk);
+}
+.countdown-card__nudge {
+  margin-top: 6px;
+  font-size: .9rem;
+  color: var(--clr-muted);
+}
+
+/* ═══ LATEST IMMIGRATION NEWS (home) ═══ */
+.news-sec { margin: 34px auto 8px; max-width: 980px; }
+.news-sec__label {
+  text-align: center;
+  font-family: var(--ff-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--clr-white);
+  margin-bottom: 16px;
+}
+.news-sec__label i { color: var(--clr-primary); margin-right: 8px; }
+.news-sec__note {
+  text-align: center;
+  font-size: .78rem;
+  color: var(--clr-muted);
+  margin-top: 12px;
+}
+.news-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.news-card {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+.news-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.news-card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.news-card--alert .news-card__tag   { background: #fdecec; color: #b3261e; }
+.news-card--warning .news-card__tag { background: #fdf3e2; color: #a16207; }
+.news-card--info .news-card__tag    { background: #e7f5ee; color: var(--clr-primary-dk); }
+.news-card__title {
+  font-family: var(--ff-heading);
+  font-size: .98rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--clr-white);
+  margin-bottom: 8px;
+}
+.news-card__desc {
+  font-size: .85rem;
+  line-height: 1.55;
+  color: var(--clr-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.news-card--open .news-card__desc {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.news-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  font-size: .76rem;
+  color: var(--clr-muted);
+}
+.news-card__meta a { color: var(--clr-primary); text-decoration: none; font-weight: 600; }
+.news-card__meta a:hover { text-decoration: underline; }
+
+@media (max-width: 860px) {
+  .news-cards { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .countdown-card { padding: 16px; }
+  .countdown-card__days { font-size: 1.15rem; }
+}

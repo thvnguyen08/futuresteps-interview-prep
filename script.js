@@ -17,6 +17,10 @@ try {
   console.error("Failed to create Supabase client — check SUPABASE_URL/SUPABASE_ANON_KEY in script.js:", err);
 }
 
+/* Local development (localhost preview) still READS prod data, but never writes
+   analytics/activity/identity rows to it — keeps test sessions out of the CRM. */
+const IS_DEV_HOST = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+
 /* ── Translations (static UI strings only; question/answer text comes
    from the database's *_en / *_vi columns) ── */
 const translations = {
@@ -113,6 +117,13 @@ const translations = {
     "flash.flip": "Lật Thẻ",
     "flash.prev": "Trước",
     "flash.next": "Tiếp",
+    "news.label": "Tin Tức Di Trú Mới Nhất",
+    "news.note": "Chạm vào tin để đọc thêm · cập nhật hàng tuần",
+    "cd.prompt": "Buổi phỏng vấn của bạn là ngày nào?",
+    "cd.save": "Lưu",
+    "cd.skip": "Chưa có lịch — nhắc tôi sau",
+    "cd.change": "Đổi ngày",
+    "cd.clear": "Xóa",
     "mock.study": '<i class="fa-solid fa-book-open"></i> Học Câu Hỏi',
     "mock.interview": '<i class="fa-solid fa-microphone-lines"></i> Phỏng Vấn Thử · Ghi Âm & Nghe Lại',
     "mock.hear": "Nghe Câu Hỏi",
@@ -575,7 +586,7 @@ function getSessionId() {
 /* Record this device's first-touch attribution, once ever. Fire-and-forget,
    and safe to call every page load — it no-ops once FIRST_TOUCH_KEY is set. */
 async function logFirstTouchIfNeeded() {
-  if (!supabaseClient) return;
+  if (!supabaseClient || IS_DEV_HOST) return;
   try { if (localStorage.getItem(FIRST_TOUCH_KEY)) return; } catch (e) {}
   try {
     const { error } = await supabaseClient.from("anon_visitors").insert({
@@ -599,7 +610,7 @@ async function logFirstTouchIfNeeded() {
 /* Log one unified analytics event (see the taxonomy in supabase/ANALYTICS.md).
    Fire-and-forget: never block or break the UI on a logging failure. */
 async function logEvent(eventName, props = {}) {
-  if (!supabaseClient) return;
+  if (!supabaseClient || IS_DEV_HOST) return;
   try {
     await supabaseClient.from("events").insert({
       anon_id: getClientId(),
@@ -623,7 +634,7 @@ async function logEvent(eventName, props = {}) {
 /* Upsert + link the current device to a person (register or magic-link login).
    SECURITY DEFINER RPC — see identify() in supabase/add_analytics_core.sql. */
 async function identifyPerson({ name, email, phone, location, property = "app" } = {}) {
-  if (!supabaseClient) return;
+  if (!supabaseClient || IS_DEV_HOST) return;
   try {
     await supabaseClient.rpc("identify", {
       p_anon_id: getClientId(),
@@ -717,7 +728,7 @@ async function syncProgressAcrossDevices() {
 /* Log a practice/view event to the backend, keyed to the device + lead.
    Fire-and-forget: never block or break the UI on a logging failure. */
 async function logActivity(activityType, category, data = {}) {
-  if (!supabaseClient) return;
+  if (!supabaseClient || IS_DEV_HOST) return;
   try {
     await supabaseClient.from("practice_activity").insert({
       client_id: getClientId(),
@@ -987,6 +998,169 @@ function renderHomeGreeting() {
   } else {
     el.hidden = true;
   }
+}
+
+/* ── Latest immigration news (home section) ──
+   Bilingual stories from the `news` table (see supabase/add_news.sql), kept in
+   sync with the website's news section by a weekly scheduled task. Cards are
+   collapsed to a few lines; tapping one expands it. */
+let newsItems = [];
+
+async function loadNews() {
+  if (!supabaseClient) return;
+  try {
+    const { data, error } = await supabaseClient.from("news").select("*").order("slot");
+    if (error) throw error;
+    newsItems = data || [];
+    renderNews();
+  } catch (err) {
+    console.error("Failed to load news:", err); // e.g. table not migrated yet — section just stays hidden
+  }
+}
+
+const NEWS_TAG_ICON = { alert: "fa-triangle-exclamation", warning: "fa-scale-balanced", info: "fa-circle-info" };
+
+function renderNews() {
+  const sec = document.getElementById("newsSection");
+  const list = document.getElementById("newsCards");
+  if (!sec || !list) return;
+  if (!newsItems.length) { sec.hidden = true; return; }
+  const vi = currentLang === "vi";
+  list.innerHTML = newsItems.map(n => {
+    const date = n.news_date
+      ? new Date(n.news_date + "T12:00:00").toLocaleDateString(vi ? "vi-VN" : "en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "";
+    const src = n.source_url
+      ? `<a href="${escapeHtml(n.source_url)}" target="_blank" rel="noopener">${escapeHtml(n.source_name || "Source")} <i class="fa-solid fa-arrow-up-right-from-square"></i></a>`
+      : "";
+    const type = ["alert", "warning", "info"].includes(n.tag_type) ? n.tag_type : "info";
+    return `<article class="news-card news-card--${type}">
+      <span class="news-card__tag"><i class="fa-solid ${NEWS_TAG_ICON[type]}"></i> ${escapeHtml(vi ? n.tag_vi : n.tag_en)}</span>
+      <h4 class="news-card__title">${escapeHtml(vi ? n.title_vi : n.title_en)}</h4>
+      <p class="news-card__desc">${escapeHtml(vi ? n.desc_vi : n.desc_en)}</p>
+      <div class="news-card__meta"><span><i class="fa-regular fa-calendar"></i> ${date}</span>${src}</div>
+    </article>`;
+  }).join("");
+  sec.hidden = false;
+}
+
+/* ── Interview-date countdown ──
+   The user tells us their interview date once; home then shows a countdown plus
+   a daily pacing nudge (civics-specific when they practice naturalization).
+   Date lives on the device; setting it also logs an event for the CRM. */
+const INTERVIEW_DATE_KEY = "interviewPrepInterviewDate";
+const CD_SNOOZE_KEY = "interviewPrepCountdownSnooze";
+const CIVICS_QUESTION_COUNT = 128;
+
+const CD_EN = {
+  days: "{n} days until your interview",
+  tomorrow: "Your interview is tomorrow!",
+  today: "Your interview is today — good luck! 🍀",
+  past: "Hope your interview went well! 🎉",
+  nudgeCivics: "Study about {n} civics questions a day to cover all 128 before your interview.",
+  nudgeCivicsEasy: "You have plenty of time — a few civics questions a day covers all 128.",
+  nudgeGeneric: "A little practice every day builds real confidence — aim for one round a day.",
+};
+const CD_VI = {
+  days: "Còn {n} ngày đến buổi phỏng vấn của bạn",
+  tomorrow: "Buổi phỏng vấn của bạn là ngày mai!",
+  today: "Buổi phỏng vấn của bạn là hôm nay — chúc may mắn! 🍀",
+  past: "Hy vọng buổi phỏng vấn của bạn diễn ra tốt đẹp! 🎉",
+  nudgeCivics: "Học khoảng {n} câu dân sự mỗi ngày để ôn hết 128 câu trước buổi phỏng vấn.",
+  nudgeCivicsEasy: "Bạn còn nhiều thời gian — chỉ cần vài câu dân sự mỗi ngày là ôn hết 128 câu.",
+  nudgeGeneric: "Luyện tập một chút mỗi ngày sẽ tạo nên sự tự tin thật sự — hãy đặt mục tiêu một lượt mỗi ngày.",
+};
+
+// Local (not UTC) YYYY-MM-DD, optionally offset by whole days.
+function localDateStamp(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function daysUntilInterview() {
+  const dateStr = lsGet(INTERVIEW_DATE_KEY);
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(dateStr + "T00:00:00") - today) / 86400000);
+}
+
+function renderCountdown() {
+  const card = document.getElementById("countdownCard");
+  if (!card) return;
+  const setEl = document.getElementById("countdownSet");
+  const showEl = document.getElementById("countdownShow");
+  if (!isRegistered() || appView !== "home") { card.hidden = true; return; }
+  const dateStr = lsGet(INTERVIEW_DATE_KEY);
+
+  if (!dateStr) {
+    // No date yet: a small "when is your interview?" prompt, snoozable for a week.
+    const snoozedUntil = lsGet(CD_SNOOZE_KEY);
+    card.hidden = !!snoozedUntil && localDateStamp(0) < snoozedUntil;
+    setEl.hidden = false;
+    showEl.hidden = true;
+    const input = document.getElementById("interviewDateInput");
+    input.min = localDateStamp(0);
+    return;
+  }
+
+  card.hidden = false;
+  setEl.hidden = true;
+  showEl.hidden = false;
+  const t = currentLang === "vi" ? CD_VI : CD_EN;
+  const days = daysUntilInterview();
+  let msg;
+  if (days > 1) msg = "📅 " + t.days.replace("{n}", days);
+  else if (days === 1) msg = "📅 " + t.tomorrow;
+  else if (days === 0) msg = t.today;
+  else msg = t.past;
+  document.getElementById("countdownDays").textContent = msg;
+
+  // Pacing nudge: civics math for naturalization practicers, encouragement otherwise.
+  let nudge = "";
+  if (days > 0) {
+    const p = loadLocalProgress();
+    const natFocus = p.cats && p.cats.naturalization && p.cats.naturalization.rounds > 0;
+    if (natFocus) {
+      const perDay = Math.ceil(CIVICS_QUESTION_COUNT / days);
+      nudge = perDay <= 2 ? t.nudgeCivicsEasy : t.nudgeCivics.replace("{n}", perDay);
+    } else {
+      nudge = t.nudgeGeneric;
+    }
+  }
+  const nudgeEl = document.getElementById("countdownNudge");
+  nudgeEl.textContent = nudge;
+  nudgeEl.hidden = !nudge;
+}
+
+function saveInterviewDate() {
+  const v = document.getElementById("interviewDateInput").value;
+  if (!v) return;
+  try {
+    localStorage.setItem(INTERVIEW_DATE_KEY, v);
+    localStorage.removeItem(CD_SNOOZE_KEY);
+  } catch (e) {}
+  logEvent("interview_date_set", { date: v, days_left: daysUntilInterview() });
+  renderCountdown();
+}
+
+function editInterviewDate() {
+  const input = document.getElementById("interviewDateInput");
+  input.value = lsGet(INTERVIEW_DATE_KEY);
+  input.min = localDateStamp(0);
+  document.getElementById("countdownShow").hidden = true;
+  document.getElementById("countdownSet").hidden = false;
+}
+
+function clearInterviewDate() {
+  try { localStorage.removeItem(INTERVIEW_DATE_KEY); } catch (e) {}
+  logEvent("interview_date_cleared", {});
+  renderCountdown();
+}
+
+function snoozeCountdown() {
+  try { localStorage.setItem(CD_SNOOZE_KEY, localDateStamp(7)); } catch (e) {}
+  renderCountdown();
 }
 
 // ── In-app feedback (ease + helpfulness), shown after a completed round ──
@@ -1444,6 +1618,53 @@ function countMissedCivics() {
   return allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id)).length;
 }
 
+/* ── Spaced repetition (Leitner boxes) for missed civics questions ──
+   Each missed question sits in a box (1 → 2 → 3). Answering it correctly
+   promotes it to the next box and schedules it further out (now / +2 days /
+   +5 days); a correct answer in box 3 clears it for good, and any wrong answer
+   drops it back to box 1, due immediately. Scheduling metadata is device-local;
+   the missed *list* still syncs across devices (restored questions simply come
+   back due right away, then re-earn their schedule). */
+const MISSED_META_KEY = "interviewPrepMissedMeta";
+const LEITNER_DAYS = [0, 2, 5]; // due offset in days for boxes 1..3
+
+function loadMissedMeta() {
+  try { return JSON.parse(localStorage.getItem(MISSED_META_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+let missedMeta = loadMissedMeta();
+
+function saveMissedMeta() {
+  try { localStorage.setItem(MISSED_META_KEY, JSON.stringify(missedMeta)); } catch (e) {}
+}
+
+function setMissedBox(id, box) {
+  missedMeta[id] = { b: box, d: localDateStamp(LEITNER_DAYS[box - 1]) };
+  saveMissedMeta();
+}
+
+// No metadata (legacy or restored-from-server item) counts as due now.
+function isMissedDue(id) {
+  const m = missedMeta[id];
+  return !m || m.d <= localDateStamp(0);
+}
+
+function dueMissedCivics() {
+  return allQuestions.filter(q =>
+    q.category === "naturalization" && missedIds.has(q.id) && isMissedDue(q.id)).length;
+}
+
+// Earliest upcoming due date among scheduled (not-yet-due) missed civics questions.
+function nextMissedDueDate() {
+  let min = null;
+  allQuestions.forEach(q => {
+    if (q.category !== "naturalization" || !missedIds.has(q.id)) return;
+    const m = missedMeta[q.id];
+    if (m && m.d > localDateStamp(0) && (!min || m.d < min)) min = m.d;
+  });
+  return min;
+}
+
 let lastResultsCache = [];
 
 function initAuth() {
@@ -1612,24 +1833,42 @@ async function loadMissedIdsFromAccount() {
   }
 }
 
-// Add (missed=true) or clear (missed=false) a question on the missed list,
-// persist locally, refresh the button count, and sync to the account if signed in.
+// Record a wrong (missed=true) or right (missed=false) answer against the
+// spaced-repetition schedule: wrong resets the question to box 1 (due now),
+// right promotes it a box — and clears it for good after box 3. Membership
+// changes sync to the backend so the missed list follows the user.
 async function markMissed(id, missed) {
-  if (missed === missedIds.has(id)) return; // no change
-  if (missed) missedIds.add(id); else missedIds.delete(id);
-  saveMissedIds();
+  if (missed) {
+    const wasListed = missedIds.has(id);
+    missedIds.add(id);
+    setMissedBox(id, 1);
+    saveMissedIds();
+    if (!wasListed) syncMissedUp(id, true);
+  } else {
+    if (!missedIds.has(id)) return; // never missed — nothing to schedule
+    const box = ((missedMeta[id] && missedMeta[id].b) || 1) + 1;
+    if (box > LEITNER_DAYS.length) {
+      // Mastered: correct at the top box removes it from the review loop.
+      missedIds.delete(id);
+      delete missedMeta[id];
+      saveMissedIds();
+      saveMissedMeta();
+      syncMissedUp(id, false);
+    } else {
+      setMissedBox(id, box);
+    }
+  }
   if (currentCategory === "naturalization") updateNaturalizationUI();
-  syncMissedUp(id, missed);
 }
 
 // ── Cross-device progress sync (flagged + missed), keyed by device client_id ──
 function syncFlagUp(id, on) {
-  if (!supabaseClient || !isRegistered()) return;
+  if (!supabaseClient || !isRegistered() || IS_DEV_HOST) return;
   supabaseClient.rpc("save_flag", { p_client_id: getClientId(), p_question_id: id, p_flagged: on })
     .then(({ error }) => { if (error) console.error("save_flag:", error.message); });
 }
 function syncMissedUp(id, on) {
-  if (!supabaseClient || !isRegistered()) return;
+  if (!supabaseClient || !isRegistered() || IS_DEV_HOST) return;
   supabaseClient.rpc("save_missed", { p_client_id: getClientId(), p_question_id: id, p_missed: on })
     .then(({ error }) => { if (error) console.error("save_missed:", error.message); });
 }
@@ -1811,6 +2050,8 @@ function switchLanguage(lang) {
   if (currentUser) renderRecentResults(lastResultsCache.slice(0, 8));
   setServiceHeaderTitle();
   renderProgress();
+  renderNews();
+  renderCountdown();
 }
 
 function shuffle(array) {
@@ -1899,6 +2140,7 @@ function showHome() {
   // Progress card is home-only.
   renderProgress();
   renderHomeGreeting();
+  renderCountdown();
   maybeShowInstallHint();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1949,13 +2191,22 @@ function showServiceMenu(category) {
   document.getElementById("qaGridNat").hidden = !isNat;
   document.getElementById("qaGridOpen").hidden = isNat;
   if (isNat) {
-    // Review Missed tile: show the count, gray out when there's nothing to drill.
-    const count = countMissedCivics();
+    // Review Missed tile: spaced repetition drives what's due today. Show the
+    // due count; when everything is scheduled for later, show the next due
+    // date instead and gray the tile out.
+    const total = countMissedCivics();
+    const due = dueMissedCivics();
     const countEl = document.getElementById("qaReviewCount");
-    countEl.textContent = `(${count})`;
-    countEl.hidden = count === 0;
+    if (due > 0) {
+      countEl.textContent = `(${due})`;
+    } else if (total > 0) {
+      const nd = nextMissedDueDate();
+      const d = nd ? new Date(nd + "T12:00:00").toLocaleDateString(currentLang === "vi" ? "vi-VN" : "en-US", { month: "short", day: "numeric" }) : "";
+      countEl.textContent = currentLang === "vi" ? `· hẹn ${d}` : `· next ${d}`;
+    }
+    countEl.hidden = total === 0;
     const reviewTile = document.querySelector('.qa-tile[data-action="review"]');
-    if (reviewTile) reviewTile.disabled = count === 0;
+    if (reviewTile) reviewTile.disabled = due === 0;
     // Spoken Test needs browser speech recognition.
     const spokenTile = document.querySelector('.qa-tile[data-action="spoken"]');
     if (spokenTile) spokenTile.disabled = !SPEECH_SUPPORTED;
@@ -2125,7 +2376,8 @@ function startRound(category) {
   else if (contentType !== "question") {
     pool = allQuestions.filter(q => q.category === category && (q.content_type || "question") === contentType);
   } else if (category === "naturalization" && natTestType === "civics" && reviewMode) {
-    pool = allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id));
+    // Spaced repetition: only quiz what's due today (no metadata = due).
+    pool = allQuestions.filter(q => q.category === "naturalization" && missedIds.has(q.id) && isMissedDue(q.id));
   } else if (category === "naturalization") {
     const dbCategory = natTestType === "english" ? natEnglishSection : "naturalization";
     pool = allQuestions.filter(q => q.category === dbCategory && (q.content_type || "question") === "question");
@@ -2215,7 +2467,7 @@ function renderDoneState(kind) {
     restartBtn.style.display = "";
   } else if (kind === "reviewDone") {
     const cleared = simScore.correct;
-    const remaining = countMissedCivics();
+    const remaining = dueMissedCivics(); // still-due today; promoted questions return on their schedule
     const template = currentLang === "vi" ? translations.vi["review.done"] : REVIEW_DONE_EN;
     badgeEl.textContent = template
       .replace("{cleared}", cleared)
@@ -3003,6 +3255,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── Install hint wiring ──
   document.getElementById("installBtn").addEventListener("click", triggerInstall);
   document.getElementById("installClose").addEventListener("click", dismissInstallHint);
+  // ── Interview countdown wiring ──
+  document.getElementById("interviewDateSave").addEventListener("click", saveInterviewDate);
+  document.getElementById("countdownSnooze").addEventListener("click", (e) => { e.preventDefault(); snoozeCountdown(); });
+  document.getElementById("countdownEdit").addEventListener("click", (e) => { e.preventDefault(); editInterviewDate(); });
+  document.getElementById("countdownClear").addEventListener("click", (e) => { e.preventDefault(); clearInterviewDate(); });
+  // ── News cards: tap to expand/collapse (links inside still navigate) ──
+  document.getElementById("newsCards").addEventListener("click", (e) => {
+    if (e.target.closest("a")) return;
+    const card = e.target.closest(".news-card");
+    if (card) card.classList.toggle("news-card--open");
+  });
   document.getElementById("emailGateForm").addEventListener("submit", submitEmailGate);
   document.getElementById("emailGateLangToggle").addEventListener("click", () => {
     switchLanguage(currentLang === "en" ? "vi" : "en");
@@ -3074,6 +3337,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderAccountUI();
   initAuth();
   loadQuestions();
+  loadNews();
   syncProgressAcrossDevices();   // adopt cross-device rounds/counts for returning devices
   logFirstTouchIfNeeded();
   logEvent("page_view");
