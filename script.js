@@ -754,7 +754,9 @@ async function logActivity(activityType, category, data = {}) {
     activityType === "practice"
       ? { category: category || null, mode: data.mode || null,
           content_type: data.content_type || null,
-          correct: data.correct ?? null, total: data.total ?? null }
+          correct: data.correct ?? null, total: data.total ?? null,
+          // Joins this completion back to its practice_start.
+          round_id: data.round_id || null }
       : { category: category || null, content_type: data.content_type || null });
 }
 
@@ -1412,6 +1414,8 @@ function bumpRoundCount() {
    hidden though — in the pre-email phase we still expose the small "Rate the
    app" link so a user can leave feedback whenever they want. */
 function onRoundComplete(scored = {}) {
+  const finishedRound = activeRound;
+  endActiveRound("complete");     // finished, so no abandon event
   bumpRoundCount();
   const reviewed = quizSet.length;
   recordRoundProgress(currentCategory, reviewed);   // count this round locally
@@ -1424,6 +1428,7 @@ function onRoundComplete(scored = {}) {
     content_type: scored.content_type || contentType,
     correct: (scored.correct ?? null),
     total: (scored.total ?? null),
+    round_id: finishedRound ? finishedRound.id : null,
   });
   if (!hasEmailLead()) {
     document.getElementById("feedbackCard").hidden = true;
@@ -2268,6 +2273,7 @@ function setServiceHeaderTitle() {
 }
 
 function showHome() {
+  endActiveRound("left_round");   // Home is the only way out of a round mid-way
   appView = "home";
   currentServiceCategory = null;
   clearInterval(timerInterval);
@@ -2498,7 +2504,76 @@ function setEnglishSection(section) {
   startRound("naturalization");
 }
 
+/* ── Practice-round funnel tracking ──
+   `practice_complete` alone can't explain the activation gap: it only fires for
+   rounds that finish, so a round that is started and abandoned looks identical
+   to one that was never started. `practice_start` + `practice_abandon` close
+   that gap, and a shared `round_id` lets the dashboard join the two ends of the
+   same round.
+
+   `answered` on an abandon is the index the customer reached, so per-question
+   drop-off is just a histogram over that field. */
+let activeRound = null;
+
+function roundModeLabel() {
+  return simMode ? "simulate"
+    : reviewMode ? "review"
+    : mockMode ? "mock"
+    : flashMode ? "flash"
+    : "practice";
+}
+
+function beginActiveRound(category, total) {
+  activeRound = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+    category, total,
+    mode: roundModeLabel(),
+    content_type: contentType,
+    startedAt: Date.now(),
+  };
+  logEvent("practice_start", {
+    round_id: activeRound.id,
+    category, total,
+    mode: activeRound.mode,
+    content_type: activeRound.content_type,
+  });
+}
+
+/* Close the open round. `reason` distinguishes how it ended — a completed round
+   calls this with "complete", which clears state without logging an abandon.
+
+   `keepOpen` is for the page-exit path: leaving the tab is NOT proof of
+   abandonment (backgrounding a phone mid-round is routine), so we log the
+   snapshot but leave the round open, letting a customer who comes back and
+   finishes still emit practice_complete. That can produce an abandon AND a
+   complete for one round_id — the dashboard resolves it by treating any round
+   with a completion as completed. Erring this way keeps a real abandon from
+   going unrecorded, which a histogram of drop-off points cares about more. */
+function endActiveRound(reason, keepOpen = false) {
+  const r = activeRound;
+  if (!keepOpen) activeRound = null;
+  if (!r || reason === "complete") return;
+  if (keepOpen && r.abandonLogged) return;   // one snapshot per round
+  if (keepOpen) r.abandonLogged = true;
+  const answered = Math.min(currentIndex, r.total);
+  logEvent("practice_abandon", {
+    round_id: r.id,
+    category: r.category,
+    mode: r.mode,
+    content_type: r.content_type,
+    answered,
+    total: r.total,
+    // Where in the round they dropped — the thing the drop-off histogram needs.
+    progress_pct: r.total ? Math.round((100 * answered) / r.total) : 0,
+    seconds: Math.round((Date.now() - r.startedAt) / 1000),
+    reason,
+  });
+}
+
 function startRound(category) {
+  // Must run before any state is touched — startRound resets currentIndex to 0
+  // further down, and the abandon needs to report how far they actually got.
+  endActiveRound("restart");
   clearInterval(timerInterval);
   cleanupMockRecording();
   currentCategory = category;
@@ -2542,9 +2617,14 @@ function startRound(category) {
   document.getElementById("quizCard").hidden = quizSet.length === 0;
 
   if (quizSet.length === 0) {
+    // Empty pool — nothing was started, so this is a dead end rather than a
+    // round. Logged separately so it can't be mistaken for an abandon.
+    endActiveRound("empty_pool");
+    logEvent("practice_empty", { category, content_type: contentType, mode: roundModeLabel() });
     renderDoneState(category === "flagged" ? "flaggedEmpty" : (reviewMode ? "reviewEmpty" : "finished"));
     document.getElementById("quizDone").hidden = false;
   } else {
+    beginActiveRound(category, quizSet.length);
     renderCurrentQuestion();
   }
 }
@@ -3454,6 +3534,17 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !document.getElementById("newsModal").hidden) closeNewsModal();
   });
+  /* Most abandons are a closed tab or a backgrounded phone, not a tap on Home.
+     `pagehide` is the reliable signal on mobile Safari (`beforeunload` is not),
+     and visibilitychange covers app-switching. Both are best-effort: the insert
+     may not flush if the page dies instantly, so the Home path above stays the
+     dependable one. */
+  const flushAbandon = () => { if (activeRound) endActiveRound("left_page", true); };
+  window.addEventListener("pagehide", flushAbandon);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushAbandon();
+  });
+
   document.getElementById("emailGateForm").addEventListener("submit", submitEmailGate);
   document.getElementById("emailGateLangToggle").addEventListener("click", () => {
     switchLanguage(currentLang === "en" ? "vi" : "en");

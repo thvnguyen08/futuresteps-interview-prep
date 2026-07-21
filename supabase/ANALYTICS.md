@@ -87,8 +87,18 @@ const { data: personId } = await supabase.rpc('identify', {
 | `contact_submit` | web | `{ service }` | contact form submitted → also call `identify()` |
 | `register` | app | — | emitted **by `identify()`** — don't send manually |
 | `login` | app | — | returning login |
-| `practice_start` | app | `{ category, mode }` | a practice round begins |
-| `practice_complete` | app | `{ category, mode, content_type, correct, total }` | round finished — **drives Activated/Active** |
+| `practice_start` | app | `{ round_id, category, mode, content_type, total }` | a round begins with ≥1 question |
+| `practice_complete` | app | `{ round_id, category, mode, content_type, correct, total }` | round finished — **drives Activated/Active** |
+| `practice_abandon` | app | `{ round_id, category, mode, content_type, answered, total, progress_pct, seconds, reason }` | a started round was left unfinished |
+| `practice_empty` | app | `{ category, mode, content_type }` | a round was requested but the question pool was empty (dead end, not an abandon) |
+
+**Reading the practice funnel.** `round_id` joins the three round events.
+`reason` on an abandon is `left_round` (tapped Home), `restart` (started another
+round), or `left_page` (closed/backgrounded the tab). A `left_page` abandon is a
+*snapshot*, not a verdict — the round stays open, so a customer who returns and
+finishes emits `practice_complete` for the same `round_id`. **Any round_id with a
+completion counts as completed, even if an abandon exists for it.** `answered` is
+how far they got, so per-question drop-off is a histogram over that field.
 | `view` | app | `{ category, content_type }` | browsed content without practicing |
 | `news_impression` | app | `{ slot, title, category, featured }` | a news card scrolled ≥50% into view (once per story per session) |
 | `news_open` | app | `{ slot, title, category, featured, faqs }` | the story was opened (card, keyboard, or breaking banner) |
