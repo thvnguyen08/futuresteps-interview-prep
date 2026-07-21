@@ -164,15 +164,14 @@
     .chart-tip__row { display: flex; align-items: center; gap: 6px; }
     .chart-tip__val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-    .filter-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
-    .field { display: flex; flex-direction: column; gap: 4px; }
-    .field__label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--clr-muted); }
-    .field__select {
-      font-family: var(--ff); font-size: .8rem; font-weight: 600; color: var(--clr-text);
-      padding: 7px 10px; border: 1.5px solid var(--clr-border); border-radius: 8px;
-      background: var(--clr-surface); cursor: pointer; min-width: 150px;
-    }
-    .field__select:focus { outline: none; border-color: var(--clr-primary); }
+    .subhead { margin: 28px 0 4px; font-size: .95rem; font-weight: 700; color: var(--clr-dark); }
+    .subhead__note { color: var(--clr-muted); font-size: .78rem; margin-bottom: 12px; line-height: 1.5; }
+    /* Grouped header: a quiet rule under the group label ties its columns together. */
+    thead .grp th { font-size: .65rem; padding-bottom: 4px; border-bottom: none; color: var(--clr-muted); }
+    thead .grp th.grp--on { border-bottom: 1px solid var(--clr-border); }
+    thead th.col-sep { border-left: 1px solid var(--clr-border); }
+    tbody td.col-sep { border-left: 1px solid var(--clr-surface2); }
+    .td-zero { color: #cbd5e1; }
 
     .range-filter { display: inline-flex; border: 1.5px solid var(--clr-border); border-radius: 8px; overflow: hidden; }
     .range-filter__btn {
@@ -258,32 +257,18 @@
         Practice Activity
       </h2>
       <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
-        Views and practice rounds per day, broken down by service.
+        Are customers actually practicing? Daily activity, then rounds per service and per naturalization test.
       </p>
 
-      <!-- One filter row scoping BOTH the chart and the table below it. -->
+      <!-- One range control scoping the chart and both tables below it. -->
       <div class="toolbar">
-        <div class="filter-row">
-          <div class="range-filter" role="group" aria-label="Date range">
-            <button class="range-filter__btn" data-days="14">14 days</button>
-            <button class="range-filter__btn is-active" data-days="30">30 days</button>
-            <button class="range-filter__btn" data-days="90">90 days</button>
-          </div>
-          <label class="field">
-            <span class="field__label">Action</span>
-            <select class="field__select" id="actionFilter">
-              <option value="">All actions</option>
-              <option value="practice">Practiced</option>
-              <option value="view">Viewed</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Service</span>
-            <select class="field__select" id="serviceFilter"></select>
-          </label>
+        <div class="range-filter" role="group" aria-label="Date range">
+          <button class="range-filter__btn" data-days="14">14 days</button>
+          <button class="range-filter__btn is-active" data-days="30">30 days</button>
+          <button class="range-filter__btn" data-days="90">90 days</button>
         </div>
         <button class="btn btn--green" id="activityExportBtn">
-          <i class="fa-solid fa-file-csv"></i> Export Activity CSV
+          <i class="fa-solid fa-file-csv"></i> Export CSV
         </button>
       </div>
 
@@ -300,14 +285,29 @@
         </div>
       </div>
 
-      <div class="table-wrap" style="margin-top:16px;">
+      <h3 class="subhead">Daily practice</h3>
+      <p class="subhead__note">
+        Practice rounds per service, and mock-interview rounds per service.
+        Green flags, red flags and document checklists are excluded — they're reading, not practice.
+      </p>
+      <div class="table-wrap">
         <table>
-          <thead>
-            <tr id="activityHead"></tr>
-          </thead>
-          <tbody id="activityBody"></tbody>
+          <thead id="reportHead"></thead>
+          <tbody id="reportBody"></tbody>
         </table>
       </div>
+
+      <h3 class="subhead">Naturalization detail</h3>
+      <p class="subhead__note">
+        Which part of the naturalization prep customers actually use.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead id="natHead"></thead>
+          <tbody id="natBody"></tbody>
+        </table>
+      </div>
+      <p class="subhead__note" id="natLegacyNote"></p>
 
       <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
         Category Breakdown
@@ -477,16 +477,27 @@
     // ── Practice activity (daily rollup: day × action × service) ──
     // No per-person rows here on purpose — the rollup answers "what got
     // practiced, when" without shipping learner names/emails to the browser.
-    let activityData = [];
+    let activityData = [];     // get_activity_rollup — feeds the chart
+    let reportData = [];       // get_practice_report — feeds both tables
     let activityDays = 30;
-    let actionFilter = "";     // "" = all actions
-    let serviceFilter = "";    // "" = all services
-    const activityColumns = [
-      { key: "day",          label: "Day" },
-      { key: "events",       label: "Events" },
-      { key: "learners",     label: "Learners" },
-      { key: "questions",    label: "Questions" },
-      { key: "accuracy_pct", label: "Accuracy" },
+
+    // Table 1: practice rounds per service, then mock-interview rounds per service.
+    const SERVICES = [
+      { key: "naturalization", label: "Naturalization", short: "Nat" },
+      { key: "marriage",       label: "Marriage",       short: "Marriage" },
+      { key: "f1",             label: "F-1",            short: "F-1" },
+      { key: "b1b2",           label: "B1/B2",          short: "B1/B2" },
+      { key: "asylum",         label: "Asylum",         short: "Asylum" },
+    ];
+    // Table 2: the naturalization drill-down, in the order a customer meets them.
+    const NAT_PARTS = [
+      { key: "n_civics128",  label: "128 civics" },
+      { key: "n_civicstest", label: "Civics test" },
+      { key: "n_spoken",     label: "Spoken test" },
+      { key: "n_review",     label: "Review missed" },
+      { key: "n_reading",    label: "Reading" },
+      { key: "n_writing",    label: "Writing" },
+      { key: "n_speaking",   label: "Speaking" },
     ];
     const SERVICE_LABEL = {
       marriage: "Marriage Green Card", naturalization: "Naturalization", asylum: "Asylum",
@@ -512,83 +523,109 @@
     /* The rollup arrives pre-aggregated at four levels; a NULL activity_type or
        category marks an "all" row. Picking the matching level (rather than
        summing detail rows) is what keeps `learners` — a distinct device count,
-       so not additive — exact under every filter combination. */
+       so not additive — exact. */
     function rowsForLevel(action, service) {
       return activityData.filter(r =>
         (action  ? r.activity_type === action  : r.activity_type == null) &&
         (service ? r.category      === service : r.category      == null));
     }
 
-    // Days present in the data, newest first, for the current filter.
-    function filteredDayRows() {
-      return rowsForLevel(actionFilter, serviceFilter)
-        .slice()
-        .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    /* ── Practice report (two tables) ──
+       get_practice_report returns long-format rows: one per (day, bucket).
+       Pivot to day → bucket → {rounds, people} once, then both tables read it. */
+    function reportByDay() {
+      const m = new Map();
+      for (const r of reportData) {
+        const d = m.get(r.day) || { day: r.day };
+        d[r.bucket] = { rounds: Number(r.rounds || 0), people: Number(r.people || 0) };
+        m.set(r.day, d);
+      }
+      // Newest first; only days that saw practice (a quiet day adds no signal
+      // to a table the way it does to the chart's continuous x-axis).
+      return [...m.values()].sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    }
+    const cellRounds = (d, bucket) => (d[bucket] ? d[bucket].rounds : 0);
+
+    // Zeros are dimmed so the eye lands on the days something actually happened.
+    function numCell(v, extraCls) {
+      const cls = ["td-num", v ? "" : "td-zero", extraCls || ""].filter(Boolean).join(" ");
+      return `<td class="${cls}">${v ? v.toLocaleString() : "0"}</td>`;
     }
 
-    function activityCell(r, key) {
-      if (key === "day") return dayLabel(r.day, true);
-      if (key === "accuracy_pct") return r.accuracy_pct != null ? r.accuracy_pct + "%" : "—";
-      return r[key];
-    }
-
-    function filterSummary() {
-      const a = actionFilter ? ACTION_LABEL[actionFilter] : "All actions";
-      const s = serviceFilter ? (SERVICE_LABEL[serviceFilter] || serviceFilter) : "all services";
-      return `${a} · ${s}`;
-    }
-
-    // Service options come from the data, not a hardcoded list, so a category
-    // that isn't in SERVICE_LABEL still shows up (under its raw key).
-    function renderServiceFilter() {
-      const seen = [...new Set(activityData.filter(r => r.category != null).map(r => r.category))]
-        .sort((a, b) => (SERVICE_LABEL[a] || a).localeCompare(SERVICE_LABEL[b] || b));
-      const sel = document.getElementById("serviceFilter");
-      sel.innerHTML = `<option value="">All services</option>` +
-        seen.map(c => `<option value="${c}">${SERVICE_LABEL[c] || c}</option>`).join("");
-      // Keep the current pick if it still exists in the new range.
-      if (serviceFilter && !seen.includes(serviceFilter)) serviceFilter = "";
-      sel.value = serviceFilter;
-    }
-
-    function renderActivityHead() {
-      document.getElementById("activityHead").innerHTML =
-        activityColumns.map(c => `<th>${c.label}</th>`).join("");
-    }
-
-    // One row per day, totalled under the current filter. Also the chart's
-    // table view — every plotted value is readable here, so nothing is gated
-    // behind a tooltip.
-    function renderActivity() {
-      renderActivityHead();
-      const tbody = document.getElementById("activityBody");
-      const rows = filteredDayRows();
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="${activityColumns.length}" class="empty-state">No activity for ${filterSummary()} in this range.</td></tr>`;
+    function renderReportTable() {
+      const days = reportByDay().filter(d => d.__all);
+      const nCols = 2 + SERVICES.length * 2;
+      document.getElementById("reportHead").innerHTML = `
+        <tr class="grp">
+          <th></th><th></th>
+          <th class="grp--on" colspan="${SERVICES.length}">Practice rounds</th>
+          <th class="grp--on col-sep" colspan="${SERVICES.length}">Mock interviews</th>
+        </tr>
+        <tr>
+          <th>Day</th><th>People</th>
+          ${SERVICES.map(s => `<th>${s.short}</th>`).join("")}
+          ${SERVICES.map((s, i) => `<th${i === 0 ? ' class="col-sep"' : ""}>${s.short}</th>`).join("")}
+        </tr>`;
+      const tbody = document.getElementById("reportBody");
+      if (!days.length) {
+        tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-state">No practice in this range.</td></tr>`;
         return;
       }
-      const numeric = new Set(["events", "learners", "questions", "accuracy_pct"]);
-      tbody.innerHTML = rows.map(r => `<tr>${activityColumns.map(c => {
-        let val = activityCell(r, c.key);
-        if (val == null || val === "") val = "—";
-        const cls = numeric.has(c.key) ? ' class="td-num"' : (c.key === "day" ? ' class="td-date"' : "");
-        return `<td${cls}>${String(val).replace(/</g, "&lt;")}</td>`;
-      }).join("")}</tr>`).join("");
+      tbody.innerHTML = days.map(d => `<tr>
+        <td class="td-date">${dayLabel(d.day, true)}</td>
+        ${numCell(d.__all.people)}
+        ${SERVICES.map(s => numCell(cellRounds(d, "p_" + s.key))).join("")}
+        ${SERVICES.map((s, i) => numCell(cellRounds(d, "m_" + s.key), i === 0 ? "col-sep" : "")).join("")}
+      </tr>`).join("");
     }
 
-    function exportActivityCSV() {
-      const header = activityColumns.map(c => c.label).join(",");
-      const rows = filteredDayRows().map(r => activityColumns.map(c => {
-        let v = c.key === "day" ? r.day : activityCell(r, c.key);
-        if (v == null) v = "";
-        return `"${String(v).replace(/"/g, '""')}"`;
-      }).join(","));
+    function renderNatTable() {
+      const days = reportByDay().filter(d => d.__nat);
+      const nCols = 2 + NAT_PARTS.length;
+      document.getElementById("natHead").innerHTML = `<tr>
+        <th>Day</th><th>People</th>
+        ${NAT_PARTS.map(p => `<th>${p.label}</th>`).join("")}
+      </tr>`;
+      const tbody = document.getElementById("natBody");
+      if (!days.length) {
+        tbody.innerHTML = `<tr><td colspan="${nCols}" class="empty-state">No naturalization practice in this range.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = days.map(d => `<tr>
+        <td class="td-date">${dayLabel(d.day, true)}</td>
+        ${numCell(d.__nat.people)}
+        ${NAT_PARTS.map(p => numCell(cellRounds(d, p.key))).join("")}
+      </tr>`).join("");
+
+      // Be explicit about the legacy gap rather than letting a column of zeros
+      // read as "nobody uses the spoken test".
+      const legacy = reportData.some(r => r.bucket === "n_civicstest");
+      const anySpoken = reportData.some(r => r.bucket === "n_spoken" && Number(r.rounds) > 0);
+      document.getElementById("natLegacyNote").textContent = (legacy && !anySpoken)
+        ? "Note: the Real Civics Test and Spoken Test were logged identically until 21 Jul 2026, so older rounds all count under “Civics test”. Spoken test fills in from now on."
+        : "";
+    }
+
+    function exportReportCSV() {
+      const days = reportByDay();
+      const header = ["Day", "People",
+        ...SERVICES.map(s => "Practice: " + s.label),
+        ...SERVICES.map(s => "Mock: " + s.label),
+        "Nat people", ...NAT_PARTS.map(p => "Nat: " + p.label)].join(",");
+      const rows = days.map(d => [
+        d.day,
+        d.__all ? d.__all.people : 0,
+        ...SERVICES.map(s => cellRounds(d, "p_" + s.key)),
+        ...SERVICES.map(s => cellRounds(d, "m_" + s.key)),
+        d.__nat ? d.__nat.people : 0,
+        ...NAT_PARTS.map(p => cellRounds(d, p.key)),
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(","));
       const csv = [header, ...rows].join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `futuresteps_activity_${new Date().toISOString().slice(0,10)}.csv`;
+      a.download = `futuresteps_practice_${new Date().toISOString().slice(0,10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -597,19 +634,15 @@
        Hand-rolled SVG rather than a chart library: the page has no build step
        and one small chart isn't worth a CDN dependency. */
 
-    // Which series to draw: both actions normally, just one when the action
-    // filter narrows it (the filter row scopes the chart as well as the table).
-    function activeSeries() {
-      return actionFilter ? ACTIVITY_SERIES.filter(s => s.key === actionFilter) : ACTIVITY_SERIES;
-    }
+    function activeSeries() { return ACTIVITY_SERIES; }
 
     function activityByDay() {
-      // Read the (day, action) level — or (day, action, service) when a service
-      // is picked — then fill gaps. A day with no activity must plot as zero,
-      // not be skipped, or quiet stretches silently compress the x-axis.
+      // Read the (day, action) level, then fill gaps. A day with no activity
+      // must plot as zero, not be skipped, or quiet stretches silently
+      // compress the x-axis.
       const byDay = new Map();
       for (const s of activeSeries()) {
-        for (const r of rowsForLevel(s.key, serviceFilter)) {
+        for (const r of rowsForLevel(s.key, "")) {
           const d = byDay.get(r.day) || { day: r.day, practice: 0, view: 0 };
           d[s.key] = Number(r.events || 0);
           byDay.set(r.day, d);
@@ -654,10 +687,10 @@
       const total = days.reduce((a, d) => a + series.reduce((b, s) => b + d[s.key], 0), 0);
 
       document.getElementById("activityChartSub").textContent =
-        `Last ${activityDays} days · ${filterSummary()} · ${total.toLocaleString()} event${total === 1 ? "" : "s"}`;
+        `Last ${activityDays} days · ${total.toLocaleString()} event${total === 1 ? "" : "s"}`;
 
       if (!total) {
-        host.innerHTML = `<div class="chart__empty">No activity for ${filterSummary()} in this range.</div>`;
+        host.innerHTML = `<div class="chart__empty">No activity in this range.</div>`;
         return;
       }
 
@@ -785,28 +818,34 @@
     }
 
     async function loadActivity() {
-      const { data, error } = await sb.rpc("get_activity_rollup", { p_days: activityDays });
-      if (error) {
-        console.error("Activity load error:", error);
-        document.getElementById("activityBody").innerHTML =
-          `<tr><td colspan="${activityColumns.length}" class="empty-state" style="color:var(--clr-red)">
-            Failed to load activity. Make sure you've run <code>supabase/add_activity_rollup.sql</code> and your email is in the admin list.
+      const [rollup, report] = await Promise.all([
+        sb.rpc("get_activity_rollup",  { p_days: activityDays }),
+        sb.rpc("get_practice_report",  { p_days: activityDays }),
+      ]);
+      const fail = (id, cols, file) => {
+        document.getElementById(id).innerHTML =
+          `<tr><td colspan="${cols}" class="empty-state" style="color:var(--clr-red)">
+            Failed to load. Make sure you've run <code>supabase/${file}</code> and your email is in the admin list.
           </td></tr>`;
+      };
+      if (rollup.error) {
+        console.error("Activity chart load error:", rollup.error);
         document.getElementById("activityChart").innerHTML =
-          `<div class="chart__empty">Chart unavailable — see the error below.</div>`;
-        return;
+          `<div class="chart__empty" style="color:var(--clr-red)">Chart unavailable — run <code>supabase/add_activity_rollup.sql</code>.</div>`;
+      } else {
+        activityData = rollup.data || [];
+        renderActivityLegend();
+        renderActivityChart();
       }
-      activityData = data || [];
-      renderServiceFilter();
-      renderActivityView();
-    }
-
-    // Everything the filter row scopes, re-rendered from data already in hand —
-    // changing a filter never refetches.
-    function renderActivityView() {
-      renderActivityLegend();
-      renderActivityChart();
-      renderActivity();
+      if (report.error) {
+        console.error("Practice report load error:", report.error);
+        fail("reportBody", 2 + SERVICES.length * 2, "add_practice_report.sql");
+        fail("natBody", 2 + NAT_PARTS.length, "add_practice_report.sql");
+      } else {
+        reportData = report.data || [];
+        renderReportTable();
+        renderNatTable();
+      }
     }
 
     // ── Unified analytics (funnel, channel, category, live feed) ──
@@ -1099,7 +1138,13 @@
       renderFeedbackComments(comments.data || []);
     }
 
+    /* Guarded because two paths race to open the dashboard on every load:
+       the awaited getSession() below AND onAuthStateChange's INITIAL_SESSION.
+       Unguarded, every panel fetched twice — 22 RPCs where 11 would do. */
+    let dashboardShown = false;
     function showDashboard(user) {
+      if (dashboardShown) return;
+      dashboardShown = true;
       document.getElementById("loginGate").style.display = "none";
       document.getElementById("dashboard").classList.add("is-visible");
       document.getElementById("topbarRight").innerHTML = `
@@ -1224,21 +1269,7 @@
           loadActivity();   // only the range needs a refetch
         });
       });
-      const actionSel = document.getElementById("actionFilter");
-      // Browsers restore <select> values on reload. Adopt whatever it restored,
-      // or the dropdown would read "Practiced" while the data stayed unfiltered.
-      // (The service select is immune — its options don't exist yet at restore
-      // time, so it always comes back empty.)
-      actionFilter = actionSel.value;
-      actionSel.addEventListener("change", (e) => {
-        actionFilter = e.target.value;
-        renderActivityView();
-      });
-      document.getElementById("serviceFilter").addEventListener("change", (e) => {
-        serviceFilter = e.target.value;
-        renderActivityView();
-      });
-      document.getElementById("activityExportBtn").addEventListener("click", exportActivityCSV);
+      document.getElementById("activityExportBtn").addEventListener("click", exportReportCSV);
 
       // Tooltip position is measured from layout, so a resize invalidates it.
       let activityResizeT;

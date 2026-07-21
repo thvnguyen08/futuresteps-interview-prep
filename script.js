@@ -1424,7 +1424,7 @@ function onRoundComplete(scored = {}) {
   // stay null for un-scored practice so they don't dilute the accuracy stat.
   logActivity("practice", currentCategory, {
     reviewed,
-    mode: scored.mode || (simMode ? "simulate" : reviewMode ? "review" : mockMode ? "mock" : "practice"),
+    mode: scored.mode || activityModeLabel(),
     content_type: scored.content_type || contentType,
     correct: (scored.correct ?? null),
     total: (scored.total ?? null),
@@ -2523,6 +2523,21 @@ function roundModeLabel() {
     : "practice";
 }
 
+/* practice_activity.mode — the same idea as roundModeLabel() but one step finer:
+   it splits simMode into the Real Civics Test ("mctest") and the Spoken Test
+   ("spoken"). Both used to log "simulate", which left the admin report unable to
+   tell an auto-scored test from a self-marked one. Old rows stay "simulate" and
+   cannot be split after the fact.
+   NOT for quiz_results.mode — that column has a check constraint allowing only
+   'simulate' / 'english' (see add_customer_login.sql). */
+function activityModeLabel() {
+  if (simMode) return mcTestMode ? "mctest" : spokenMode ? "spoken" : "simulate";
+  if (reviewMode) return "review";
+  if (mockMode) return "mock";
+  if (flashMode) return "flash";
+  return "practice";
+}
+
 function beginActiveRound(category, total) {
   activeRound = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
@@ -3322,7 +3337,7 @@ function nextQuestion() {
     document.getElementById("quizCard").hidden = true;
     document.getElementById("quizDone").hidden = false;
     onRoundComplete(isScored
-      ? { mode: simMode ? "simulate" : "english", correct: simScore.correct, total: simScore.total }
+      ? { mode: simMode ? activityModeLabel() : "english", correct: simScore.correct, total: simScore.total }
       : {});
   } else {
     renderCurrentQuestion();
