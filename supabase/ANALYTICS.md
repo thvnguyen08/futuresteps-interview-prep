@@ -90,6 +90,13 @@ const { data: personId } = await supabase.rpc('identify', {
 | `practice_start` | app | `{ category, mode }` | a practice round begins |
 | `practice_complete` | app | `{ category, mode, content_type, correct, total }` | round finished — **drives Activated/Active** |
 | `view` | app | `{ category, content_type }` | browsed content without practicing |
+| `news_impression` | app | `{ slot, title, category, featured }` | a news card scrolled ≥50% into view (once per story per session) |
+| `news_open` | app | `{ slot, title, category, featured, faqs }` | the story was opened (card, keyboard, or breaking banner) |
+| `news_beacon` | app | `{ slot, title, …, part, surface }` | which part of the story was clicked — `part: 'faq'` (+`faq_index`, `faq_question`) or `'source'` (+`source_name`, `surface: 'card'\|'modal'`) |
+
+News events carry the **English** `title` / `faq_question` so the dashboard keeps
+a stable label after the weekly sync rotates a slot to a different story — `slot`
+alone is not a durable article identifier.
 
 Add new event names freely; the schema doesn't need changing. Keep
 `practice_complete` fields stable — the funnel depends on them.

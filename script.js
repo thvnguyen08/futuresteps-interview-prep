@@ -1070,6 +1070,7 @@ function renderNews() {
     </article>`;
   }).join("");
   sec.hidden = false;
+  observeNewsImpressions();
 }
 
 // The featured story gets a big highlighted hero card, right above the
@@ -1100,6 +1101,9 @@ function renderBreakingBanner() {
 function openNewsModal(n) {
   if (!n) return;
   currentNewsItem = n;
+  // Logged here rather than on the card handler so the breaking banner and the
+  // keyboard path count too — every way into the story goes through this.
+  logEvent("news_open", newsEventProps(n, { faqs: newsFaqs(n).length }));
   const vi = currentLang === "vi";
   const type = newsType(n);
   const tagEl = document.getElementById("newsModalTag");
@@ -1132,6 +1136,47 @@ function openNewsModal(n) {
   document.getElementById("newsModal").hidden = false;
   document.body.classList.add("gate-open");
   document.querySelector(".news-modal__card").scrollTop = 0;
+}
+
+/* ── News analytics ──
+   Three events feed the dashboard's "Immigration news" panel:
+     news_impression — the card was actually scrolled into view on home
+     news_open       — the customer opened the story
+     news_beacon     — which part of the open story they clicked (FAQ / source)
+   All carry `slot` + `title` so the dashboard can name the article even after
+   the weekly sync rotates that slot to a different story. */
+function newsEventProps(n, extra = {}) {
+  return {
+    slot: n.slot,
+    title: n.title_en,          // English title = the dashboard's stable label
+    category: n.category || null,
+    featured: !!n.is_featured,
+    ...extra,
+  };
+}
+
+// One impression per story per session — the observer would otherwise re-fire
+// every time the card scrolls back into view.
+const seenNewsSlots = new Set();
+let newsObserver = null;
+function observeNewsImpressions() {
+  if (!("IntersectionObserver" in window)) return;
+  if (!newsObserver) {
+    newsObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const slot = entry.target.dataset.slot;
+        newsObserver.unobserve(entry.target);
+        if (!slot || seenNewsSlots.has(slot)) continue;
+        seenNewsSlots.add(slot);
+        const n = newsItems.find((x) => String(x.slot) === String(slot));
+        if (n) logEvent("news_impression", newsEventProps(n));
+      }
+    }, { threshold: 0.5 });   // half the card visible = genuinely seen
+  }
+  document.querySelectorAll("#newsCards .news-card").forEach((el) => {
+    if (!seenNewsSlots.has(el.dataset.slot)) newsObserver.observe(el);
+  });
 }
 
 function closeNewsModal() {
@@ -3362,8 +3407,16 @@ document.addEventListener("DOMContentLoaded", () => {
   // ── News: cards, breaking banner, and the detail modal ──
   const newsItemBySlot = (slot) => newsItems.find(n => String(n.slot) === String(slot)) || null;
   document.getElementById("newsCards").addEventListener("click", (e) => {
-    if (e.target.closest("a")) return; // source links navigate; card body opens the modal
     const card = e.target.closest(".news-card");
+    if (e.target.closest("a")) {
+      // Source links navigate; the card body opens the modal. Beacon the
+      // clickthrough anyway or card-level source clicks vanish entirely.
+      const n = card && newsItemBySlot(card.dataset.slot);
+      if (n) logEvent("news_beacon", newsEventProps(n, {
+        part: "source", surface: "card", source_name: n.source_name || null,
+      }));
+      return;
+    }
     if (card) openNewsModal(newsItemBySlot(card.dataset.slot));
   });
   document.getElementById("newsCards").addEventListener("keydown", (e) => {
@@ -3376,7 +3429,27 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("newsModalBackdrop").addEventListener("click", closeNewsModal);
   document.getElementById("newsModalFaqList").addEventListener("click", (e) => {
     const q = e.target.closest(".news-faq__q");
-    if (q) q.parentElement.classList.toggle("news-faq--open");
+    if (!q) return;
+    const row = q.parentElement;
+    row.classList.toggle("news-faq--open");
+    // Beacon: only the expand counts as engagement — collapsing isn't interest.
+    if (row.classList.contains("news-faq--open") && currentNewsItem) {
+      const i = Number(row.dataset.i);
+      const faq = newsFaqs(currentNewsItem)[i];
+      logEvent("news_beacon", newsEventProps(currentNewsItem, {
+        part: "faq",
+        faq_index: i,
+        faq_question: faq ? faq.q_en : null,   // English = stable dashboard label
+      }));
+    }
+  });
+  // Beacon: clicking out to the official source (USCIS/DHS/…).
+  document.getElementById("newsModalMeta").addEventListener("click", (e) => {
+    if (!e.target.closest("a") || !currentNewsItem) return;
+    logEvent("news_beacon", newsEventProps(currentNewsItem, {
+      part: "source", surface: "modal",
+      source_name: currentNewsItem.source_name || null,
+    }));
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !document.getElementById("newsModal").hidden) closeNewsModal();
