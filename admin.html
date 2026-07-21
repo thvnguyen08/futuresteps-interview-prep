@@ -400,6 +400,47 @@
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    /* ── rpc(): one retry against a freshly refreshed token ──
+       Opening the dashboard fires 11 RPCs at once. Supabase refreshes the
+       access token in the background, and when that burst overlaps a refresh
+       every panel comes back 401 together — the whole dashboard reads "Failed
+       to load" with a perfectly valid session, and only a manual reload fixes
+       it (observed 2026-07-21, session ~12 min from expiry).
+
+       Only expiry-shaped failures retry. A real authorization rejection (42501
+       — caller isn't in the admin allowlist) or a missing function (PGRST202 —
+       migration not run) must surface as-is; retrying those would just hide a
+       misconfigured dashboard behind a slower identical error. */
+    function isExpiredJwt(err) {
+      if (!err) return false;
+      // PGRST301/303 are PostgREST's JWT-expired / -invalid codes.
+      if (err.code === "PGRST301" || err.code === "PGRST303") return true;
+      return /jwt (expired|invalid)|token is expired/i.test(err.message || "");
+    }
+
+    /* Share ONE refresh across the whole failing burst. Supabase rotates
+       refresh tokens on use, so 11 concurrent refreshSession() calls would
+       spend the token 11 times and log the admin out — the opposite of the fix. */
+    let refreshInFlight = null;
+    function refreshSessionOnce() {
+      if (!refreshInFlight) {
+        refreshInFlight = sb.auth.refreshSession()
+          .finally(() => { refreshInFlight = null; });
+      }
+      return refreshInFlight;
+    }
+
+    async function rpc(fn, args) {
+      const first = await sb.rpc(fn, args);
+      if (!isExpiredJwt(first.error)) return first;
+      const { error: refreshError } = await refreshSessionOnce();
+      if (refreshError) {
+        console.error("Session refresh failed; leaving the original error:", refreshError);
+        return first;
+      }
+      return sb.rpc(fn, args);
+    }
+
     function fmtDate(iso) {
       if (!iso) return "—";
       const d = new Date(iso);
@@ -460,7 +501,7 @@
     }
 
     async function loadLeads() {
-      const { data, error } = await sb.rpc("get_leads_data");
+      const { data, error } = await rpc("get_leads_data");
       if (error) {
         console.error("Leads load error:", error);
         document.getElementById("leadsBody").innerHTML =
@@ -819,8 +860,8 @@
 
     async function loadActivity() {
       const [rollup, report] = await Promise.all([
-        sb.rpc("get_activity_rollup",  { p_days: activityDays }),
-        sb.rpc("get_practice_report",  { p_days: activityDays }),
+        rpc("get_activity_rollup",  { p_days: activityDays }),
+        rpc("get_practice_report",  { p_days: activityDays }),
       ]);
       const fail = (id, cols, file) => {
         document.getElementById(id).innerHTML =
@@ -927,9 +968,9 @@
 
     async function loadAnalytics() {
       const [funnel, channels, categories] = await Promise.all([
-        sb.rpc("get_funnel_summary"),
-        sb.rpc("get_channel_performance"),
-        sb.rpc("get_category_breakdown"),
+        rpc("get_funnel_summary"),
+        rpc("get_channel_performance"),
+        rpc("get_category_breakdown"),
       ]);
       const firstError = funnel.error || channels.error || categories.error;
       if (firstError) {
@@ -1057,9 +1098,9 @@
 
     async function loadNews() {
       const [summary, performance, faqs] = await Promise.all([
-        sb.rpc("get_news_summary"),
-        sb.rpc("get_news_performance"),
-        sb.rpc("get_news_faq_engagement", { p_limit: 25 }),
+        rpc("get_news_summary"),
+        rpc("get_news_performance"),
+        rpc("get_news_faq_engagement", { p_limit: 25 }),
       ]);
       const err = summary.error || performance.error || faqs.error;
       if (err) {
@@ -1122,8 +1163,8 @@
 
     async function loadFeedback() {
       const [summary, comments] = await Promise.all([
-        sb.rpc("get_feedback_summary"),
-        sb.rpc("get_feedback_comments", { p_limit: 100 }),
+        rpc("get_feedback_summary"),
+        rpc("get_feedback_comments", { p_limit: 100 }),
       ]);
       const err = summary.error || comments.error;
       if (err) {
