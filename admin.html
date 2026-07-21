@@ -218,6 +218,40 @@
       </div>
 
       <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
+        Immigration News
+      </h2>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        How the weekly news stories perform — seen on home, opened, and clicked through.
+      </p>
+      <div class="stats" id="newsStatsRow"></div>
+
+      <div class="toolbar" style="margin-top:16px;">
+        <input type="text" class="toolbar__search" id="newsSearch" placeholder="Search stories by title or category…">
+        <button class="btn btn--green" id="newsExportBtn">
+          <i class="fa-solid fa-file-csv"></i> Export News CSV
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="newsHead"></tr></thead>
+          <tbody id="newsBody"></tbody>
+        </table>
+      </div>
+
+      <h3 style="margin:24px 0 6px;font-size:.95rem;font-weight:700;color:var(--clr-dark);">
+        Most-Opened Questions
+      </h3>
+      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+        The FAQs customers actually expand — what they want explained next.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="newsFaqHead"></tr></thead>
+          <tbody id="newsFaqBody"></tbody>
+        </table>
+      </div>
+
+      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
         Live Activity Feed
       </h2>
       <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
@@ -561,6 +595,137 @@
       renderFeedTable(feed.data || []);
     }
 
+    // ── Immigration news performance ──
+    let newsData = [];
+    const newsColumns = [
+      { key: "title",         label: "Story" },
+      { key: "category",      label: "Category" },
+      { key: "impressions",   label: "Seen" },
+      { key: "opens",         label: "Opens" },
+      { key: "readers",       label: "Readers" },
+      { key: "open_rate_pct", label: "Open %" },
+      { key: "faq_expands",   label: "FAQ Opens" },
+      { key: "source_clicks", label: "Source Clicks" },
+      { key: "last_seen_at",  label: "Last Activity" },
+    ];
+
+    function renderNewsSummary(row) {
+      const r = row || {};
+      const impressions = Number(r.impressions ?? 0);
+      const opens = Number(r.opens ?? 0);
+      // Open rate is the headline number: of the cards actually scrolled into
+      // view, how many earned a tap.
+      const openRate = impressions ? Math.round((opens / impressions) * 100) : 0;
+      document.getElementById("newsStatsRow").innerHTML = [
+        { label: "Story Views",   value: impressions, sub: `${r.stories ?? 0} stories tracked` },
+        { label: "Opens",         value: opens,       sub: `${r.readers ?? 0} unique readers` },
+        { label: "Open Rate",     value: openRate + "%" },
+        { label: "Clickthroughs", value: Number(r.source_clicks ?? 0), sub: `${r.faq_expands ?? 0} FAQ opens` },
+      ].map(s => `
+        <div class="stat-card">
+          <div class="stat-card__label">${s.label}</div>
+          <div class="stat-card__value">${s.value}</div>
+          ${s.sub ? `<div class="stat-card__sub">${s.sub}</div>` : ""}
+        </div>
+      `).join("");
+    }
+
+    function newsCell(r, key) {
+      if (key === "last_seen_at") return fmtDate(r.last_seen_at);
+      if (key === "open_rate_pct") return r.open_rate_pct != null ? r.open_rate_pct + "%" : "—";
+      if (key === "category") return SERVICE_LABEL[r.category] || r.category || "—";
+      return r[key];
+    }
+
+    function renderNewsTable(filter) {
+      document.getElementById("newsHead").innerHTML =
+        newsColumns.map(c => `<th>${c.label}</th>`).join("");
+      let rows = [...newsData];
+      if (filter) {
+        const q = filter.toLowerCase();
+        rows = rows.filter(r => ["title", "category"].some(k =>
+          r[k] && String(r[k]).toLowerCase().includes(q)));
+      }
+      const tbody = document.getElementById("newsBody");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${newsColumns.length}" class="empty-state">No news engagement yet.</td></tr>`;
+        return;
+      }
+      const esc = (v) => String(v).replace(/</g, "&lt;");
+      tbody.innerHTML = rows.map(r => `<tr>${newsColumns.map(c => {
+        let val = newsCell(r, c.key);
+        if (val == null || val === "") val = "—";
+        // Numeric columns get the centered treatment the other tables use.
+        const cls = ["impressions","opens","readers","open_rate_pct","faq_expands","source_clicks"].includes(c.key)
+          ? ' class="td-num"' : (c.key === "last_seen_at" ? ' class="td-date"' : "");
+        const label = c.key === "title" && r.featured ? `${esc(val)} <i class="fa-solid fa-bolt" title="Breaking" style="color:var(--clr-red)"></i>` : esc(val);
+        return `<td${cls}>${label}</td>`;
+      }).join("")}</tr>`).join("");
+    }
+
+    function exportNewsCSV() {
+      const header = newsColumns.map(c => c.label).join(",");
+      const rows = newsData.map(r => newsColumns.map(c => {
+        let v = c.key === "last_seen_at"
+          ? (r.last_seen_at ? new Date(r.last_seen_at).toISOString() : "")
+          : newsCell(r, c.key);
+        if (v == null) v = "";
+        return `"${String(v).replace(/"/g, '""')}"`;
+      }).join(","));
+      const csv = [header, ...rows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `futuresteps_news_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    const newsFaqColumns = [
+      { key: "question", label: "Question" },
+      { key: "story",    label: "Story" },
+      { key: "expands",  label: "Opens" },
+      { key: "readers",  label: "Readers" },
+    ];
+    function renderNewsFaqTable(rows) {
+      document.getElementById("newsFaqHead").innerHTML =
+        newsFaqColumns.map(c => `<th>${c.label}</th>`).join("");
+      const tbody = document.getElementById("newsFaqBody");
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${newsFaqColumns.length}" class="empty-state">No FAQ opens yet.</td></tr>`;
+        return;
+      }
+      const esc = (v) => String(v).replace(/</g, "&lt;");
+      tbody.innerHTML = rows.map(r => `<tr>
+        <td>${esc(r.question || "—")}</td>
+        <td>${esc(r.story || "—")}</td>
+        <td class="td-num">${r.expands ?? 0}</td>
+        <td class="td-num">${r.readers ?? 0}</td>
+      </tr>`).join("");
+    }
+
+    async function loadNews() {
+      const [summary, performance, faqs] = await Promise.all([
+        sb.rpc("get_news_summary"),
+        sb.rpc("get_news_performance"),
+        sb.rpc("get_news_faq_engagement", { p_limit: 25 }),
+      ]);
+      const err = summary.error || performance.error || faqs.error;
+      if (err) {
+        console.error("News analytics load error:", err);
+        document.getElementById("newsBody").innerHTML =
+          `<tr><td colspan="${newsColumns.length}" class="empty-state" style="color:var(--clr-red)">
+            Failed to load news analytics. Make sure you've run <code>supabase/add_news_analytics.sql</code> and your email is in the admin list.
+          </td></tr>`;
+        return;
+      }
+      renderNewsSummary((summary.data || [])[0]);
+      newsData = performance.data || [];
+      renderNewsTable();
+      renderNewsFaqTable(faqs.data || []);
+    }
+
     // ── Customer feedback (in-app ratings) ──
     function renderFeedbackSummary(row) {
       const r = row || {};
@@ -637,6 +802,7 @@
       loadAnalytics();
       loadLeads();
       loadActivity();
+      loadNews();
       loadFeedback();
     }
 
@@ -743,6 +909,11 @@
         renderActivity(e.target.value);
       });
       document.getElementById("activityExportBtn").addEventListener("click", exportActivityCSV);
+
+      document.getElementById("newsSearch").addEventListener("input", (e) => {
+        renderNewsTable(e.target.value);
+      });
+      document.getElementById("newsExportBtn").addEventListener("click", exportNewsCSV);
     });
   </script>
 </body>
