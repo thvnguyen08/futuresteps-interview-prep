@@ -117,10 +117,81 @@
     .td-num { text-align: center; font-weight: 700; }
     .empty-state { text-align: center; padding: 48px; color: var(--clr-muted); }
 
+    /* ── Chart ──
+       Series colors are validated against this page's white card surface for
+       colorblind separation — see supabase/../admin chart notes in the commit.
+       Text never wears a series color; the legend swatch carries identity. */
+    .chart-card {
+      background: var(--clr-surface); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 20px 20px 12px;
+    }
+    .chart-card__head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+    }
+    .chart-card__title { font-size: .95rem; font-weight: 700; color: var(--clr-dark); }
+    .chart-card__sub { font-size: .75rem; color: var(--clr-muted); margin-top: 2px; }
+    .chart-scroll { overflow-x: auto; }
+
+    .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+    .legend__item { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--clr-text); }
+    .legend__swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+    /* Hairline, solid, recessive — never dashed. */
+    .chart svg { display: block; }
+    .chart__grid line { stroke: var(--clr-border); stroke-width: 1; }
+    .chart__axis text { font-size: 10px; fill: var(--clr-muted); font-variant-numeric: tabular-nums; }
+    .chart__endlabel { font-size: 11px; font-weight: 700; fill: var(--clr-text); font-variant-numeric: tabular-nums; }
+    .chart__crosshair { stroke: var(--clr-muted); stroke-width: 1; opacity: .45; }
+    /* The hit target spans the full band so you never have to land on the 2px line. */
+    .chart__hit { fill: transparent; cursor: pointer; }
+    .chart__band:hover .chart__hit, .chart__band:focus-visible .chart__hit { fill: var(--clr-surface2); opacity: .55; }
+    .chart__band:focus-visible { outline: none; }
+    .chart__band:focus-visible .chart__hit { stroke: var(--clr-primary); stroke-width: 1.5; }
+    .chart__empty { text-align: center; padding: 40px; color: var(--clr-muted); font-size: .85rem; }
+
+    .chart-tip {
+      /* left/top are set on show; the 0/0 default keeps the tip from sitting at
+         its static position below the plot, which would add a stray scrollbar. */
+      position: absolute; left: 0; top: 0; z-index: 10; pointer-events: none;
+      background: var(--clr-dark); color: #fff; border-radius: 8px;
+      padding: 8px 10px; font-size: .75rem; line-height: 1.5;
+      box-shadow: 0 6px 20px rgba(0,0,0,.18); white-space: nowrap; opacity: 0;
+      transition: opacity .1s;
+    }
+    .chart-tip.is-on { opacity: 1; }
+    .chart-tip__day { font-weight: 700; margin-bottom: 3px; }
+    .chart-tip__row { display: flex; align-items: center; gap: 6px; }
+    .chart-tip__val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    .filter-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field__label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--clr-muted); }
+    .field__select {
+      font-family: var(--ff); font-size: .8rem; font-weight: 600; color: var(--clr-text);
+      padding: 7px 10px; border: 1.5px solid var(--clr-border); border-radius: 8px;
+      background: var(--clr-surface); cursor: pointer; min-width: 150px;
+    }
+    .field__select:focus { outline: none; border-color: var(--clr-primary); }
+
+    .range-filter { display: inline-flex; border: 1.5px solid var(--clr-border); border-radius: 8px; overflow: hidden; }
+    .range-filter__btn {
+      font-family: var(--ff); font-size: .8rem; font-weight: 600; color: var(--clr-muted);
+      background: transparent; border: none; padding: 7px 14px; cursor: pointer;
+      border-right: 1px solid var(--clr-border);
+    }
+    .range-filter__btn:last-child { border-right: none; }
+    .range-filter__btn:hover { background: var(--clr-surface2); }
+    .range-filter__btn.is-active { background: var(--clr-primary); color: #fff; }
+
     @media (max-width: 600px) {
       .stats { flex-direction: column; }
       .toolbar { flex-direction: column; align-items: stretch; }
       .toolbar__search { width: 100%; }
+      .filter-row { flex-direction: column; align-items: stretch; }
+      .range-filter { width: 100%; }
+      .range-filter__btn { flex: 1; }
+      .field__select { width: 100%; }
     }
   </style>
 </head>
@@ -187,15 +258,49 @@
         Practice Activity
       </h2>
       <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
-        Every time a lead views or practices a service — which service, mode, score, and when.
+        Views and practice rounds per day, broken down by service.
       </p>
+
+      <!-- One filter row scoping BOTH the chart and the table below it. -->
       <div class="toolbar">
-        <input type="text" class="toolbar__search" id="activitySearch" placeholder="Search activity by name, email, service, or type…">
+        <div class="filter-row">
+          <div class="range-filter" role="group" aria-label="Date range">
+            <button class="range-filter__btn" data-days="14">14 days</button>
+            <button class="range-filter__btn is-active" data-days="30">30 days</button>
+            <button class="range-filter__btn" data-days="90">90 days</button>
+          </div>
+          <label class="field">
+            <span class="field__label">Action</span>
+            <select class="field__select" id="actionFilter">
+              <option value="">All actions</option>
+              <option value="practice">Practiced</option>
+              <option value="view">Viewed</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Service</span>
+            <select class="field__select" id="serviceFilter"></select>
+          </label>
+        </div>
         <button class="btn btn--green" id="activityExportBtn">
           <i class="fa-solid fa-file-csv"></i> Export Activity CSV
         </button>
       </div>
-      <div class="table-wrap">
+
+      <div class="chart-card">
+        <div class="chart-card__head">
+          <div>
+            <div class="chart-card__title">Daily activity</div>
+            <div class="chart-card__sub" id="activityChartSub"></div>
+          </div>
+          <div class="legend" id="activityLegend"></div>
+        </div>
+        <div class="chart-scroll">
+          <div id="activityChart"></div>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="margin-top:16px;">
         <table>
           <thead>
             <tr id="activityHead"></tr>
@@ -248,19 +353,6 @@
         <table>
           <thead><tr id="newsFaqHead"></tr></thead>
           <tbody id="newsFaqBody"></tbody>
-        </table>
-      </div>
-
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Live Activity Feed
-      </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
-        The 50 most recent events across both properties — reload the page to refresh.
-      </p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr id="feedHead"></tr></thead>
-          <tbody id="feedBody"></tbody>
         </table>
       </div>
 
@@ -382,28 +474,81 @@
       renderLeads();
     }
 
-    // ── Practice activity ──
+    // ── Practice activity (daily rollup: day × action × service) ──
+    // No per-person rows here on purpose — the rollup answers "what got
+    // practiced, when" without shipping learner names/emails to the browser.
     let activityData = [];
+    let activityDays = 30;
+    let actionFilter = "";     // "" = all actions
+    let serviceFilter = "";    // "" = all services
     const activityColumns = [
-      { key: "created_at",    label: "When" },
-      { key: "name",          label: "Name" },
-      { key: "email",         label: "Email" },
-      { key: "activity_type", label: "Action" },
-      { key: "category",      label: "Service" },
-      { key: "mode",          label: "Mode" },
-      { key: "score",         label: "Score" },
+      { key: "day",          label: "Day" },
+      { key: "events",       label: "Events" },
+      { key: "learners",     label: "Learners" },
+      { key: "questions",    label: "Questions" },
+      { key: "accuracy_pct", label: "Accuracy" },
     ];
     const SERVICE_LABEL = {
       marriage: "Marriage Green Card", naturalization: "Naturalization", asylum: "Asylum",
       f1: "F-1 Student Visa", b1b2: "B1/B2 Visitor Visa", flagged: "Flagged",
       eng_speaking: "English — Speaking", eng_reading: "English — Reading", eng_writing: "English — Writing",
     };
+    const ACTION_LABEL = { practice: "Practiced", view: "Viewed" };
+    // Two series, in stack order (baseline first). Validated for colorblind
+    // separation against this page's white card surface.
+    const ACTIVITY_SERIES = [
+      { key: "practice", label: "Practiced", color: "#059669" },
+      { key: "view",     label: "Viewed",    color: "#2563eb" },
+    ];
+
+    function dayLabel(d, withYear) {
+      // The rollup returns a plain date ('2026-07-21'); parse at noon so the
+      // local timezone can't shift it to the previous day.
+      const dt = new Date(d + "T12:00:00");
+      return dt.toLocaleDateString("en-US",
+        withYear ? { month: "short", day: "numeric", year: "numeric" } : { month: "short", day: "numeric" });
+    }
+
+    /* The rollup arrives pre-aggregated at four levels; a NULL activity_type or
+       category marks an "all" row. Picking the matching level (rather than
+       summing detail rows) is what keeps `learners` — a distinct device count,
+       so not additive — exact under every filter combination. */
+    function rowsForLevel(action, service) {
+      return activityData.filter(r =>
+        (action  ? r.activity_type === action  : r.activity_type == null) &&
+        (service ? r.category      === service : r.category      == null));
+    }
+
+    // Days present in the data, newest first, for the current filter.
+    function filteredDayRows() {
+      return rowsForLevel(actionFilter, serviceFilter)
+        .slice()
+        .sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    }
+
     function activityCell(r, key) {
-      if (key === "created_at") return fmtDate(r.created_at);
-      if (key === "activity_type") return r.activity_type === "practice" ? "Practiced" : "Viewed";
-      if (key === "category") return SERVICE_LABEL[r.category] || r.category || "—";
-      if (key === "score") return (r.total != null) ? `${r.correct ?? 0}/${r.total}` : "—";
+      if (key === "day") return dayLabel(r.day, true);
+      if (key === "accuracy_pct") return r.accuracy_pct != null ? r.accuracy_pct + "%" : "—";
       return r[key];
+    }
+
+    function filterSummary() {
+      const a = actionFilter ? ACTION_LABEL[actionFilter] : "All actions";
+      const s = serviceFilter ? (SERVICE_LABEL[serviceFilter] || serviceFilter) : "all services";
+      return `${a} · ${s}`;
+    }
+
+    // Service options come from the data, not a hardcoded list, so a category
+    // that isn't in SERVICE_LABEL still shows up (under its raw key).
+    function renderServiceFilter() {
+      const seen = [...new Set(activityData.filter(r => r.category != null).map(r => r.category))]
+        .sort((a, b) => (SERVICE_LABEL[a] || a).localeCompare(SERVICE_LABEL[b] || b));
+      const sel = document.getElementById("serviceFilter");
+      sel.innerHTML = `<option value="">All services</option>` +
+        seen.map(c => `<option value="${c}">${SERVICE_LABEL[c] || c}</option>`).join("");
+      // Keep the current pick if it still exists in the new range.
+      if (serviceFilter && !seen.includes(serviceFilter)) serviceFilter = "";
+      sel.value = serviceFilter;
     }
 
     function renderActivityHead() {
@@ -411,30 +556,30 @@
         activityColumns.map(c => `<th>${c.label}</th>`).join("");
     }
 
-    function renderActivity(filter) {
-      let rows = [...activityData];
-      if (filter) {
-        const q = filter.toLowerCase();
-        rows = rows.filter(r =>
-          ["name", "email", "category", "activity_type", "mode"].some(k =>
-            r[k] && String(r[k]).toLowerCase().includes(q)));
-      }
+    // One row per day, totalled under the current filter. Also the chart's
+    // table view — every plotted value is readable here, so nothing is gated
+    // behind a tooltip.
+    function renderActivity() {
+      renderActivityHead();
       const tbody = document.getElementById("activityBody");
-      if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${activityColumns.length}" class="empty-state">No practice activity yet.</td></tr>`;
+      const rows = filteredDayRows();
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${activityColumns.length}" class="empty-state">No activity for ${filterSummary()} in this range.</td></tr>`;
         return;
       }
+      const numeric = new Set(["events", "learners", "questions", "accuracy_pct"]);
       tbody.innerHTML = rows.map(r => `<tr>${activityColumns.map(c => {
         let val = activityCell(r, c.key);
         if (val == null || val === "") val = "—";
-        return `<td>${String(val).replace(/</g, "&lt;")}</td>`;
+        const cls = numeric.has(c.key) ? ' class="td-num"' : (c.key === "day" ? ' class="td-date"' : "");
+        return `<td${cls}>${String(val).replace(/</g, "&lt;")}</td>`;
       }).join("")}</tr>`).join("");
     }
 
     function exportActivityCSV() {
       const header = activityColumns.map(c => c.label).join(",");
-      const rows = activityData.map(r => activityColumns.map(c => {
-        let v = c.key === "created_at" ? (r.created_at ? new Date(r.created_at).toISOString() : "") : activityCell(r, c.key);
+      const rows = filteredDayRows().map(r => activityColumns.map(c => {
+        let v = c.key === "day" ? r.day : activityCell(r, c.key);
         if (v == null) v = "";
         return `"${String(v).replace(/"/g, '""')}"`;
       }).join(","));
@@ -448,18 +593,219 @@
       URL.revokeObjectURL(url);
     }
 
+    /* ── Daily activity chart (one line per action) ──
+       Hand-rolled SVG rather than a chart library: the page has no build step
+       and one small chart isn't worth a CDN dependency. */
+
+    // Which series to draw: both actions normally, just one when the action
+    // filter narrows it (the filter row scopes the chart as well as the table).
+    function activeSeries() {
+      return actionFilter ? ACTIVITY_SERIES.filter(s => s.key === actionFilter) : ACTIVITY_SERIES;
+    }
+
+    function activityByDay() {
+      // Read the (day, action) level — or (day, action, service) when a service
+      // is picked — then fill gaps. A day with no activity must plot as zero,
+      // not be skipped, or quiet stretches silently compress the x-axis.
+      const byDay = new Map();
+      for (const s of activeSeries()) {
+        for (const r of rowsForLevel(s.key, serviceFilter)) {
+          const d = byDay.get(r.day) || { day: r.day, practice: 0, view: 0 };
+          d[s.key] = Number(r.events || 0);
+          byDay.set(r.day, d);
+        }
+      }
+      const out = [];
+      const end = new Date();
+      for (let i = activityDays - 1; i >= 0; i--) {
+        const dt = new Date(end);
+        dt.setDate(end.getDate() - i);
+        const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+        out.push(byDay.get(key) || { day: key, practice: 0, view: 0 });
+      }
+      return out;
+    }
+
+    // Pick a clean STEP first, then derive the max from it — so ticks read
+    // 0 / 10 / 20 / 30 rather than 0 / 13 / 25 / 38 (which is what you get from
+    // rounding the max and dividing it by a fixed tick count).
+    function niceScale(v) {
+      const target = 4;                       // aim for ~4 gridlines
+      const raw = Math.max(v, 1) / target;
+      const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+      const step = [1, 2, 2.5, 5, 10].map(m => m * pow).find(s => s >= raw) || 10 * pow;
+      return { step, max: Math.max(step, Math.ceil(v / step) * step) };
+    }
+
+    // A single series needs no legend box — the title already names it.
+    function renderActivityLegend() {
+      const series = activeSeries();
+      document.getElementById("activityLegend").innerHTML = series.length < 2 ? "" :
+        series.map(s => `
+        <span class="legend__item">
+          <span class="legend__swatch" style="background:${s.color}"></span>${s.label}
+        </span>`).join("");
+    }
+
+    function renderActivityChart() {
+      const host = document.getElementById("activityChart");
+      const days = activityByDay();
+      const series = activeSeries();
+      const total = days.reduce((a, d) => a + series.reduce((b, s) => b + d[s.key], 0), 0);
+
+      document.getElementById("activityChartSub").textContent =
+        `Last ${activityDays} days · ${filterSummary()} · ${total.toLocaleString()} event${total === 1 ? "" : "s"}`;
+
+      if (!total) {
+        host.innerHTML = `<div class="chart__empty">No activity for ${filterSummary()} in this range.</div>`;
+        return;
+      }
+
+      const padL = 40, padR = 44, padT = 10, padB = 26;   // padR leaves room for end labels
+      const plotH = 180;
+      // Lines stay legible at any density, so the plot always fits its card —
+      // no horizontal scroll needed (unlike the bars this replaced).
+      const w = Math.max(280, host.clientWidth);
+      const h = padT + plotH + padB;
+      const plotW = w - padL - padR;
+      const stepX = days.length > 1 ? plotW / (days.length - 1) : 0;
+      const x = (i) => padL + i * stepX;
+
+      // Scale to the largest single value, NOT a stacked total: these are two
+      // independent lines on one shared axis, never summed.
+      const { step, max } = niceScale(Math.max(...days.flatMap(d => series.map(s => d[s.key]))));
+      const y = (v) => padT + plotH - (v / max) * plotH;
+
+      let grid = "", axis = "";
+      for (let val = 0; val <= max; val += step) {
+        const yy = y(val);
+        grid += `<line x1="${padL}" y1="${yy}" x2="${w - padR}" y2="${yy}"></line>`;
+        axis += `<text x="${padL - 8}" y="${yy + 3}" text-anchor="end">${val.toLocaleString()}</text>`;
+      }
+
+      // Space x labels by the width one actually needs ("Jun 22" ≈ 44px + air).
+      const every = Math.max(1, Math.ceil(52 / Math.max(stepX, 1)));
+      let xTicks = "";
+      days.forEach((d, i) => {
+        if (i % every !== 0) return;
+        xTicks += `<text class="chart__xtick" x="${x(i)}" y="${padT + plotH + 16}" text-anchor="middle">${dayLabel(d.day)}</text>`;
+      });
+
+      // 2px lines, round join/cap; endpoint dot carries a 2px surface ring so
+      // it stays legible where the two series cross.
+      const last = days.length - 1;
+      const lines = series.map(s => {
+        const dAttr = days.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d[s.key]).toFixed(1)}`).join(" ");
+        return `<path d="${dAttr}" fill="none" stroke="${s.color}" stroke-width="2"
+                      stroke-linejoin="round" stroke-linecap="round"></path>
+                <circle cx="${x(last)}" cy="${y(days[last][s.key])}" r="4"
+                        fill="${s.color}" stroke="var(--clr-surface)" stroke-width="2"></circle>`;
+      }).join("");
+
+      // Direct-label the line ends — but only when they don't collide. Nudging
+      // them apart would detach each label from its line, so the documented
+      // fallback is to drop them and let the legend + tooltip + table carry it.
+      const endYs = series.map(s => y(days[last][s.key]));
+      const endLabelsFit = endYs.length < 2 || Math.abs(endYs[0] - endYs[1]) >= 14;
+      const endLabels = !endLabelsFit ? "" : series.map((s, i) => `
+        <text class="chart__endlabel" x="${x(last) + 8}" y="${endYs[i] + 4}">${days[last][s.key].toLocaleString()}</text>`).join("");
+
+      // One full-height hit band per day: the target is the whole column, so you
+      // never have to land on the 2px line itself.
+      const bands = days.map((d, i) => {
+        const bw = Math.max(stepX, 8);
+        const tipRows = series.map(s => `${s.label}: ${d[s.key].toLocaleString()}`).join(" · ");
+        return `<g class="chart__band" tabindex="0" role="img"
+                   aria-label="${dayLabel(d.day, true)}: ${tipRows}"
+                   data-day="${d.day}" data-i="${i}"
+                   data-practice="${d.practice}" data-view="${d.view}">
+                  <rect class="chart__hit" x="${x(i) - bw / 2}" y="${padT}" width="${bw}" height="${plotH}"></rect>
+                </g>`;
+      }).join("");
+
+      host.innerHTML = `
+        <div class="chart" style="position:relative">
+          <svg width="${w}" height="${h}" role="group" aria-label="Daily activity, one line per action">
+            <g class="chart__grid">${grid}</g>
+            <line class="chart__crosshair" id="activityCrosshair" y1="${padT}" y2="${padT + plotH}" style="display:none"></line>
+            <g class="chart__lines">${lines}</g>
+            <g class="chart__axis">${axis}${xTicks}${endLabels}</g>
+            <g class="chart__bands">${bands}</g>
+          </svg>
+          <div class="chart-tip" id="activityTip"></div>
+        </div>`;
+
+      // Crosshair follows the hovered day; positions are computed here so the
+      // tooltip handler doesn't need to know the geometry.
+      host.__chartX = x;
+      wireActivityChartTips(host);
+    }
+
+    // Tooltips enhance; they never gate a value — the same numbers are in the
+    // table below, and keyboard focus shows exactly what hover shows.
+    function wireActivityChartTips(host) {
+      const tip = host.querySelector("#activityTip");
+      const wrap = host.querySelector(".chart");
+      const cross = host.querySelector("#activityCrosshair");
+      const series = activeSeries();
+      const show = (band) => {
+        const d = band.dataset;
+        tip.innerHTML = `
+          <div class="chart-tip__day">${dayLabel(d.day, true)}</div>
+          ${series.map(s => `
+            <div class="chart-tip__row">
+              <span class="legend__swatch" style="background:${s.color}"></span>
+              <span>${s.label}</span><span class="chart-tip__val">${Number(d[s.key]).toLocaleString()}</span>
+            </div>`).join("")}`;
+        tip.classList.add("is-on");
+        if (cross && host.__chartX) {
+          const cx = host.__chartX(Number(d.i));
+          cross.setAttribute("x1", cx);
+          cross.setAttribute("x2", cx);
+          cross.style.display = "";
+        }
+        const b = band.getBoundingClientRect();
+        const wb = wrap.getBoundingClientRect();
+        // Clamp inside the chart so the tip never hangs off the card edge.
+        const left = Math.max(0, Math.min(b.left - wb.left + b.width / 2 - tip.offsetWidth / 2,
+                                          wrap.clientWidth - tip.offsetWidth));
+        tip.style.left = left + "px";
+        tip.style.top = Math.max(0, b.top - wb.top + 4) + "px";
+      };
+      const hide = () => {
+        tip.classList.remove("is-on");
+        if (cross) cross.style.display = "none";
+      };
+      host.querySelectorAll(".chart__band").forEach(band => {
+        band.addEventListener("mouseenter", () => show(band));
+        band.addEventListener("focus", () => show(band));
+        band.addEventListener("mouseleave", hide);
+        band.addEventListener("blur", hide);
+      });
+    }
+
     async function loadActivity() {
-      const { data, error } = await sb.rpc("get_activity_data");
+      const { data, error } = await sb.rpc("get_activity_rollup", { p_days: activityDays });
       if (error) {
         console.error("Activity load error:", error);
         document.getElementById("activityBody").innerHTML =
           `<tr><td colspan="${activityColumns.length}" class="empty-state" style="color:var(--clr-red)">
-            Failed to load activity. Make sure you've run <code>supabase/add_practice_tracking.sql</code> and your email is in the admin list.
+            Failed to load activity. Make sure you've run <code>supabase/add_activity_rollup.sql</code> and your email is in the admin list.
           </td></tr>`;
+        document.getElementById("activityChart").innerHTML =
+          `<div class="chart__empty">Chart unavailable — see the error below.</div>`;
         return;
       }
       activityData = data || [];
-      renderActivityHead();
+      renderServiceFilter();
+      renderActivityView();
+    }
+
+    // Everything the filter row scopes, re-rendered from data already in hand —
+    // changing a filter never refetches.
+    function renderActivityView() {
+      renderActivityLegend();
+      renderActivityChart();
       renderActivity();
     }
 
@@ -540,47 +886,13 @@
       </tr>`).join("");
     }
 
-    const feedColumns = [
-      { key: "occurred_at", label: "When" },
-      { key: "who",         label: "Who" },
-      { key: "property",    label: "Property" },
-      { key: "event_name",  label: "Event" },
-      { key: "category",    label: "Category" },
-      { key: "channel",     label: "Channel" },
-      { key: "page_path",   label: "Page" },
-    ];
-    function renderFeedTable(rows) {
-      document.getElementById("feedHead").innerHTML =
-        feedColumns.map(c => `<th>${c.label}</th>`).join("");
-      const tbody = document.getElementById("feedBody");
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="${feedColumns.length}" class="empty-state">No activity yet.</td></tr>`;
-        return;
-      }
-      tbody.innerHTML = rows.map(r => {
-        // category only exists in props for practice_complete/view events —
-        // everything else (page_view, register, first_touch...) has none.
-        const cat = r.props && r.props.category;
-        return `<tr>
-        <td class="td-date">${new Date(r.occurred_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
-        <td>${r.name || r.email || "—"}</td>
-        <td>${r.property || "—"}</td>
-        <td>${r.event_name}</td>
-        <td>${cat ? (SERVICE_LABEL[cat] || cat) : "—"}</td>
-        <td>${r.channel || "—"}</td>
-        <td>${r.page_path || "—"}</td>
-      </tr>`;
-      }).join("");
-    }
-
     async function loadAnalytics() {
-      const [funnel, channels, categories, feed] = await Promise.all([
+      const [funnel, channels, categories] = await Promise.all([
         sb.rpc("get_funnel_summary"),
         sb.rpc("get_channel_performance"),
         sb.rpc("get_category_breakdown"),
-        sb.rpc("get_event_feed", { p_limit: 50 }),
       ]);
-      const firstError = funnel.error || channels.error || categories.error || feed.error;
+      const firstError = funnel.error || channels.error || categories.error;
       if (firstError) {
         console.error("Analytics load error:", firstError);
         document.getElementById("channelBody").innerHTML =
@@ -592,7 +904,6 @@
       renderFunnelStats((funnel.data || [])[0]);
       renderChannelTable(channels.data || []);
       renderCategoryTable(categories.data || []);
-      renderFeedTable(feed.data || []);
     }
 
     // ── Immigration news performance ──
@@ -905,10 +1216,36 @@
       });
       document.getElementById("leadsExportBtn").addEventListener("click", exportLeadsCSV);
 
-      document.getElementById("activitySearch").addEventListener("input", (e) => {
-        renderActivity(e.target.value);
+      document.querySelectorAll(".range-filter__btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".range-filter__btn").forEach(b => b.classList.remove("is-active"));
+          btn.classList.add("is-active");
+          activityDays = Number(btn.dataset.days);
+          loadActivity();   // only the range needs a refetch
+        });
+      });
+      const actionSel = document.getElementById("actionFilter");
+      // Browsers restore <select> values on reload. Adopt whatever it restored,
+      // or the dropdown would read "Practiced" while the data stayed unfiltered.
+      // (The service select is immune — its options don't exist yet at restore
+      // time, so it always comes back empty.)
+      actionFilter = actionSel.value;
+      actionSel.addEventListener("change", (e) => {
+        actionFilter = e.target.value;
+        renderActivityView();
+      });
+      document.getElementById("serviceFilter").addEventListener("change", (e) => {
+        serviceFilter = e.target.value;
+        renderActivityView();
       });
       document.getElementById("activityExportBtn").addEventListener("click", exportActivityCSV);
+
+      // Tooltip position is measured from layout, so a resize invalidates it.
+      let activityResizeT;
+      window.addEventListener("resize", () => {
+        clearTimeout(activityResizeT);
+        activityResizeT = setTimeout(() => { if (activityData.length) renderActivityChart(); }, 150);
+      });
 
       document.getElementById("newsSearch").addEventListener("input", (e) => {
         renderNewsTable(e.target.value);
