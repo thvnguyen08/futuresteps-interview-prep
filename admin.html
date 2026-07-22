@@ -18,10 +18,19 @@
       --clr-text:     #334155;
       --clr-muted:    #64748b;
       --clr-dark:     #0f172a;
-      --clr-primary:  #2563eb;
-      --clr-primary-dk:#1d4ed8;
+      /* Brand chrome — matches the app's emerald rebrand (script.js/style.css).
+         Note this measures ΔE 2.4 from the chart's "Practiced" series #059669,
+         i.e. the same color to the eye. That is deliberate: the practice series
+         and the brand mean the same thing here. Do NOT introduce a THIRD green
+         for a different measure — it would read as a shade of this one. */
+      --clr-primary:  #1b8f5a;
+      --clr-primary-dk:#156943;
       --clr-green:    #059669;
       --clr-red:      #dc2626;
+      /* Delta ink: direction is carried by an arrow + "vs" label as well as
+         hue, so a red/green-blind reader still gets the sign. */
+      --clr-up:       #006300;
+      --clr-down:     #b91c1c;
       --ff:           "DM Sans", -apple-system, sans-serif;
       --radius:       12px;
       --shadow:       0 4px 16px rgba(0,0,0,.06);
@@ -32,8 +41,7 @@
     .topbar {
       background: var(--clr-surface);
       border-bottom: 1px solid var(--clr-border);
-      border-top: 4px solid transparent;
-      border-image: linear-gradient(90deg, #b22234 0 33.33%, #fff 33.33% 66.66%, #3c3b6e 66.66% 100%) 1;
+      border-top: 3px solid var(--clr-primary);
       padding: 16px 24px;
       display: flex; align-items: center; justify-content: space-between;
     }
@@ -90,6 +98,53 @@
     .stat-card__label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--clr-muted); margin-bottom: 4px; }
     .stat-card__value { font-size: 1.6rem; font-weight: 800; color: var(--clr-dark); }
     .stat-card__sub { font-size: .7rem; color: var(--clr-muted); margin-top: 4px; }
+
+    /* ── Section headers ──
+       Was an inline style repeated on every <h2>; one class instead so the
+       rhythm can't drift panel to panel. */
+    .section { margin-top: 40px; }
+    .section:first-child { margin-top: 0; }
+    .section__title {
+      font-size: 1.15rem; font-weight: 700; color: var(--clr-dark);
+      display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;
+    }
+    .section__scope {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--clr-muted); background: var(--clr-surface2);
+      border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+    }
+    .section__note { color: var(--clr-muted); font-size: .85rem; margin-bottom: 14px; }
+
+    /* ── Overview strip ──
+       The dashboard's lead: four period-scoped numbers, each with its change vs
+       the previous window of equal length and a sparkline of the window. */
+    .overview__bar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+    }
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .kpi {
+      background: var(--clr-surface); border-radius: var(--radius); padding: 18px 18px 14px;
+      box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 2px;
+    }
+    .kpi__label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--clr-muted); }
+    /* Proportional figures: tabular-nums makes a big standalone number look
+       gappy. Tabular is for columns (tables, axis ticks), not display values. */
+    .kpi__value { font-size: 1.85rem; font-weight: 800; color: var(--clr-dark); line-height: 1.25; }
+    .kpi__delta { font-size: .75rem; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+    .kpi__delta--up   { color: var(--clr-up); }
+    .kpi__delta--down { color: var(--clr-down); }
+    .kpi__delta--flat { color: var(--clr-muted); }
+    .kpi__delta span { font-weight: 500; color: var(--clr-muted); }
+    .kpi__spark { margin-top: 10px; height: 32px; position: relative; }
+    .kpi__spark svg { display: block; width: 100%; height: 32px; overflow: visible; }
+    /* Sits on the last point; a surface ring keeps it legible where the line
+       doubles back under it. Centered on its coordinate via the -50% shift. */
+    .kpi__spark-dot {
+      position: absolute; right: 0; width: 6px; height: 6px; border-radius: 50%;
+      transform: translate(50%, -50%); box-shadow: 0 0 0 2px var(--clr-surface);
+    }
+    .kpi__note { font-size: .68rem; color: var(--clr-muted); margin-top: 6px; }
 
     .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
     .toolbar__search {
@@ -183,7 +238,11 @@
     .range-filter__btn:hover { background: var(--clr-surface2); }
     .range-filter__btn.is-active { background: var(--clr-primary); color: #fff; }
 
+    @media (max-width: 900px) {
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 600px) {
+      .kpi-row { grid-template-columns: 1fr; }
       .stats { flex-direction: column; }
       .toolbar { flex-direction: column; align-items: stretch; }
       .toolbar__search { width: 100%; }
@@ -232,18 +291,37 @@
   <!-- DASHBOARD (hidden until authenticated) -->
   <div class="wrap">
     <div class="dashboard" id="dashboard">
-      <h2 class="section-title" style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Unified Funnel
-      </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
-        Visitor → Lead → Activated → Active, tracked across the website and this app under one identity.
-      </p>
-      <div class="stats" id="funnelStatsRow"></div>
+      <!-- ── Overview: the "what changed" lead ──
+           Owns the range control for every period-scoped panel below it. -->
+      <div class="section">
+        <div class="overview__bar">
+          <div>
+            <div class="section__title">Overview</div>
+            <div class="section__note" id="overviewSub" style="margin-bottom:0;"></div>
+          </div>
+          <div class="range-filter" role="group" aria-label="Date range">
+            <button class="range-filter__btn" data-days="14">14 days</button>
+            <button class="range-filter__btn is-active" data-days="30">30 days</button>
+            <button class="range-filter__btn" data-days="90">90 days</button>
+          </div>
+        </div>
+        <div class="kpi-row" id="overviewRow"></div>
+      </div>
 
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Channel Performance
+      <div class="section">
+        <h2 class="section__title">
+          Unified Funnel <span class="section__scope">All time</span>
+        </h2>
+        <p class="section__note">
+          Visitor → Lead → Activated → Active, tracked across the website and this app under one identity.
+        </p>
+        <div class="stats" id="funnelStatsRow"></div>
+      </div>
+
+      <h2 class="section__title" style="margin-top:40px;">
+        Channel Performance <span class="section__scope">All time</span>
       </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <p class="section__note">
         Which channel a visitor first arrived from, and how far they got.
       </p>
       <div class="table-wrap">
@@ -253,20 +331,15 @@
         </table>
       </div>
 
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Practice Activity
+      <h2 class="section__title" style="margin-top:40px;">
+        Practice Activity <span class="section__scope" id="activityScope">Last 30 days</span>
       </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <p class="section__note">
         Are customers actually practicing? Daily activity, then rounds per service and per naturalization test.
       </p>
 
-      <!-- One range control scoping the chart and both tables below it. -->
-      <div class="toolbar">
-        <div class="range-filter" role="group" aria-label="Date range">
-          <button class="range-filter__btn" data-days="14">14 days</button>
-          <button class="range-filter__btn is-active" data-days="30">30 days</button>
-          <button class="range-filter__btn" data-days="90">90 days</button>
-        </div>
+      <!-- The range control now lives in Overview and scopes this too. -->
+      <div class="toolbar" style="justify-content:flex-end;">
         <button class="btn btn--green" id="activityExportBtn">
           <i class="fa-solid fa-file-csv"></i> Export CSV
         </button>
@@ -309,10 +382,10 @@
       </div>
       <p class="subhead__note" id="natLegacyNote"></p>
 
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Category Breakdown
+      <h2 class="section__title" style="margin-top:40px;">
+        Category Breakdown <span class="section__scope">All time</span>
       </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <p class="section__note">
         Which services people actually practice, and how they score.
       </p>
       <div class="table-wrap">
@@ -322,10 +395,10 @@
         </table>
       </div>
 
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Immigration News
+      <h2 class="section__title" style="margin-top:40px;">
+        Immigration News <span class="section__scope">All time</span>
       </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <p class="section__note">
         How the weekly news stories perform — seen on home, opened, and clicked through.
       </p>
       <div class="stats" id="newsStatsRow"></div>
@@ -343,10 +416,8 @@
         </table>
       </div>
 
-      <h3 style="margin:24px 0 6px;font-size:.95rem;font-weight:700;color:var(--clr-dark);">
-        Most-Opened Questions
-      </h3>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <h3 class="subhead">Most-Opened Questions</h3>
+      <p class="subhead__note">
         The FAQs customers actually expand — what they want explained next.
       </p>
       <div class="table-wrap">
@@ -356,10 +427,10 @@
         </table>
       </div>
 
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Customer Feedback
+      <h2 class="section__title" style="margin-top:40px;">
+        Customer Feedback <span class="section__scope">All time</span>
       </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <p class="section__note">
         In-app ratings collected after a practice round — average scores (out of 5) and the latest comments.
       </p>
       <div class="stats" id="feedbackStatsRow"></div>
@@ -370,10 +441,10 @@
         </table>
       </div>
 
-      <h2 class="section-title" style="margin:36px 0 6px;font-size:1.15rem;font-weight:700;color:var(--clr-dark);">
-        Registration Leads
+      <h2 class="section__title" style="margin-top:40px;">
+        Registration Leads <span class="section__scope">All time</span>
       </h2>
-      <p style="color:var(--clr-muted);font-size:.85rem;margin-bottom:14px;">
+      <p class="section__note">
         Everyone who filled the "start practicing" gate (name + email/phone + location).
       </p>
       <div class="toolbar">
@@ -858,9 +929,143 @@
       });
     }
 
+    /* ── Overview strip ──
+       Period-over-period from the rollup we already fetch, so this needs no new
+       SQL: ask for 2× the window and split it into "this period" and "the one
+       before". The chart still reads only the most recent activityDays.
+
+       Only ADDITIVE measures get a period total. `learners` is a distinct device
+       count per day, so summing it across days double-counts anyone who
+       practiced on two days — the same trap the four-level rollup exists to
+       avoid. It is reported as an average per day, which is what a daily
+       distinct count can honestly roll up to. A true period-unique learner
+       count would have to come from Postgres. */
+    const OVERVIEW_SPARK = { practice: "#059669", view: "#2563eb" };
+
+    function dayKey(dt) {
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    }
+
+    // Window of the N days ending today, oldest first, gaps filled with zeros —
+    // a quiet day is a zero in the trend, not a missing point.
+    function windowDays(offsetDays, n) {
+      const out = [];
+      const end = new Date();
+      for (let i = n - 1; i >= 0; i--) {
+        const dt = new Date(end);
+        dt.setDate(end.getDate() - i - offsetDays);
+        out.push(dayKey(dt));
+      }
+      return out;
+    }
+
+    function overviewSeries() {
+      // (day) level for totals, (day, practice) and (day, view) for the split.
+      const all = new Map(), prac = new Map(), view = new Map();
+      for (const r of activityData) {
+        if (r.category != null) continue;
+        if (r.activity_type == null)          all.set(r.day, r);
+        else if (r.activity_type === "practice") prac.set(r.day, r);
+        else if (r.activity_type === "view")     view.set(r.day, r);
+      }
+      const build = keys => keys.map(k => ({
+        day: k,
+        practice: Number(prac.get(k)?.events   || 0),
+        view:     Number(view.get(k)?.events   || 0),
+        questions:Number(all.get(k)?.questions || 0),
+        learners: Number(all.get(k)?.learners  || 0),
+      }));
+      return {
+        cur:  build(windowDays(0, activityDays)),
+        prev: build(windowDays(activityDays, activityDays)),
+      };
+    }
+
+    const sum = (rows, k) => rows.reduce((a, r) => a + r[k], 0);
+    const mean = (rows, k) => (rows.length ? sum(rows, k) / rows.length : 0);
+
+    /* Sparkline: one series, no axes, no labels — it carries shape, not values
+       (the tile's own number carries the value). Stroke stays 2px at any width
+       via non-scaling-stroke, and the endpoint dot gets a surface ring so it
+       stays legible where the line doubles back on itself. */
+    function sparkline(values, color) {
+      const W = 100, H = 32, PAD = 3;
+      if (!values.length) return "";
+      const max = Math.max(...values, 1);
+      const stepX = values.length > 1 ? W / (values.length - 1) : 0;
+      const y = v => H - PAD - (v / max) * (H - PAD * 2);
+      const pts = values.map((v, i) => [i * stepX, y(v)]);
+      const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(" ");
+      /* The endpoint dot is an HTML element, not an SVG <circle>. The svg
+         stretches to the card width with preserveAspectRatio="none", so x scales
+         several times harder than y — a <circle> in that space renders as a
+         flattened ellipse. The viewBox is 32 units tall and the box is 32px
+         tall, so the y coordinate is already in px; the last point always sits
+         on the right edge. */
+      const lastY = y(values[values.length - 1]);
+      return `
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path d="${d}" fill="none" stroke="${color}" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <span class="kpi__spark-dot" style="background:${color};top:${lastY.toFixed(2)}px"></span>`;
+    }
+
+    // Direction is spelled out (arrow + "vs previous N days"), never hue alone.
+    function deltaHTML(cur, prev) {
+      const label = `<span>vs prev ${activityDays}d</span>`;
+      if (!prev) {
+        return cur
+          ? `<div class="kpi__delta kpi__delta--up">▲ New ${label}</div>`
+          : `<div class="kpi__delta kpi__delta--flat">— No change ${label}</div>`;
+      }
+      const pct = Math.round(((cur - prev) / prev) * 100);
+      if (pct === 0) return `<div class="kpi__delta kpi__delta--flat">— No change ${label}</div>`;
+      const dir = pct > 0 ? "up" : "down";
+      return `<div class="kpi__delta kpi__delta--${dir}">${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}% ${label}</div>`;
+    }
+
+    const fmtNum = n => (Number.isInteger(n) ? n : Math.round(n * 10) / 10).toLocaleString();
+
+    function renderOverview() {
+      const { cur, prev } = overviewSeries();
+      const activeDays = cur.filter(d => d.practice > 0).length;
+
+      const tiles = [
+        { label: "Practice rounds", cur: sum(cur, "practice"), prev: sum(prev, "practice"),
+          key: "practice", color: OVERVIEW_SPARK.practice,
+          note: `${activeDays} of ${activityDays} days had practice` },
+        { label: "Questions seen", cur: sum(cur, "questions"), prev: sum(prev, "questions"),
+          key: "questions", color: OVERVIEW_SPARK.practice,
+          note: "Scored answers plus unscored reviews" },
+        { label: "Learners / day", cur: mean(cur, "learners"), prev: mean(prev, "learners"),
+          key: "learners", color: OVERVIEW_SPARK.practice,
+          note: "Average of the daily unique-device count" },
+        { label: "Service views", cur: sum(cur, "view"), prev: sum(prev, "view"),
+          key: "view", color: OVERVIEW_SPARK.view,
+          note: "Service screens opened, practice or not" },
+      ];
+
+      document.getElementById("overviewRow").innerHTML = tiles.map(t => `
+        <div class="kpi">
+          <div class="kpi__label">${t.label}</div>
+          <div class="kpi__value">${fmtNum(t.cur)}</div>
+          ${deltaHTML(t.cur, t.prev)}
+          <div class="kpi__spark">${sparkline(cur.map(d => d[t.key]), t.color)}</div>
+          ${t.note ? `<div class="kpi__note">${t.note}</div>` : ""}
+        </div>`).join("");
+
+      const first = cur[0], last = cur[cur.length - 1];
+      document.getElementById("overviewSub").textContent =
+        `${dayLabel(first.day)} – ${dayLabel(last.day, true)}, compared with the ${activityDays} days before it.`;
+    }
+
     async function loadActivity() {
+      document.getElementById("activityScope").textContent = `Last ${activityDays} days`;
       const [rollup, report] = await Promise.all([
-        rpc("get_activity_rollup",  { p_days: activityDays }),
+        // 2× the window: the back half feeds the Overview comparison. The chart
+        // and tables still read only the most recent activityDays.
+        rpc("get_activity_rollup",  { p_days: Math.min(activityDays * 2, 365) }),
         rpc("get_practice_report",  { p_days: activityDays }),
       ]);
       const fail = (id, cols, file) => {
@@ -873,8 +1078,14 @@
         console.error("Activity chart load error:", rollup.error);
         document.getElementById("activityChart").innerHTML =
           `<div class="chart__empty" style="color:var(--clr-red)">Chart unavailable — run <code>supabase/add_activity_rollup.sql</code>.</div>`;
+        document.getElementById("overviewRow").innerHTML =
+          `<div class="kpi" style="grid-column:1/-1;color:var(--clr-red);font-size:.85rem;">
+            Overview unavailable — run <code>supabase/add_activity_rollup.sql</code> and check your email is in the admin list.
+          </div>`;
+        document.getElementById("overviewSub").textContent = "";
       } else {
         activityData = rollup.data || [];
+        renderOverview();
         renderActivityLegend();
         renderActivityChart();
       }
