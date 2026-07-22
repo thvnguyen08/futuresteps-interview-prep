@@ -122,7 +122,12 @@
       display: flex; justify-content: space-between; align-items: center;
       flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
     }
-    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    /* auto-fit, not a fixed count: the strip is 4 tiles before
+       add_overview_summary.sql is run and 5 after it, and both must lay out.
+       The 146px floor is chosen so five tiles still fit on one row in a ~800px
+       content column — at 178px the fifth orphaned onto a second row on any
+       narrow desktop window. */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: 16px; }
     .kpi {
       background: var(--clr-surface); border-radius: var(--radius); padding: 18px 18px 14px;
       box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 2px;
@@ -131,7 +136,10 @@
     /* Proportional figures: tabular-nums makes a big standalone number look
        gappy. Tabular is for columns (tables, axis ticks), not display values. */
     .kpi__value { font-size: 1.85rem; font-weight: 800; color: var(--clr-dark); line-height: 1.25; }
-    .kpi__delta { font-size: .75rem; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+    /* Wraps as two whole lines in a narrow tile ("▲ 4 pts" / "vs prev 30d")
+       rather than breaking mid-phrase and orphaning the unit. */
+    .kpi__delta { font-size: .75rem; font-weight: 700; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .kpi__delta b, .kpi__delta span { white-space: nowrap; font-weight: inherit; }
     .kpi__delta--up   { color: var(--clr-up); }
     .kpi__delta--down { color: var(--clr-down); }
     .kpi__delta--flat { color: var(--clr-muted); }
@@ -238,9 +246,6 @@
     .range-filter__btn:hover { background: var(--clr-surface2); }
     .range-filter__btn.is-active { background: var(--clr-primary); color: #fff; }
 
-    @media (max-width: 900px) {
-      .kpi-row { grid-template-columns: repeat(2, 1fr); }
-    }
     @media (max-width: 600px) {
       .kpi-row { grid-template-columns: 1fr; }
       .stats { flex-direction: column; }
@@ -1011,47 +1016,95 @@
         <span class="kpi__spark-dot" style="background:${color};top:${lastY.toFixed(2)}px"></span>`;
     }
 
-    // Direction is spelled out (arrow + "vs previous N days"), never hue alone.
-    function deltaHTML(cur, prev) {
-      const label = `<span>vs prev ${activityDays}d</span>`;
+    /* Direction is spelled out (arrow + "vs previous N days"), never hue alone.
+
+       mode "ratio"  — relative change, for counts: 145 vs 89 is +63%.
+       mode "points" — absolute difference, for values that are ALREADY a
+                       percentage. Accuracy going 68% → 72% is +4 points, not
+                       +5.9%; reporting the ratio there would be plainly wrong. */
+    function deltaHTML(cur, prev, mode) {
+      /* Just "vs prev" — the Overview subtitle directly above already spells
+         out "compared with the N days before it", and the longer label wrapped
+         to a second line in a narrow tile, which pushed that tile's sparkline
+         out of line with its neighbours'. */
+      const label = `<span>vs prev</span>`;
+      const flat = `<div class="kpi__delta kpi__delta--flat"><b>— No change</b> ${label}</div>`;
+      if (cur == null || prev == null) {
+        return `<div class="kpi__delta kpi__delta--flat"><b>— No comparison</b> ${label}</div>`;
+      }
+      if (mode === "points") {
+        const diff = Math.round((cur - prev) * 10) / 10;
+        if (diff === 0) return flat;
+        const d = diff > 0 ? "up" : "down";
+        return `<div class="kpi__delta kpi__delta--${d}"><b>${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)} pts</b> ${label}</div>`;
+      }
       if (!prev) {
         return cur
-          ? `<div class="kpi__delta kpi__delta--up">▲ New ${label}</div>`
-          : `<div class="kpi__delta kpi__delta--flat">— No change ${label}</div>`;
+          ? `<div class="kpi__delta kpi__delta--up"><b>▲ New</b> ${label}</div>`
+          : flat;
       }
       const pct = Math.round(((cur - prev) / prev) * 100);
-      if (pct === 0) return `<div class="kpi__delta kpi__delta--flat">— No change ${label}</div>`;
+      if (pct === 0) return flat;
       const dir = pct > 0 ? "up" : "down";
-      return `<div class="kpi__delta kpi__delta--${dir}">${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}% ${label}</div>`;
+      return `<div class="kpi__delta kpi__delta--${dir}"><b>${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}%</b> ${label}</div>`;
     }
 
     const fmtNum = n => (Number.isInteger(n) ? n : Math.round(n * 10) / 10).toLocaleString();
 
+    /* Tiles come from get_overview_summary when it exists (exact period-unique
+       learners + a real accuracy denominator), and from the client-side split of
+       the rollup when it does not — so the strip still renders before the
+       migration is run, just without accuracy and with learners as a daily
+       average. `overviewSummary` is null in that fallback case. */
+    let overviewSummary = null;
+
     function renderOverview() {
       const { cur, prev } = overviewSeries();
-      const activeDays = cur.filter(d => d.practice > 0).length;
+      const sparkFor = key => sparkline(cur.map(d => d[key]), key === "view" ? OVERVIEW_SPARK.view : OVERVIEW_SPARK.practice);
 
-      const tiles = [
-        { label: "Practice rounds", cur: sum(cur, "practice"), prev: sum(prev, "practice"),
-          key: "practice", color: OVERVIEW_SPARK.practice,
-          note: `${activeDays} of ${activityDays} days had practice` },
-        { label: "Questions seen", cur: sum(cur, "questions"), prev: sum(prev, "questions"),
-          key: "questions", color: OVERVIEW_SPARK.practice,
-          note: "Scored answers plus unscored reviews" },
-        { label: "Learners / day", cur: mean(cur, "learners"), prev: mean(prev, "learners"),
-          key: "learners", color: OVERVIEW_SPARK.practice,
-          note: "Average of the daily unique-device count" },
-        { label: "Service views", cur: sum(cur, "view"), prev: sum(prev, "view"),
-          key: "view", color: OVERVIEW_SPARK.view,
-          note: "Service screens opened, practice or not" },
+      const s = overviewSummary;
+      const c = s?.current, p = s?.previous;
+      const activeDays = c ? Number(c.active_days) : cur.filter(d => d.practice > 0).length;
+
+      // Exact path: every number is a period-level aggregate from Postgres.
+      const exactTiles = () => [
+        { label: "Practice rounds", cur: Number(c.practice_rounds), prev: Number(p.practice_rounds),
+          key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
+        { label: "Questions seen", cur: Number(c.questions), prev: Number(p.questions),
+          key: "questions", note: "Scored answers plus unscored reviews" },
+        { label: "Accuracy", cur: c.accuracy_pct == null ? null : Number(c.accuracy_pct),
+          prev: p.accuracy_pct == null ? null : Number(p.accuracy_pct),
+          key: "questions", mode: "points", suffix: "%",
+          note: Number(c.scored) ? `Over ${Number(c.scored).toLocaleString()} scored answers`
+                                 : "No scored answers in this period" },
+        { label: "Learners", cur: Number(c.learners), prev: Number(p.learners),
+          key: "learners", note: "Unique devices in the period" },
+        { label: "Service views", cur: Number(c.view_events), prev: Number(p.view_events),
+          key: "view", note: "Service screens opened, practice or not" },
       ];
+
+      // Fallback: additive measures only. Accuracy is absent rather than wrong,
+      // and learners is explicitly a daily average — a period total would
+      // double-count anyone who practised on more than one day.
+      const fallbackTiles = () => [
+        { label: "Practice rounds", cur: sum(cur, "practice"), prev: sum(prev, "practice"),
+          key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
+        { label: "Questions seen", cur: sum(cur, "questions"), prev: sum(prev, "questions"),
+          key: "questions", note: "Scored answers plus unscored reviews" },
+        { label: "Learners / day", cur: mean(cur, "learners"), prev: mean(prev, "learners"),
+          key: "learners", note: "Daily average — run add_overview_summary.sql for the exact count" },
+        { label: "Service views", cur: sum(cur, "view"), prev: sum(prev, "view"),
+          key: "view", note: "Service screens opened, practice or not" },
+      ];
+
+      const tiles = (c && p) ? exactTiles() : fallbackTiles();
 
       document.getElementById("overviewRow").innerHTML = tiles.map(t => `
         <div class="kpi">
           <div class="kpi__label">${t.label}</div>
-          <div class="kpi__value">${fmtNum(t.cur)}</div>
-          ${deltaHTML(t.cur, t.prev)}
-          <div class="kpi__spark">${sparkline(cur.map(d => d[t.key]), t.color)}</div>
+          <div class="kpi__value">${t.cur == null ? "—" : fmtNum(t.cur) + (t.suffix || "")}</div>
+          ${deltaHTML(t.cur, t.prev, t.mode)}
+          <div class="kpi__spark">${sparkFor(t.key)}</div>
           ${t.note ? `<div class="kpi__note">${t.note}</div>` : ""}
         </div>`).join("");
 
@@ -1062,12 +1115,28 @@
 
     async function loadActivity() {
       document.getElementById("activityScope").textContent = `Last ${activityDays} days`;
-      const [rollup, report] = await Promise.all([
-        // 2× the window: the back half feeds the Overview comparison. The chart
-        // and tables still read only the most recent activityDays.
+      const [rollup, report, summary] = await Promise.all([
+        // 2× the window: the front half draws the sparklines, the back half is
+        // the Overview's fallback comparison if get_overview_summary is absent.
+        // The chart and tables still read only the most recent activityDays.
         rpc("get_activity_rollup",  { p_days: Math.min(activityDays * 2, 365) }),
         rpc("get_practice_report",  { p_days: activityDays }),
+        rpc("get_overview_summary", { p_days: activityDays }),
       ]);
+
+      /* PGRST202 = the function doesn't exist, i.e. add_overview_summary.sql
+         hasn't been run. That is a known, recoverable state (the user runs
+         migrations by hand), so it downgrades the strip rather than erroring.
+         Any OTHER error is real and worth surfacing in the console. */
+      overviewSummary = null;
+      if (summary.error) {
+        if (summary.error.code !== "PGRST202") console.error("Overview summary load error:", summary.error);
+      } else {
+        const byPeriod = Object.fromEntries((summary.data || []).map(r => [r.period, r]));
+        // Both rows or neither — a half-populated comparison would render a
+        // delta against an undefined period.
+        if (byPeriod.current && byPeriod.previous) overviewSummary = byPeriod;
+      }
       const fail = (id, cols, file) => {
         document.getElementById(id).innerHTML =
           `<tr><td colspan="${cols}" class="empty-state" style="color:var(--clr-red)">
