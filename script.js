@@ -2589,6 +2589,82 @@ function endActiveRound(reason, keepOpen = false) {
   });
 }
 
+/* ── Chunked decks ──────────────────────────────────────────────────────────
+   An open-category deck is served in fixed-size sets instead of all at once.
+
+   Why: F-1 was the most-STARTED service in the app (73 of 138 round starts on
+   21-22 Jul 2026) and one of the worst-completed — 54 cards with no score and
+   no end state, so "finishing" meant tapping Next 54 times for no payoff. The
+   funnel data ranked completion by how short and how rewarding a round was:
+   the scored 20-question civics test finished best (33%), the 128-card
+   flashcard deck worst (6%). A 10-card set with a real end screen is the
+   cheapest test of that reading.
+
+   Keyed by category so extending this to marriage / b1b2 / asylum — which all
+   have the same shape and currently sit at 0% completion — is one line here.
+   Naturalization is deliberately absent: its rounds are already bounded (a
+   20-question test, a due-only review queue). */
+const CHUNK_SIZES = { f1: 10 };
+const DECK_SEEN_KEY = "interviewPrepDeckSeen";   // { category: [question ids] }
+
+// Ids served in the current chunk, banked only once the round is finished.
+let activeChunkIds = [];
+
+function loadDeckSeen() {
+  try { return JSON.parse(localStorage.getItem(DECK_SEEN_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function saveDeckSeen(map) {
+  try { localStorage.setItem(DECK_SEEN_KEY, JSON.stringify(map)); } catch (e) {}
+}
+
+/* Only plain question practice chunks. Flags/checklists are reading lists that
+   make no sense split up, and mock already picks its own 5-7. */
+function chunkSizeFor(category) {
+  if (!CHUNK_SIZES[category]) return 0;
+  if (contentType !== "question") return 0;
+  if (mockMode) return 0;
+  return CHUNK_SIZES[category];
+}
+
+function deckTotal(category) {
+  return allQuestions.filter(q =>
+    q.category === category && (q.content_type || "question") === "question").length;
+}
+function deckSeenCount(category) {
+  const total = deckTotal(category);
+  return Math.min((loadDeckSeen()[category] || []).length, total);
+}
+
+/* Serve the next unseen slice. When the deck runs out we clear the record and
+   start a fresh pass rather than dead-ending — an empty quizSet would fire
+   practice_empty and render the done screen, which is exactly the dead end
+   this feature exists to avoid. */
+function takeDeckChunk(category, shuffled, size) {
+  const seen = loadDeckSeen();
+  const seenSet = new Set(seen[category] || []);
+  let remaining = shuffled.filter(q => !seenSet.has(q.id));
+  if (!remaining.length) {
+    seen[category] = [];
+    saveDeckSeen(seen);
+    remaining = shuffled;
+  }
+  const set = remaining.slice(0, size);
+  activeChunkIds = set.map(q => q.id);
+  return set;
+}
+
+// Banked on completion, not as they advance: a round they walked out of should
+// come back rather than being silently marked done.
+function bankChunk(category) {
+  if (!activeChunkIds.length) return;
+  const seen = loadDeckSeen();
+  const merged = new Set([...(seen[category] || []), ...activeChunkIds]);
+  seen[category] = [...merged];
+  saveDeckSeen(seen);
+  activeChunkIds = [];
+}
+
 function startRound(category) {
   // Must run before any state is touched — startRound resets currentIndex to 0
   // further down, and the abandon needs to report how far they actually got.
@@ -2622,6 +2698,10 @@ function startRound(category) {
   } else pool = allQuestions.filter(q => q.category === category && (q.content_type || "question") === contentType);
 
   quizSet = shuffle(pool);
+  // Chunked open-category decks: serve the next unseen set, not all 54.
+  const chunk = chunkSizeFor(category);
+  if (chunk) quizSet = takeDeckChunk(category, quizSet, chunk);
+  else activeChunkIds = [];
   if (category === "naturalization" && natTestType === "civics" && simMode) quizSet = quizSet.slice(0, SIM_QUESTION_COUNT);
   if (mockMode && mockAvailable(category)) {
     const n = MOCK_MIN_Q + Math.floor(Math.random() * (MOCK_MAX_Q - MOCK_MIN_Q + 1));
@@ -2668,7 +2748,38 @@ function renderDoneState(kind) {
   badgeEl.classList.remove("sim-result-badge--pass", "sim-result-badge--fail", "sim-result-badge--warn");
   timingEl.hidden = true;
 
-  if (kind === "simResult") {
+  if (kind === "chunkDone") {
+    /* The end state the 54-card deck never had: what you just did, what's left,
+       and one button that continues instead of starting over. */
+    const total = deckTotal(currentCategory);
+    const done = deckSeenCount(currentCategory);
+    const left = Math.max(0, total - done);
+    const size = chunkSizeFor(currentCategory);
+    const vi = currentLang === "vi";
+
+    badgeEl.textContent = vi
+      ? `Xong ${done} / ${total} câu`
+      : `${done} of ${total} questions done`;
+    badgeEl.classList.add(left ? "sim-result-badge--warn" : "sim-result-badge--pass");
+    badgeEl.hidden = false;
+
+    textEl.textContent = left
+      ? (vi ? `Còn ${left} câu. Tiếp tục nhé!` : `${left} to go. Keep going!`)
+      : (vi ? "Bạn đã xem hết bộ câu hỏi này. Làm lại từ đầu để ôn tập."
+            : "You've been through the whole set — start again to review.");
+    textEl.hidden = false;
+
+    iconEl.className = "fa-solid fa-circle-check";
+    iconEl.style.color = "";
+
+    restartBtn.innerHTML = left
+      ? (vi ? `<i class="fa-solid fa-arrow-right"></i> ${size} câu tiếp theo`
+            : `<i class="fa-solid fa-arrow-right"></i> Next ${size} questions`)
+      : (vi ? '<i class="fa-solid fa-rotate-right"></i> Bắt đầu lại'
+            : '<i class="fa-solid fa-rotate-right"></i> Start over');
+    restartBtn.style.display = "";
+    timingEl.hidden = true;
+  } else if (kind === "simResult") {
     const passed = simScore.correct >= SIM_PASS_THRESHOLD;
     const template = currentLang === "vi"
       ? translations.vi[passed ? "sim.pass" : "sim.fail"]
@@ -3328,6 +3439,8 @@ function nextQuestion() {
     if (simMode) kind = "simResult";
     else if (reviewMode) kind = "reviewDone";
     else if (isSelfScored()) kind = "englishResult";
+    // Bank the chunk BEFORE rendering — the done screen reads the new progress.
+    else if (chunkSizeFor(currentCategory)) { bankChunk(currentCategory); kind = "chunkDone"; }
     const isScored = (kind === "simResult" || kind === "englishResult");
     if (isScored) {
       recordQuizResult(
