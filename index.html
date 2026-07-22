@@ -369,6 +369,17 @@
           <p class="progress-cats__label" id="progressCatsLabel" data-i18n="progress.byCategory">Practice by category</p>
           <div class="progress-cats" id="progressCats"></div>
         </div>
+        <!-- Flagged questions — the user's own saved queue, so it belongs with
+             their progress rather than in the "which service?" grid. Hidden
+             until they have actually flagged something. -->
+        <button class="progress-flagged" id="progressFlagged" hidden>
+          <span class="progress-flagged__label">
+            <i class="fa-solid fa-star"></i>
+            <span data-i18n="progress.flagged">Questions you flagged</span>
+          </span>
+          <span class="progress-flagged__count" id="progressFlaggedCount">0</span>
+          <i class="fa-solid fa-arrow-right progress-flagged__go"></i>
+        </button>
       </section>
 
       <!-- Breaking-news hero — the featured story, big + highlighted, sitting
@@ -382,6 +393,28 @@
           <span class="breaking-hero__more"><span data-i18n="news.readMore">Read more</span> <i class="fa-solid fa-arrow-right"></i></span>
         </span>
       </button>
+
+      <!-- Interview outcome — asked once, 30 days after signup. The only place
+           real-world results enter the app (see maybeShowOutcomePrompt). -->
+      <section class="outcome-card" id="outcomeCard" hidden>
+        <button class="outcome-card__close" id="outcomeDismiss" aria-label="Dismiss">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div id="outcomeForm">
+          <p class="outcome-card__q" data-i18n="outcome.prompt">
+            <i class="fa-regular fa-circle-question"></i>
+            Did you take your interview? Did you pass?
+          </p>
+          <div class="outcome-card__options">
+            <button class="btn btn--outline" data-outcome="not_yet" data-i18n="outcome.notYet">Not yet</button>
+            <button class="btn btn--correct" data-outcome="passed" data-i18n="outcome.passed"><i class="fa-solid fa-check"></i> Passed</button>
+            <button class="btn btn--wrong" data-outcome="did_not_pass" data-i18n="outcome.failed">Did not pass</button>
+          </div>
+        </div>
+        <p class="outcome-card__thanks" id="outcomeThanks" data-i18n="outcome.thanks" hidden>
+          Thank you — this helps us make the practice better for everyone.
+        </p>
+      </section>
 
       <!-- Interview-date countdown — ask once, then show a daily pacing nudge -->
       <section class="countdown-card" id="countdownCard" hidden>
@@ -405,31 +438,34 @@
 
       <p class="home-prompt" data-i18n="home.prompt">Which service are you here for?</p>
 
-      <!-- Service selector grid — pick one to focus on it -->
+      <!-- Service selector grid — pick one to focus on it.
+           Ordered by actual usage (all-time, 2026-07-22 snapshot): naturalization
+           22 learners / 33 rounds, f1 9 / 21, marriage 6 / 7, b1b2 3 / 3, asylum
+           0 / 0. Previously marriage led and asylum sat third, above F-1 — the
+           two strongest services were in positions 1 and 4 while a zero-usage
+           one held prime space. Matters most on mobile (~69% of traffic), where
+           this grid is a vertical scroll and the last card is below the fold.
+           Re-check against the category breakdown before reordering again. -->
       <div class="service-grid" id="serviceGrid">
-        <button class="service-card" data-category="marriage" style="--svc: var(--svc-marriage);">
-          <span class="service-card__icon"><i class="fa-solid fa-heart"></i></span>
-          <span class="service-card__label" data-i18n="cat.marriage">Marriage-Based Green Card</span>
-        </button>
         <button class="service-card" data-category="naturalization" style="--svc: var(--svc-naturalization);">
           <span class="service-card__icon"><i class="fa-solid fa-landmark"></i></span>
           <span class="service-card__label" data-i18n="cat.naturalization">Naturalization</span>
-        </button>
-        <button class="service-card" data-category="asylum" style="--svc: var(--svc-asylum);">
-          <span class="service-card__icon"><i class="fa-solid fa-hands-holding-circle"></i></span>
-          <span class="service-card__label" data-i18n="cat.asylum">Asylum</span>
         </button>
         <button class="service-card" data-category="f1" style="--svc: var(--svc-f1);">
           <span class="service-card__icon"><i class="fa-solid fa-user-graduate"></i></span>
           <span class="service-card__label" data-i18n="cat.f1">F-1 Student Visa</span>
         </button>
+        <button class="service-card" data-category="marriage" style="--svc: var(--svc-marriage);">
+          <span class="service-card__icon"><i class="fa-solid fa-heart"></i></span>
+          <span class="service-card__label" data-i18n="cat.marriage">Marriage-Based Green Card</span>
+        </button>
         <button class="service-card" data-category="b1b2" style="--svc: var(--svc-b1b2);">
           <span class="service-card__icon"><i class="fa-solid fa-plane-departure"></i></span>
           <span class="service-card__label" data-i18n="cat.b1b2">B1/B2 Visitor Visa</span>
         </button>
-        <button class="service-card" data-category="flagged" style="--svc: var(--svc-flagged);">
-          <span class="service-card__icon"><i class="fa-solid fa-star"></i></span>
-          <span class="service-card__label" data-i18n="cat.flagged">Flagged</span>
+        <button class="service-card" data-category="asylum" style="--svc: var(--svc-asylum);">
+          <span class="service-card__icon"><i class="fa-solid fa-hands-holding-circle"></i></span>
+          <span class="service-card__label" data-i18n="cat.asylum">Asylum</span>
         </button>
       </div>
 
@@ -457,7 +493,7 @@
       <div class="qa-grid" id="qaGridNat" hidden>
         <button class="qa-tile" data-action="flash">
           <i class="fa-solid fa-layer-group"></i>
-          <span data-i18n="qa.flash">128 Civic Questions</span>
+          <span data-i18n="qa.flash">{bank} Civic Questions</span>
         </button>
         <button class="qa-tile" data-action="mctest">
           <i class="fa-solid fa-landmark"></i>
@@ -547,10 +583,10 @@
     <!-- ═══ CIVICS MODE TOGGLE (Study / Simulate) ═══ -->
     <div class="sim-toggle" id="simToggle" hidden>
       <button class="sim-toggle__btn sim-toggle__btn--active" id="practiceModeBtn" data-i18n="sim.practice">
-        <i class="fa-solid fa-book-open"></i> Study All 128 Questions
+        <i class="fa-solid fa-book-open"></i> Study All {bank} Questions
       </button>
       <button class="sim-toggle__btn" id="simModeBtn" data-i18n="sim.test">
-        <i class="fa-solid fa-stopwatch"></i> Simulate Real Test (20 Random)
+        <i class="fa-solid fa-stopwatch"></i> Simulate Real Test ({asked} Random)
       </button>
       <button class="sim-toggle__btn" id="spokenTestBtn" data-i18n="sim.spoken" hidden>
         <i class="fa-solid fa-microphone-lines"></i> Spoken Test (Auto-Scored)

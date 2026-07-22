@@ -93,15 +93,15 @@ const translations = {
     "answer.label.eng_writing": "Gợi Ý Viết",
     "progress": "Câu {current} / {total}",
     "flag.ariaLabel": "Đánh dấu để ôn lại",
-    "sim.practice": '<i class="fa-solid fa-book-open"></i> Học Tất Cả 128 Câu',
-    "sim.test": '<i class="fa-solid fa-stopwatch"></i> Mô Phỏng Thi Thật (20 Câu)',
+    "sim.practice": '<i class="fa-solid fa-book-open"></i> Học Tất Cả {bank} Câu',
+    "sim.test": '<i class="fa-solid fa-stopwatch"></i> Mô Phỏng Thi Thật ({asked} Câu)',
     "sim.spoken": '<i class="fa-solid fa-microphone-lines"></i> Thi Nói (Tự Chấm Điểm)',
     "sim.review": "Ôn Câu Sai",
     "qa.title": "Thao Tác Nhanh",
     "qa.questions": "Câu Hỏi Luyện Tập",
     "qa.mock": "Phỏng Vấn Thử",
     "qa.docs": "Giấy Tờ Cần Mang",
-    "qa.flash": "128 Câu Dân Sự",
+    "qa.flash": "{bank} Câu Dân Sự",
     "qa.mctest": "Thi Dân Sự Như Thật",
     "qa.spoken": "Thi Nói Dân Sự",
     "qa.writing": "Thi Viết",
@@ -179,8 +179,8 @@ const translations = {
     "typed.youTyped": "Anh/chị đã nhập:",
     "sim.progress": "Câu {current}/{total} · Đúng {correct}/{answered}",
     "sim.badgeSuffix": " — Mô Phỏng Thi",
-    "sim.pass": "✅ ĐẠT — Trả lời đúng {correct}/{total} câu (cần tối thiểu {threshold}/20 để đậu bài thi thật)",
-    "sim.fail": "❌ CHƯA ĐẠT — Trả lời đúng {correct}/{total} câu (cần tối thiểu {threshold}/20 để đậu bài thi thật)",
+    "sim.pass": "✅ ĐẠT — Trả lời đúng {correct}/{total} câu (cần tối thiểu {threshold}/{asked} để đậu bài thi thật)",
+    "sim.fail": "❌ CHƯA ĐẠT — Trả lời đúng {correct}/{total} câu (cần tối thiểu {threshold}/{asked} để đậu bài thi thật)",
     "sim.timing": "Tổng thời gian: {total} · Trung bình: {avg}/câu",
     "btn.tryAgain": '<i class="fa-solid fa-rotate-right"></i> Thử Bộ Câu Hỏi Khác',
     "nat.civicsTest": '<i class="fa-solid fa-landmark"></i> Thi Dân Sự',
@@ -261,6 +261,12 @@ const translations = {
     "gate.resend": "Gửi Lại Email",
     "gate.resendSent": "Đã gửi lại email kích hoạt!",
     "gate.useDifferent": "Dùng email khác",
+    "outcome.prompt": '<i class="fa-regular fa-circle-question"></i> Anh/chị đã đi phỏng vấn chưa? Kết quả thế nào?',
+    "outcome.notYet": "Chưa phỏng vấn",
+    "outcome.passed": '<i class="fa-solid fa-check"></i> Đã đậu',
+    "outcome.failed": "Chưa đậu",
+    "outcome.thanks": "Cảm ơn anh/chị — điều này giúp chúng tôi cải thiện phần luyện tập cho mọi người.",
+    "progress.flagged": "Câu hỏi anh/chị đã đánh dấu",
   }
 };
 
@@ -287,12 +293,31 @@ const ANSWER_LABEL_EN = {
   eng_writing: "Writing Tip",
 };
 
-const SIM_QUESTION_COUNT = 20;
-const SIM_PASS_THRESHOLD = 12;
+/* ── Civics test configuration ───────────────────────────────────────────────
+   USCIS replaced the civics test on 2025-10-20: a 128-question bank, 20 asked,
+   12 correct to pass, applying to all N-400 filings on or after that date. The
+   retired 2008 format was 100 / 10 / 6. A further revision is slated for
+   October 2026, so these are CONFIGURATION rather than constants — add the new
+   shape to CIVICS_TEST_VERSIONS, flip CIVICS_TEST_VERSION, and every mode,
+   result string and study nudge follows from it.
+
+   `bank_size` must match the real row count of `questions` where
+   category = 'naturalization' (128 as of this writing) — it drives the "study N
+   a day to cover them all" pacing nudge, which silently misleads if it drifts. */
+const CIVICS_TEST_VERSIONS = {
+  "2025": { effective_from: "2025-10-20", bank_size: 128, questions_asked: 20, pass_threshold: 12 },
+  "2008": { effective_from: "2008-10-01", bank_size: 100, questions_asked: 10, pass_threshold: 6 },
+};
+const CIVICS_TEST_VERSION = "2025";
+const CIVICS_TEST = Object.assign(
+  { version: CIVICS_TEST_VERSION }, CIVICS_TEST_VERSIONS[CIVICS_TEST_VERSION]);
+
+const SIM_QUESTION_COUNT = CIVICS_TEST.questions_asked;
+const SIM_PASS_THRESHOLD = CIVICS_TEST.pass_threshold;
 const SIM_PROGRESS_EN = "Question {current} of {total} · {correct} of {answered} correct so far";
 const SIM_BADGE_SUFFIX_EN = " — Test Simulation";
-const SIM_PASS_EN = "✅ PASS — You answered {correct} of {total} correctly (need at least {threshold}/20 to pass the real test)";
-const SIM_FAIL_EN = "❌ NOT YET — You answered {correct} of {total} correctly (need at least {threshold}/20 to pass the real test)";
+const SIM_PASS_EN = "✅ PASS — You answered {correct} of {total} correctly (need at least {threshold}/{asked} to pass the real test)";
+const SIM_FAIL_EN = "❌ NOT YET — You answered {correct} of {total} correctly (need at least {threshold}/{asked} to pass the real test)";
 const SIM_TIMING_EN = "Total time: {total} · Average: {avg}/question";
 const ACCOUNT_ERROR_EN = "Something went wrong. Please try again.";
 const ACCOUNT_NO_RESULTS_EN = "No practice results yet.";
@@ -412,6 +437,7 @@ const REVIEW_BADGE_SUFFIX_EN = " — Review Missed";
 const FLAG_STORAGE_KEY = "interviewPrepFlaggedIds";
 const MISSED_STORAGE_KEY = "interviewPrepMissedIds";
 const REGISTERED_STORAGE_KEY = "interviewPrepRegistered";
+const REGISTERED_AT_KEY = "interviewPrepRegisteredAt";
 
 // English placeholders / messages for the registration gate (VI live in translations.vi).
 const GATE_EN = {
@@ -527,6 +553,22 @@ function isRegistered() {
 
 function markRegistered() {
   try { localStorage.setItem(REGISTERED_STORAGE_KEY, "1"); } catch (e) {}
+  stampRegisteredAt();
+}
+
+/* When this device registered, in local YYYY-MM-DD — the clock the 30-day
+   outcome prompt runs on. Write-once: a user who registers, clears nothing and
+   comes back must not have their clock reset.
+
+   Also called on load for people who registered BEFORE this shipped and have no
+   stamp. They are dated from today rather than backfilled, which delays their
+   prompt by up to 30 days but cannot mis-fire it at someone who signed up
+   yesterday — the wrong direction to be wrong in is asking too early. */
+function stampRegisteredAt() {
+  try {
+    if (localStorage.getItem(REGISTERED_AT_KEY)) return;
+    localStorage.setItem(REGISTERED_AT_KEY, localDateStamp());
+  } catch (e) {}
 }
 
 /* ── Anonymous device identity + local/backend activity tracking ──
@@ -575,6 +617,24 @@ function getClientId() {
     try { localStorage.setItem(CLIENT_ID_KEY, id); } catch (e) {}
   }
   return id;
+}
+
+/* Coarse form factor for every event. ~69% of traffic arrives from Facebook and
+   is therefore mobile, so a funnel that can't split mobile from desktop can't
+   explain its own drop-off. Deliberately three buckets from the user agent — no
+   fingerprinting, no PII, nothing that identifies a device beyond its shape.
+
+   iPadOS 13+ reports a desktop Macintosh UA, so the touch check is what keeps
+   iPads out of the desktop bucket. Viewport width is NOT used: a narrow desktop
+   window is not a phone, and that distinction is the whole point here. */
+function deviceType() {
+  const ua = navigator.userAgent || "";
+  const iPadOS = /macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1;
+  if (iPadOS || /ipad|tablet|playbook|silk|kindle/i.test(ua)) return "tablet";
+  // Android without "Mobile" is a tablet, per Google's own UA convention.
+  if (/android/i.test(ua)) return /mobile/i.test(ua) ? "mobile" : "tablet";
+  if (/mobi|iphone|ipod|blackberry|iemobile|opera mini|windows phone/i.test(ua)) return "mobile";
+  return "desktop";
 }
 
 function getSessionId() {
@@ -629,7 +689,11 @@ async function logEvent(eventName, props = {}) {
       utm_campaign: utmParams.campaign,
       utm_content: utmParams.content,
       utm_term: utmParams.term,
-      props,
+      // `device` is stamped on EVERY event rather than on practice_start alone,
+      // so any existing funnel step can be split by form factor without a second
+      // instrumentation pass. Additive — no existing prop is renamed or removed.
+      // A caller-supplied `device` (none today) would win, which is intended.
+      props: Object.assign({ device: deviceType() }, props),
     });
   } catch (err) {
     console.error("Failed to log event:", eventName, err);
@@ -1193,15 +1257,15 @@ function closeNewsModal() {
    Date lives on the device; setting it also logs an event for the CRM. */
 const INTERVIEW_DATE_KEY = "interviewPrepInterviewDate";
 const CD_SNOOZE_KEY = "interviewPrepCountdownSnooze";
-const CIVICS_QUESTION_COUNT = 128;
+const CIVICS_QUESTION_COUNT = CIVICS_TEST.bank_size;
 
 const CD_EN = {
   days: "{n} days until your interview",
   tomorrow: "Your interview is tomorrow!",
   today: "Your interview is today — good luck! 🍀",
   past: "Hope your interview went well! 🎉",
-  nudgeCivics: "Study about {n} civics questions a day to cover all 128 before your interview.",
-  nudgeCivicsEasy: "You have plenty of time — a few civics questions a day covers all 128.",
+  nudgeCivics: "Study about {n} civics questions a day to cover all {bank} before your interview.",
+  nudgeCivicsEasy: "You have plenty of time — a few civics questions a day covers all {bank}.",
   nudgeGeneric: "A little practice every day builds real confidence — aim for one round a day.",
 };
 const CD_VI = {
@@ -1209,8 +1273,8 @@ const CD_VI = {
   tomorrow: "Buổi phỏng vấn của bạn là ngày mai!",
   today: "Buổi phỏng vấn của bạn là hôm nay — chúc may mắn! 🍀",
   past: "Hy vọng buổi phỏng vấn của bạn diễn ra tốt đẹp! 🎉",
-  nudgeCivics: "Học khoảng {n} câu dân sự mỗi ngày để ôn hết 128 câu trước buổi phỏng vấn.",
-  nudgeCivicsEasy: "Bạn còn nhiều thời gian — chỉ cần vài câu dân sự mỗi ngày là ôn hết 128 câu.",
+  nudgeCivics: "Học khoảng {n} câu dân sự mỗi ngày để ôn hết {bank} câu trước buổi phỏng vấn.",
+  nudgeCivicsEasy: "Bạn còn nhiều thời gian — chỉ cần vài câu dân sự mỗi ngày là ôn hết {bank} câu.",
   nudgeGeneric: "Luyện tập một chút mỗi ngày sẽ tạo nên sự tự tin thật sự — hãy đặt mục tiêu một lượt mỗi ngày.",
 };
 
@@ -1266,7 +1330,8 @@ function renderCountdown() {
     const natFocus = p.cats && p.cats.naturalization && p.cats.naturalization.rounds > 0;
     if (natFocus) {
       const perDay = Math.ceil(CIVICS_QUESTION_COUNT / days);
-      nudge = perDay <= 2 ? t.nudgeCivicsEasy : t.nudgeCivics.replace("{n}", perDay);
+      nudge = (perDay <= 2 ? t.nudgeCivicsEasy : t.nudgeCivics.replace("{n}", perDay))
+        .replace("{bank}", CIVICS_TEST.bank_size);
     } else {
       nudge = t.nudgeGeneric;
     }
@@ -1382,6 +1447,73 @@ function skipFeedback() {
   try { localStorage.setItem(FEEDBACK_DONE_KEY, "1"); } catch (e) {}
   document.getElementById("feedbackCard").hidden = true;
   document.getElementById("feedbackReopen").hidden = false;
+}
+
+/* ── Interview outcome prompt ────────────────────────────────────────────────
+   Every readiness signal in this app is self-contained: accuracy measures
+   performance against our own question bank, not against USCIS. This prompt is
+   the only place ground truth enters the system — without it, "readiness" can
+   never be validated against whether anyone actually passed.
+
+   Asked once, 30 days after signup, on the home screen. Home rather than the
+   done screen on purpose: the people whose answer matters most are the ones who
+   stopped practicing because their interview already happened, and they will
+   never see a done screen again.
+
+   Once answered or dismissed it never returns — a nag would cost more trust than
+   the datapoint is worth. `interviewPrepOutcomeAsked` is the tombstone for both. */
+const OUTCOME_ASKED_KEY = "interviewPrepOutcomeAsked";
+const OUTCOME_PROMPT_AFTER_DAYS = 30;
+
+function daysSinceRegistered() {
+  const stamp = lsGet(REGISTERED_AT_KEY);
+  if (!stamp) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((today - new Date(stamp + "T00:00:00")) / 86400000);
+}
+
+function hasAnsweredOutcome() {
+  try { return localStorage.getItem(OUTCOME_ASKED_KEY) === "1"; } catch (e) { return false; }
+}
+
+/* The service this person actually practices, for the `category` prop — read
+   from local progress rather than asked, so the prompt stays one tap. Null when
+   they have practiced nothing, which is itself worth knowing on the read side. */
+function topPracticedCategory() {
+  const cats = (loadLocalProgress().cats) || {};
+  let best = null, bestRounds = 0;
+  Object.keys(cats).forEach(k => {
+    const rounds = Number((cats[k] && cats[k].rounds) || 0);
+    if (rounds > bestRounds) { best = k; bestRounds = rounds; }
+  });
+  return best;
+}
+
+function maybeShowOutcomePrompt() {
+  const card = document.getElementById("outcomeCard");
+  if (!card) return;
+  const days = daysSinceRegistered();
+  const eligible = isRegistered() && !hasAnsweredOutcome() &&
+    days !== null && days >= OUTCOME_PROMPT_AFTER_DAYS;
+  card.hidden = !eligible;
+  if (!eligible || card.dataset.shown === "1") return;
+  // Denominator for the response rate — without it a low count of answers is
+  // indistinguishable from a prompt nobody was eligible to see.
+  card.dataset.shown = "1";
+  logEvent("outcome_prompt_shown", { days_since_signup: days, category: topPracticedCategory() });
+}
+
+function reportOutcome(result) {
+  logEvent("outcome_reported", { result, category: topPracticedCategory() });
+  try { localStorage.setItem(OUTCOME_ASKED_KEY, "1"); } catch (e) {}
+  document.getElementById("outcomeForm").hidden = true;
+  document.getElementById("outcomeThanks").hidden = false;
+}
+
+function dismissOutcome() {
+  logEvent("outcome_dismissed", { category: topPracticedCategory() });
+  try { localStorage.setItem(OUTCOME_ASKED_KEY, "1"); } catch (e) {}
+  document.getElementById("outcomeCard").hidden = true;
 }
 
 /* ── Delayed email capture ──
@@ -2169,6 +2301,17 @@ function hasTimer() {
   return simMode;
 }
 
+/* UI labels name the civics test's shape ("Study All 128 Questions", "Simulate
+   Real Test (20 Random)") in both languages. They carry {bank} / {asked} tokens
+   instead of literals so the October 2026 revision is a CIVICS_TEST edit rather
+   than a hunt through translated copy. Applied on every write to the DOM; the
+   enCache keeps the untouched tokenized original. */
+function withTestNumbers(html) {
+  return String(html)
+    .replace(/\{bank\}/g, CIVICS_TEST.bank_size)
+    .replace(/\{asked\}/g, CIVICS_TEST.questions_asked);
+}
+
 function switchLanguage(lang) {
   const flag = document.getElementById("langFlag");
   const label = document.getElementById("langLabel");
@@ -2177,7 +2320,7 @@ function switchLanguage(lang) {
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
       if (!enCache[key]) enCache[key] = el.innerHTML;
-      if (translations.vi[key]) el.innerHTML = translations.vi[key];
+      if (translations.vi[key]) el.innerHTML = withTestNumbers(translations.vi[key]);
     });
     flag.textContent = "🇺🇸";
     label.textContent = "English";
@@ -2186,7 +2329,7 @@ function switchLanguage(lang) {
   } else {
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
-      if (enCache[key]) el.innerHTML = enCache[key];
+      if (enCache[key]) el.innerHTML = withTestNumbers(enCache[key]);
     });
     flag.textContent = "🇻🇳";
     label.textContent = "Tiếng Việt";
@@ -2294,6 +2437,7 @@ function showHome() {
   renderHomeGreeting();
   renderCountdown();
   renderBreakingBanner();
+  maybeShowOutcomePrompt();
   maybeShowInstallHint();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -2436,9 +2580,18 @@ function renderProgress() {
     correct = p.correct; total = p.total; rounds = p.rounds; reviewed = p.reviewed;
     Object.keys(p.cats).forEach(k => { catCounts[k] = p.cats[k].rounds || 0; });
   }
-  const show = isRegistered() && appView === "home" && rounds > 0;
+  // Flagged questions live in this card now, so having flags is on its own
+  // enough to show it: a user can flag a question during their first round and
+  // abandon it, which leaves them with flags but zero completed rounds — and
+  // without this their flagged queue would be unreachable.
+  const show = isRegistered() && appView === "home" && (rounds > 0 || flaggedIds.size > 0);
   card.hidden = !show;
   if (!show) return;
+  const flaggedBtn = document.getElementById("progressFlagged");
+  if (flaggedBtn) {
+    flaggedBtn.hidden = flaggedIds.size === 0;
+    document.getElementById("progressFlaggedCount").textContent = flaggedIds.size;
+  }
   // Rounds + questions reviewed apply to all practice; accuracy only exists once
   // there's a scored test (civics Test mode / English test) to average.
   const pct = total ? Math.round((correct / total) * 100) : null;
@@ -2546,16 +2699,51 @@ function beginActiveRound(category, total) {
   activeRound = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
     category, total,
-    mode: roundModeLabel(),
+    // activityModeLabel(), not roundModeLabel(): practice_complete has always
+    // logged the finer label (it splits "simulate" into "mctest" / "spoken"),
+    // while start/abandon logged the coarse one — so joining the two ends of a
+    // round on `mode` silently failed for civics tests. Aligning them here makes
+    // start/complete/abandon directly comparable. Rows logged before this change
+    // keep "simulate" on the start and cannot be split after the fact.
+    mode: activityModeLabel(),
     content_type: contentType,
     startedAt: Date.now(),
   };
+  answeredIndexes = new Set();
   logEvent("practice_start", {
     round_id: activeRound.id,
     category, total,
     mode: activeRound.mode,
     content_type: activeRound.content_type,
   });
+}
+
+/* ── Per-question tracking ──
+   `question_answered` is the grain the North Star metric needs: practice_start
+   and practice_complete bound a round, but only this locates the question a
+   customer stalled on, and only this makes "questions answered" a real number
+   rather than an inference from round size.
+
+   Guarded by index because the scored paths log at the moment of scoring and
+   then call nextQuestion(), which would otherwise log the same question twice.
+   The Set is per-round; a round the customer restarts starts a fresh one. */
+let answeredIndexes = new Set();
+
+function logQuestionAnswered(outcome = {}) {
+  const q = quizSet[currentIndex];
+  if (!q || !activeRound) return;
+  if (answeredIndexes.has(currentIndex)) return;
+  answeredIndexes.add(currentIndex);
+  logEvent("question_answered", Object.assign({
+    round_id: activeRound.id,
+    question_id: q.id,
+    category: activeRound.category,
+    mode: activeRound.mode,
+    content_type: activeRound.content_type,
+    // Position in the round, so drop-off and per-position difficulty are a
+    // histogram over this field without joining back to practice_abandon.
+    index: currentIndex,
+  }, outcome));
 }
 
 /* Close the open round. `reason` distinguishes how it ended — a completed round
@@ -2600,11 +2788,17 @@ function endActiveRound(reason, keepOpen = false) {
    flashcard deck worst (6%). A 10-card set with a real end screen is the
    cheapest test of that reading.
 
-   Keyed by category so extending this to marriage / b1b2 / asylum — which all
-   have the same shape and currently sit at 0% completion — is one line here.
+   Extended to every open category on 2026-07-22, after F-1 proved the shape.
+   All four sit at or near zero completion for the same reason, and asylum is
+   the cleanest test of the reading: it has 55 questions of content and has
+   never had a single completed round, so if a bounded deck with an end screen
+   moves it off zero, the deck was the problem rather than the demand. Revisit
+   in 2-4 weeks — if asylum is still at zero after a fair shot, that is evidence
+   to retire the category rather than a guess.
+
    Naturalization is deliberately absent: its rounds are already bounded (a
    20-question test, a due-only review queue). */
-const CHUNK_SIZES = { f1: 10 };
+const CHUNK_SIZES = { f1: 10, marriage: 10, b1b2: 10, asylum: 10 };
 const DECK_SEEN_KEY = "interviewPrepDeckSeen";   // { category: [question ids] }
 
 // Ids served in the current chunk, banked only once the round is finished.
@@ -2787,7 +2981,8 @@ function renderDoneState(kind) {
     badgeEl.textContent = template
       .replace("{correct}", simScore.correct)
       .replace("{total}", simScore.total)
-      .replace("{threshold}", SIM_PASS_THRESHOLD);
+      .replace("{threshold}", CIVICS_TEST.pass_threshold)
+      .replace("{asked}", CIVICS_TEST.questions_asked);
     badgeEl.classList.add(passed ? "sim-result-badge--pass" : "sim-result-badge--fail");
     badgeEl.hidden = false;
     textEl.hidden = true;
@@ -3145,16 +3340,20 @@ function renderChoices(q) {
 function selectChoice(idx) {
   if (mcState.answeredIndex !== null) return;
   mcState.answeredIndex = idx;
-  // Real Civics Test: multiple choice is scored toward the 12/20 result and
+  const correct = !!mcState.options[idx].correct;
+  // Real Civics Test: multiple choice is scored toward the pass threshold and
   // feeds adaptive review, unlike the unscored study MC.
   if (simMode && mcTestMode) {
     stopTimerAndRecord();
-    const correct = !!mcState.options[idx].correct;
     simScore.total++;
     if (correct) simScore.correct++;
     const q = quizSet[currentIndex];
     if (q && q.category === "naturalization") markMissed(q.id, !correct);
   }
+  // Logged for study MC too, not just the scored test: correctness is known
+  // either way, and which questions people miss while studying is the same
+  // signal. `mode` distinguishes the two on the read side.
+  logQuestionAnswered({ correct });
   renderChoices(quizSet[currentIndex]);
 }
 
@@ -3381,6 +3580,11 @@ function redoMock() {
 
 function rateMock(rating) {
   mockRatings.push(rating);
+  // Mock rounds have no objective score, so the customer's own read is the only
+  // outcome signal there is. Kept at three values ('confident' | 'okay' |
+  // 'needs_work') to match the buttons and the done-screen summary that already
+  // ship; collapsing to two would regress a working feature.
+  logQuestionAnswered({ self_rating: rating });
   cleanupMockRecording();
   nextQuestion();
 }
@@ -3425,6 +3629,12 @@ function renderMockDone() {
 function nextQuestion() {
   // Advancing past the free preview question requires registering.
   if (!isRegistered()) { openGate(); return; }
+  // Catch-all for the unscored modes — flashcards, open-field decks, browsing
+  // green/red flags — where advancing IS the only signal that a question was
+  // worked. These carry neither `correct` nor `self_rating`; there is nothing
+  // to report. The scored and mock paths have already logged by now and are
+  // no-ops here thanks to the index guard. Must run before currentIndex++.
+  logQuestionAnswered();
   currentIndex++;
   if (currentIndex >= quizSet.length) {
     if (mockMode && mockAvailable(currentCategory)) {
@@ -3468,6 +3678,7 @@ function recordSimAnswer(correct) {
   if (correct) simScore.correct++;
   // Adaptive review: track civics misses, and clear a question once it's right.
   if (q && q.category === "naturalization") markMissed(q.id, !correct);
+  logQuestionAnswered({ correct });   // before nextQuestion() — it moves the index
   nextQuestion();
 }
 
@@ -3506,10 +3717,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // a mutated state as if it were the pristine original.
   document.querySelectorAll("[data-i18n]").forEach(el => {
     enCache[el.getAttribute("data-i18n")] = el.innerHTML;
+    el.innerHTML = withTestNumbers(el.innerHTML);   // resolve {bank} / {asked}
   });
 
   document.getElementById("langToggle").addEventListener("click", () => {
     switchLanguage(currentLang === "en" ? "vi" : "en");
+  });
+
+  // Outcome prompt. stampRegisteredAt() here covers everyone who registered
+  // before this shipped and so has no signup date on the device.
+  if (isRegistered()) stampRegisteredAt();
+  document.querySelectorAll("#outcomeCard [data-outcome]").forEach(btn => {
+    btn.addEventListener("click", () => reportOutcome(btn.dataset.outcome));
+  });
+  document.getElementById("outcomeDismiss").addEventListener("click", dismissOutcome);
+
+  document.getElementById("progressFlagged").addEventListener("click", () => {
+    if (!isRegistered()) { openGate(); return; }
+    enterService("flagged");
   });
 
   // ── Registration gate wiring ──

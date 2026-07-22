@@ -91,6 +91,44 @@ const { data: personId } = await supabase.rpc('identify', {
 | `practice_complete` | app | `{ round_id, category, mode, content_type, correct, total }` | round finished — **drives Activated/Active** |
 | `practice_abandon` | app | `{ round_id, category, mode, content_type, answered, total, progress_pct, seconds, reason }` | a started round was left unfinished |
 | `practice_empty` | app | `{ category, mode, content_type }` | a round was requested but the question pool was empty (dead end, not an abandon) |
+| `question_answered` | app | `{ round_id, question_id, category, mode, content_type, index }` + at most one of `correct` / `self_rating` | one question was worked — see below |
+| `outcome_prompt_shown` | app | `{ days_since_signup, category }` | the 30-day outcome prompt became visible (the denominator) |
+| `outcome_reported` | app | `{ result, category }` | the customer answered it — `result` is `not_yet` / `passed` / `did_not_pass` |
+| `outcome_dismissed` | app | `{ category }` | they closed it without answering |
+
+**`device`.** Every event — new and pre-existing — now carries
+`props.device` = `mobile` \| `tablet` \| `desktop`, stamped centrally in
+`logEvent()`. ~69% of traffic arrives from Facebook and is therefore mobile, so
+any funnel step can now be split by form factor without new instrumentation.
+Events logged before 2026-07-22 have no `device` key; treat missing as unknown
+rather than desktop.
+
+**`question_answered`** is the per-question grain the North Star depends on. The
+outcome field depends on the mode, and is deliberately not always present:
+
+- `correct` (boolean) — scored and study multiple-choice, self-marked civics,
+  and the English sections. Logged for *unscored* study MC too: correctness is
+  known either way, and `mode` separates them on the read side.
+- `self_rating` (`confident` \| `okay` \| `needs_work`) — mock modes only. Three
+  values, matching the buttons and the mock done-screen that already shipped.
+  This is the learner's own read, shown back to them as progress; nothing is
+  gated on it.
+- **neither** — the unscored decks (flashcards, open-field question decks), where
+  advancing is the only signal a question was worked. Count these as volume, not
+  as accuracy.
+
+`index` is the position within the round, so per-position drop-off and
+per-question difficulty are histograms over `question_answered` alone, without
+joining back to `practice_abandon`.
+
+**Mode vocabulary alignment (2026-07-22).** `practice_start` and
+`practice_abandon` previously logged the coarse label, which collapsed the Real
+Civics Test and the Spoken Test both into `simulate`, while `practice_complete`
+had always logged the finer `mctest` / `spoken`. All three now use the finer
+label, so a round's start, completion and abandon are directly comparable and
+share the vocabulary `practiceBuckets()` in the dashboard already understands.
+Rows written before this date keep `simulate` on the start/abandon and cannot be
+split retroactively.
 
 **Reading the practice funnel.** `round_id` joins the three round events.
 `reason` on an abandon is `left_round` (tapped Home), `restart` (started another

@@ -1863,3 +1863,85 @@ body.gate-open { overflow: hidden; }
   .breaking-hero__title { font-size: 1.2rem; }
   .breaking-hero__more { margin-left: 0; }
 }
+
+/* ── Interview outcome prompt ──
+   Home-screen card, shown once 30 days after signup. Mirrors .countdown-card so
+   it reads as part of the same home stack, plus a corner dismiss. */
+.outcome-card {
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto 22px;
+  padding: 18px 22px;
+  border-radius: var(--radius-lg);
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.outcome-card__close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 6px 8px;
+  border: 0;
+  background: none;
+  color: var(--clr-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+.outcome-card__close:hover { color: var(--clr-text); }
+.outcome-card__q {
+  font-weight: 600;
+  color: var(--clr-white);
+  margin: 0 18px 14px;
+}
+.outcome-card__q i { color: var(--clr-primary); margin-right: 6px; }
+.outcome-card__options {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.outcome-card__options .btn { padding: 10px 18px; }
+.outcome-card__thanks {
+  color: var(--clr-muted);
+  font-size: .95rem;
+  margin: 0;
+}
+
+/* ── Flagged queue (inside the progress card) ──
+   Was a card in the "which service are you here for?" grid, where it answered a
+   different question than the grid asked and showed an empty dead end to anyone
+   who had not flagged anything yet. It lives with the user's own progress now,
+   and hides entirely at zero. */
+.progress-flagged {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  background: var(--clr-bg);
+  font-family: var(--ff-body);
+  font-size: .95rem;
+  color: var(--clr-text);
+  cursor: pointer;
+  text-align: left;
+}
+.progress-flagged:hover { border-color: var(--clr-primary); }
+.progress-flagged__label { flex: 1; font-weight: 600; }
+.progress-flagged__label i { color: #f0a500; margin-right: 6px; }
+.progress-flagged__count {
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--clr-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: .85rem;
+  text-align: center;
+}
+.progress-flagged__go { color: var(--clr-muted); font-size: .85rem; }
