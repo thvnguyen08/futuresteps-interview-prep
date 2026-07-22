@@ -1510,6 +1510,10 @@ async function submitEmailCapture() {
 
 function skipEmailCapture() {
   document.getElementById("emailCapture").hidden = true;
+  // Even if they skip the email, still surface the rating card (the original
+  // intent: it auto-appears after a round). Mirrors the post-submit path so a
+  // skipper isn't left hunting for the small "Rate the app" link.
+  if (!hasGivenFeedback()) openFeedback();
 }
 
 // ── Hard gate: blocking overlay before the 3rd round (no skip) ──
