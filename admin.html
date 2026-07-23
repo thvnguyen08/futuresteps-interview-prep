@@ -318,7 +318,9 @@
           Unified Funnel <span class="section__scope">All time</span>
         </h2>
         <p class="section__note">
-          Visitor → Lead → Activated → Active, tracked across the website and this app under one identity.
+          Visitor → Signup → Contactable → Activated → Active, tracked across the website and this app
+          under one identity. The same five metrics as the FutureSteps dashboard's Overview row,
+          with the same definitions.
         </p>
         <div class="stats" id="funnelStatsRow"></div>
       </div>
@@ -1062,6 +1064,9 @@
        migration is run, just without accuracy and with learners as a daily
        average. `overviewSummary` is null in that fallback case. */
     let overviewSummary = null;
+    // get_practice_outcomes — null until add_practice_outcomes.sql is run, which
+    // is a supported state: the strip falls back to volume-only.
+    let practiceOutcomes = null;
 
     function renderOverview() {
       const { cur, prev } = overviewSeries();
@@ -1111,14 +1116,52 @@
           key: "view", note: "Service screens opened, practice or not" },
       ];
 
-      const tiles = (c && p) ? exactTiles() : fallbackTiles();
+      /* Funnel tiles lead when get_practice_outcomes() is available, exactly as
+         on the futuresteps dashboard: started → completed → quit → returned,
+         then volume. They carry no delta and no sparkline — there is no prior
+         period for them (the whole series is clamped to the instrumentation
+         date) and inventing one would be worse than the blank.
 
+         When the function is absent the page falls back to the volume-only
+         strip it had before, so this deploys safely whether or not
+         add_practice_outcomes.sql has been run yet. */
+      const o = practiceOutcomes;
+      const funnelTiles = (o && Number(o.starters)) ? [
+        { label: "Started practice", cur: Number(o.starters), plain: true,
+          note: Number(o.no_outcome_devices)
+            ? `Distinct devices · ${Number(o.no_outcome_pct)}% have no recorded outcome yet`
+            : "Distinct devices that began a round" },
+        { label: "Completed a round", cur: Number(o.completed_pct), plain: true, suffix: "%",
+          note: `${Number(o.completed_devices).toLocaleString()} of ${Number(o.starters).toLocaleString()} devices finished at least one` },
+        { label: "Quit mid-round", cur: Number(o.abandoned_pct), plain: true, suffix: "%",
+          // Value is DEVICES; the round-grain figure rides after it, never
+          // instead of it. Different denominators, different questions.
+          note: `${Number(o.abandoned_devices).toLocaleString()} of ${Number(o.starters).toLocaleString()} devices never finished one`
+            + (Number(o.rounds_abandoned)
+                ? ` · ${Number(o.rounds_abandoned).toLocaleString()} of ${Number(o.rounds_started).toLocaleString()} rounds abandoned`
+                  + (o.median_progress_pct == null ? "" : `, median at ${Number(o.median_progress_pct)}% through`)
+                : "") },
+        { label: "Returned after", cur: Number(o.return_pct), plain: true, suffix: "%",
+          // Lagging by construction: finishing today cannot yet be a return.
+          note: `${Number(o.returners).toLocaleString()} of ${Number(o.completers).toLocaleString()} completers came back on a later day` },
+      ] : [];
+
+      const volumeTiles = (c && p) ? exactTiles() : fallbackTiles();
+      // With the funnel present, volume narrows to the rounds count — the one
+      // series the chart below actually plots. Matches the dashboard's panel.
+      const tiles = funnelTiles.length
+        ? funnelTiles.concat(volumeTiles.filter(t => t.label === "Practice rounds"))
+        : volumeTiles;
+
+      // `plain` tiles carry neither a delta nor a sparkline: the funnel has no
+      // comparable prior period and no daily series, and a blank beats a
+      // fabricated one.
       document.getElementById("overviewRow").innerHTML = tiles.map(t => `
         <div class="kpi">
           <div class="kpi__label">${t.label}</div>
           <div class="kpi__value">${t.cur == null ? "—" : fmtNum(t.cur) + (t.suffix || "")}</div>
-          ${deltaHTML(t.cur, t.prev, t.mode)}
-          <div class="kpi__spark">${sparkFor(t.key)}</div>
+          ${t.plain ? "" : deltaHTML(t.cur, t.prev, t.mode)}
+          ${t.plain ? "" : `<div class="kpi__spark">${sparkFor(t.key)}</div>`}
           ${t.note ? `<div class="kpi__note">${t.note}</div>` : ""}
         </div>`).join("");
 
@@ -1126,21 +1169,39 @@
       /* Says out loud what a round is. The strip and the Daily practice table
          disagreed for weeks because the strip counted flags and checklists and
          nothing on the page admitted it. */
+      /* The funnel tiles are floored at the instrumentation date and the volume
+         tile is not, so the strip spans two windows. Two windows in one panel
+         is confusing but honest — inventing starts for the earlier days would
+         not be. Same note as the dashboard's panel. */
+      const clampNote = (practiceOutcomes && practiceOutcomes.window_start)
+        ? ` Started / completed / quit / returned are clamped to ${fmtDate(practiceOutcomes.window_start)} onward — round-level logging shipped then.`
+        : "";
       document.getElementById("overviewSub").textContent =
         `${dayLabel(first.day)} – ${dayLabel(last.day, true)}, compared with the ${activityDays} days before it. ` +
-        `Rounds exclude green flags, red flags and document checklists.`;
+        `Rounds exclude green flags, red flags and document checklists.` + clampNote;
     }
 
     async function loadActivity() {
       document.getElementById("activityScope").textContent = `Last ${activityDays} days`;
-      const [rollup, report, summary] = await Promise.all([
+      const [rollup, report, summary, outcomes] = await Promise.all([
         // 2× the window: the front half draws the sparklines, the back half is
         // the Overview's fallback comparison if get_overview_summary is absent.
         // The chart and tables still read only the most recent activityDays.
         rpc("get_activity_rollup",  { p_days: Math.min(activityDays * 2, 365) }),
         rpc("get_practice_report",  { p_days: activityDays }),
         rpc("get_overview_summary", { p_days: activityDays }),
+        rpc("get_practice_outcomes", { p_days: activityDays }),
       ]);
+
+      /* Same PGRST202 posture as the summary below: a missing function means the
+         migration has not been run, which downgrades the strip rather than
+         erroring. Anything else is a real fault worth seeing in the console. */
+      practiceOutcomes = null;
+      if (outcomes.error) {
+        if (outcomes.error.code !== "PGRST202") console.error("Practice outcomes load error:", outcomes.error);
+      } else {
+        practiceOutcomes = (outcomes.data || [])[0] || null;
+      }
 
       /* PGRST202 = the function doesn't exist, i.e. add_overview_summary.sql
          hasn't been run. That is a known, recoverable state (the user runs
@@ -1188,20 +1249,41 @@
     }
 
     // ── Unified analytics (funnel, channel, category, live feed) ──
+    /* The same five metrics as the futuresteps dashboard's Overview row, in the
+       same order, with the same definitions — see align_unified_funnel.sql.
+
+       Activation is the one worth understanding. Its denominator is NOT every
+       signup: people who registered before practice shipped could not possibly
+       have activated, and people who registered in the last few hours have not
+       had their chance yet (activation here is day-0 100% of the time). Both
+       used to sit in the denominator, which is how a rate that mostly measured
+       the calendar went unquestioned. The eligible count is printed under the
+       number rather than hidden behind it, because a rate whose denominator is
+       invisible is exactly how that happens. */
     function renderFunnelStats(row) {
       const r = row || {};
-      const visitors     = Number(r.visitors ?? 0);
-      const leads        = Number(r.leads ?? 0);
-      const activated    = Number(r.activated ?? 0);
-      const active       = Number(r.active ?? 0);
-      // Activation conversion = how many leads actually practiced.
-      const activationRate = leads ? Math.round((activated / leads) * 100) : 0;
+      const n = (v) => Number(v ?? 0);
+      const fmt = (v) => n(v).toLocaleString();
+      const launch = r.practice_launch_date || "launch";
+      const minAge = r.activation_min_age_days ?? 1;
+      const activeDays = r.active_window_days ?? 7;
+      const signups = n(r.signups);
+      const eligible = n(r.activation_eligible);
 
       document.getElementById("funnelStatsRow").innerHTML = [
-        { label: "Visitors",        value: visitors },
-        { label: "Unique Leads",    value: leads },
-        { label: "Activation Rate", value: activationRate + "%", sub: `${activated} of ${leads} practiced` },
-        { label: "Active (7 days)", value: active },
+        { label: "Unique visitors", value: fmt(r.visitors),
+          sub: "Distinct devices seen" },
+        { label: "Signups", value: fmt(r.signups),
+          sub: "People who entered the app (deduped)" },
+        { label: "Contact capture", value: n(r.identified_pct) + "%",
+          sub: `${fmt(r.identified)} of ${fmt(signups)} left a name, email or phone` },
+        { label: "Activation",
+          value: eligible ? n(r.activation_rate_pct) + "%" : "—",
+          sub: eligible
+            ? `${fmt(r.activation_activated)} of ${fmt(eligible)} eligible — signed up on/after ${launch}, at least ${minAge} day old`
+            : `No signups yet that are eligible — need one on/after ${launch}, at least ${minAge} day old` },
+        { label: `Active within ${activeDays} days`, value: n(r.active_7d_pct) + "%",
+          sub: `${fmt(r.active_7d)} returned ≤${activeDays} days after signup` },
       ].map(s => `
         <div class="stat-card">
           <div class="stat-card__label">${s.label}</div>
