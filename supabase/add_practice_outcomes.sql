@@ -29,6 +29,15 @@
 -- user behaviour. The three sum to `starters`; the residual is surfaced.
 -- ============================================================================
 
+-- CREATE OR REPLACE cannot change a function's return type, and this file has
+-- gained columns since it was first run (active_devices / viewers /
+-- opened_service_pct). Without the drop, re-running it fails with
+--   42P13 cannot change return type of existing function
+--   HINT: Use DROP FUNCTION get_practice_outcomes(integer) first.
+-- Keep this line: it is what makes the file safe to re-run after any change to
+-- the returns-table list, which is the whole point of an idempotent migration.
+drop function if exists get_practice_outcomes(int);
+
 create or replace function get_practice_outcomes(p_days int default 30)
 returns table (
   window_start         timestamptz, -- the clamped floor actually used
