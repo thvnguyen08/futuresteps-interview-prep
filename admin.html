@@ -296,23 +296,6 @@
   <!-- DASHBOARD (hidden until authenticated) -->
   <div class="wrap">
     <div class="dashboard" id="dashboard">
-      <!-- ── Overview: the "what changed" lead ──
-           Owns the range control for every period-scoped panel below it. -->
-      <div class="section">
-        <div class="overview__bar">
-          <div>
-            <div class="section__title">Overview</div>
-            <div class="section__note" id="overviewSub" style="margin-bottom:0;"></div>
-          </div>
-          <div class="range-filter" role="group" aria-label="Date range">
-            <button class="range-filter__btn" data-days="14">14 days</button>
-            <button class="range-filter__btn is-active" data-days="30">30 days</button>
-            <button class="range-filter__btn" data-days="90">90 days</button>
-          </div>
-        </div>
-        <div class="kpi-row" id="overviewRow"></div>
-      </div>
-
       <div class="section">
         <h2 class="section__title">
           Unified Funnel <span class="section__scope">All time</span>
@@ -338,14 +321,27 @@
         </table>
       </div>
 
-      <h2 class="section__title" style="margin-top:40px;">
-        Practice Activity <span class="section__scope" id="activityScope">Last 30 days</span>
-      </h2>
-      <p class="section__note">
-        Are customers actually practicing? Daily activity, then rounds per service and per naturalization test.
-      </p>
+      <!-- ── Practice Activity ──
+           Owns the range control for every period-scoped panel below it (the
+           Overview strip that used to hold it is gone; its tiles were volume
+           measures that duplicated what this panel and the chart already say). -->
+      <div class="overview__bar" style="margin-top:40px;">
+        <div>
+          <h2 class="section__title" style="margin-top:0;">
+            Practice Activity <span class="section__scope" id="activityScope">Last 30 days</span>
+          </h2>
+          <p class="section__note" id="overviewSub" style="margin-bottom:0;"></p>
+        </div>
+        <div class="range-filter" role="group" aria-label="Date range">
+          <button class="range-filter__btn" data-days="14">14 days</button>
+          <button class="range-filter__btn is-active" data-days="30">30 days</button>
+          <button class="range-filter__btn" data-days="90">90 days</button>
+        </div>
+      </div>
 
-      <!-- The range control now lives in Overview and scopes this too. -->
+      <!-- Same five tiles as the FutureSteps dashboard's Practice activity panel. -->
+      <div class="kpi-row" id="overviewRow"></div>
+
       <div class="toolbar" style="justify-content:flex-end;">
         <button class="btn btn--green" id="activityExportBtn">
           <i class="fa-solid fa-file-csv"></i> Export CSV
@@ -994,7 +990,6 @@
     }
 
     const sum = (rows, k) => rows.reduce((a, r) => a + r[k], 0);
-    const mean = (rows, k) => (rows.length ? sum(rows, k) / rows.length : 0);
 
     /* Sparkline: one series, no axes, no labels — it carries shape, not values
        (the tile's own number carries the value). Stroke stays 2px at any width
@@ -1076,44 +1071,24 @@
       const c = s?.current, p = s?.previous;
       const activeDays = c ? Number(c.active_days) : cur.filter(d => d.practice > 0).length;
 
-      // Exact path: every number is a period-level aggregate from Postgres.
+      /* Volume is ONE tile now. Questions seen, Learners and Service views were
+         removed deliberately: they answered "how much happened", which the chart
+         and the two tables below already answer in more detail, and they sat in
+         the slot where round drop-off belongs. Accuracy went earlier for the
+         same reason. All four are still computed and still returned by
+         get_overview_summary — nothing renders them. The futuresteps dashboard
+         carries exactly this one volume tile too; if you add one back, add it
+         back in both. */
       const exactTiles = () => [
         { label: "Practice rounds", cur: Number(c.practice_rounds), prev: Number(p.practice_rounds),
           key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
-        { label: "Questions seen", cur: Number(c.questions), prev: Number(p.questions),
-          key: "questions", note: "Scored answers plus unscored reviews" },
-        /* No Accuracy tile. It averaged over a mixed bag — scored tests,
-           self-rated mock, unscored decks — with only the scored subset in the
-           denominator, and it occupied the slot where round drop-off belongs.
-           get_overview_summary still returns accuracy_pct; nothing renders it.
-           The futuresteps dashboard dropped it at the same time; if you put it
-           back, put it back in both. */
-        { label: "Learners", cur: Number(c.learners), prev: Number(p.learners),
-          // practice_activity rows are written in onRoundComplete() only, so
-          // this has always counted finishers — never anyone who started a
-          // round and quit. Say what it counts.
-          key: "learners", note: "Unique devices that finished a round" },
-        { label: "Service views", cur: Number(c.view_events), prev: Number(p.view_events),
-          key: "view",
-          // `viewers` arrives only after align_admin_to_dashboard.sql; fall back
-          // to the old wording rather than rendering "undefined devices".
-          note: c.viewers != null
-            ? `${Number(c.viewers).toLocaleString()} devices opened a service screen`
-            : "Service screens opened, practice or not" },
       ];
 
-      // Fallback: additive measures only. Accuracy is absent rather than wrong,
-      // and learners is explicitly a daily average — a period total would
-      // double-count anyone who practised on more than one day.
+      // Fallback when get_overview_summary is absent: the same tile summed from
+      // the daily rollup. Additive, so summing is honest here.
       const fallbackTiles = () => [
         { label: "Practice rounds", cur: sum(cur, "practice"), prev: sum(prev, "practice"),
           key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
-        { label: "Questions seen", cur: sum(cur, "questions"), prev: sum(prev, "questions"),
-          key: "questions", note: "Scored answers plus unscored reviews" },
-        { label: "Learners / day", cur: mean(cur, "learners"), prev: mean(prev, "learners"),
-          key: "learners", note: "Daily average — run add_overview_summary.sql for the exact count" },
-        { label: "Service views", cur: sum(cur, "view"), prev: sum(prev, "view"),
-          key: "view", note: "Service screens opened, practice or not" },
       ];
 
       /* Funnel tiles lead when get_practice_outcomes() is available, exactly as
@@ -1146,17 +1121,13 @@
           note: `${Number(o.returners).toLocaleString()} of ${Number(o.completers).toLocaleString()} completers came back on a later day` },
       ] : [];
 
-      const volumeTiles = (c && p) ? exactTiles() : fallbackTiles();
-      // With the funnel present, volume narrows to the rounds count — the one
-      // series the chart below actually plots. Matches the dashboard's panel.
-      const tiles = funnelTiles.length
-        ? funnelTiles.concat(volumeTiles.filter(t => t.label === "Practice rounds"))
-        : volumeTiles;
+      const tiles = funnelTiles.concat((c && p) ? exactTiles() : fallbackTiles());
 
       // `plain` tiles carry neither a delta nor a sparkline: the funnel has no
       // comparable prior period and no daily series, and a blank beats a
       // fabricated one.
-      document.getElementById("overviewRow").innerHTML = tiles.map(t => `
+      const row = document.getElementById("overviewRow");
+      row.innerHTML = tiles.map(t => `
         <div class="kpi">
           <div class="kpi__label">${t.label}</div>
           <div class="kpi__value">${t.cur == null ? "—" : fmtNum(t.cur) + (t.suffix || "")}</div>
@@ -1164,6 +1135,21 @@
           ${t.plain ? "" : `<div class="kpi__spark">${sparkFor(t.key)}</div>`}
           ${t.note ? `<div class="kpi__note">${t.note}</div>` : ""}
         </div>`).join("");
+
+      /* Say so when the funnel reader is missing. Now that the volume tiles are
+         gone, silence here would leave one lonely Practice rounds card and no
+         hint that four tiles are supposed to sit beside it. */
+      if (!funnelTiles.length) {
+        row.insertAdjacentHTML("beforeend", `
+          <div class="kpi" style="grid-column:1/-1;">
+            <div class="kpi__note" style="color:var(--clr-red)">
+              Started / completed / quit / returned are unavailable —
+              <code>get_practice_outcomes(${activityDays})</code> returned no row.
+              Run <code>supabase/add_practice_outcomes.sql</code>, then reload;
+              if it is already applied, the browser console names the error.
+            </div>
+          </div>`);
+      }
 
       const first = cur[0], last = cur[cur.length - 1];
       /* Says out loud what a round is. The strip and the Daily practice table
