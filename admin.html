@@ -1062,6 +1062,13 @@
     // get_practice_outcomes — null until add_practice_outcomes.sql is run, which
     // is a supported state: the strip falls back to volume-only.
     let practiceOutcomes = null;
+    /* The error, kept so the panel can PRINT it. A function that returns no row
+       and a function that raised 42804 look identical from the outside, and
+       telling the reader "returned no row" in both cases sent us chasing the
+       wrong half of the problem twice. Whatever Postgres said goes on screen. */
+    let practiceOutcomesError = null;
+    const escHtml = (s) => String(s).replace(/[&<>"]/g, ch =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 
     function renderOverview() {
       const { cur, prev } = overviewSeries();
@@ -1140,13 +1147,29 @@
          gone, silence here would leave one lonely Practice rounds card and no
          hint that four tiles are supposed to sit beside it. */
       if (!funnelTiles.length) {
+        const err = practiceOutcomesError;
+        let detail;
+        if (err && err.code === "PGRST202") {
+          detail = `<code>get_practice_outcomes</code> does not exist yet — run
+                    <code>supabase/add_practice_outcomes.sql</code>, then reload.`;
+        } else if (err) {
+          // Verbatim, including the code: this is the line that identifies the
+          // fault, and paraphrasing it is how two rounds of guessing happened.
+          detail = `<code>${escHtml(err.code || "error")}</code>
+                    ${escHtml(err.message || "(no message)")}
+                    ${err.details ? `<br><span style="opacity:.8">${escHtml(err.details)}</span>` : ""}
+                    ${err.hint ? `<br><span style="opacity:.8">Hint: ${escHtml(err.hint)}</span>` : ""}`;
+        } else if (practiceOutcomes) {
+          detail = `No practice rounds were started in this period.`;
+        } else {
+          detail = `<code>get_practice_outcomes(${activityDays})</code> ran without
+                    error but returned no row — check your email is in the
+                    function's admin list.`;
+        }
         row.insertAdjacentHTML("beforeend", `
           <div class="kpi" style="grid-column:1/-1;">
-            <div class="kpi__note" style="color:var(--clr-red)">
-              Started / completed / quit / returned are unavailable —
-              <code>get_practice_outcomes(${activityDays})</code> returned no row.
-              Run <code>supabase/add_practice_outcomes.sql</code>, then reload;
-              if it is already applied, the browser console names the error.
+            <div class="kpi__note" style="color:var(--clr-red);line-height:1.6">
+              <b>Started / completed / quit / returned are unavailable.</b><br>${detail}
             </div>
           </div>`);
       }
@@ -1183,8 +1206,12 @@
          migration has not been run, which downgrades the strip rather than
          erroring. Anything else is a real fault worth seeing in the console. */
       practiceOutcomes = null;
+      practiceOutcomesError = null;
       if (outcomes.error) {
-        if (outcomes.error.code !== "PGRST202") console.error("Practice outcomes load error:", outcomes.error);
+        // PGRST202 included: "migration not run" is worth saying out loud too,
+        // and it is the one case where the fix is a single named file.
+        practiceOutcomesError = outcomes.error;
+        console.error("Practice outcomes load error:", outcomes.error);
       } else {
         practiceOutcomes = (outcomes.data || [])[0] || null;
       }
