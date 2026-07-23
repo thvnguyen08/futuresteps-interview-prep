@@ -305,15 +305,21 @@ begin
     where r.first_registered_at is not null
     group by 1
   )
+  /* The output aliases are load-bearing, not decoration. Every one of these
+     names is also a PL/pgSQL OUT parameter, so a bare `order by active` with no
+     alias in scope resolves as a column reference instead of an output name —
+     and `active` is then both pc.active and the OUT variable:
+       42702 column reference "active" is ambiguous
+     Ordinals in the ORDER BY close the hole for good. */
   select
-    coalesce(vc.channel, pc.channel),
-    coalesce(vc.visitors, 0),
-    coalesce(pc.leads, 0),
-    coalesce(pc.activated, 0),
-    coalesce(pc.active, 0)
+    coalesce(vc.channel, pc.channel) as channel,
+    coalesce(vc.visitors, 0)         as visitors,
+    coalesce(pc.leads, 0)            as leads,
+    coalesce(pc.activated, 0)        as activated,
+    coalesce(pc.active, 0)           as active
   from visitor_channel vc
   full outer join person_channel pc on pc.channel = vc.channel
-  order by active desc, visitors desc;
+  order by 5 desc, 2 desc;
 end;
 $$;
 

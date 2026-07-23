@@ -226,8 +226,11 @@ begin
           and lower(p.email) = any(excluded_emails)
       )
   )
+  -- ORDER BY is an ordinal, not a name. Every alias here is also a PL/pgSQL OUT
+  -- parameter, and a bare name in ORDER BY is one missing alias away from
+  -- `42702 column reference is ambiguous`. An ordinal cannot be ambiguous.
   select
-    ev.category,
+    ev.category                                                 as category,
     count(distinct ev.anon_id)                                  as learners,
     count(*)                                                    as practice_rounds,
     coalesce(sum(ev.total), 0)                                  as questions_done,
@@ -237,7 +240,7 @@ begin
   from ev
   where ev.category is not null
   group by ev.category
-  order by practice_rounds desc;
+  order by 3 desc;
 end;
 $$;
 
