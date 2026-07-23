@@ -147,7 +147,18 @@ begin
       -- percentile_cont matches the JS median in both parities: it returns the
       -- middle value for odd counts and the mean of the two middles for even,
       -- which is exactly what snapshot.mjs computes.
-      (select round(percentile_cont(0.5) within group (order by a.progress_pct))
+      --
+      -- The ::numeric is REQUIRED, not tidiness. percentile_cont has no numeric
+      -- variant -- it is WITHIN GROUP (ORDER BY double precision) -> double
+      -- precision -- so ordering by a numeric column casts up to double, and
+      -- round(double) returns double. This column is declared numeric, and
+      -- RETURN QUERY checks the tuple structure strictly:
+      --   42804 structure of query does not match function result type
+      --   DETAIL: Returned type double precision does not match expected type
+      --           numeric in column 15.
+      -- The function CREATEs fine and fails only when called, so a clean
+      -- migration run proves nothing here.
+      (select round(percentile_cont(0.5) within group (order by a.progress_pct)::numeric)
          from ab_rounds a where a.progress_pct is not null)             as median_progress_pct
     from (select 1) _
   )
