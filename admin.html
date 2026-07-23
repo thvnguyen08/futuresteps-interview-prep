@@ -127,7 +127,14 @@
        The 146px floor is chosen so five tiles still fit on one row in a ~800px
        content column — at 178px the fifth orphaned onto a second row on any
        narrow desktop window. */
-    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(146px, 1fr)); gap: 16px; }
+    /* align-items:start — without it, opening one tile's definition stretches
+       every other tile in its row to the same height, leaving tall empty cards
+       beside the one you actually opened. 172px min: six tiles at 146 wrapped
+       the two-word labels onto three lines each. */
+    .kpi-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+      gap: 16px; align-items: start;
+    }
     .kpi {
       background: var(--clr-surface); border-radius: var(--radius); padding: 18px 18px 14px;
       box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 2px;
@@ -153,6 +160,34 @@
       transform: translate(50%, -50%); box-shadow: 0 0 0 2px var(--clr-surface);
     }
     .kpi__note { font-size: .68rem; color: var(--clr-muted); margin-top: 6px; }
+    /* ── Click-to-reveal definition ──
+       A <button> rather than a div with onclick: it is focusable, Enter/Space
+       work for free, and screen readers announce it as pressable. The whole
+       label+value block is the target, so "click the name or the number" both
+       land, which is what people actually try. */
+    .kpi__toggle {
+      appearance: none; background: none; border: 0; padding: 0; margin: 0;
+      font: inherit; color: inherit; text-align: left; cursor: pointer;
+      display: flex; flex-direction: column; gap: 2px; width: 100%;
+      border-radius: 6px;
+    }
+    .kpi__toggle:focus-visible { outline: 2px solid var(--clr-green); outline-offset: 3px; }
+    .kpi__toggle .kpi__label::after {
+      content: "\f059";                     /* fa circle-question */
+      font-family: "Font Awesome 6 Free"; font-weight: 900;
+      font-size: .78em; margin-left: 5px; opacity: .45;
+    }
+    .kpi__toggle:hover .kpi__label::after { opacity: .9; }
+    .kpi__toggle[aria-expanded="true"] .kpi__label::after { opacity: .9; }
+    .kpi__def {
+      font-size: .7rem; line-height: 1.55; color: var(--clr-muted);
+      margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--clr-border);
+    }
+    .kpi__def[hidden] { display: none; }
+    .kpi__def b { color: var(--clr-dark); font-weight: 700; }
+    .kpi__def code {
+      font-size: .95em; background: var(--clr-bg); padding: 1px 4px; border-radius: 4px;
+    }
 
     .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
     .toolbar__search {
@@ -1086,16 +1121,31 @@
          get_overview_summary — nothing renders them. The futuresteps dashboard
          carries exactly this one volume tile too; if you add one back, add it
          back in both. */
+      /* The one tile counting ROUNDS rather than devices, and the only one not
+         clamped — it reads practice_activity, which goes back further than the
+         round-level events the four tiles above depend on. */
+      const PRACTICE_ROUNDS_DEF =
+        `<b>Rounds completed in this period</b> — one per finished round, so a single
+         device practising ten times counts ten.
+         <br>Excludes green flags, red flags and document checklists: they log as
+         practice but they are reading, not practice, and were about a third of all
+         rows.
+         <br>This is the only tile here that counts rounds rather than devices, and the
+         only one covering the <b>full</b> selected period — the four above it are
+         clamped to when round-level logging shipped.`;
+
       const exactTiles = () => [
         { label: "Practice rounds", cur: Number(c.practice_rounds), prev: Number(p.practice_rounds),
-          key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
+          key: "practice", note: `${activeDays} of ${activityDays} days had practice`,
+          def: PRACTICE_ROUNDS_DEF },
       ];
 
       // Fallback when get_overview_summary is absent: the same tile summed from
       // the daily rollup. Additive, so summing is honest here.
       const fallbackTiles = () => [
         { label: "Practice rounds", cur: sum(cur, "practice"), prev: sum(prev, "practice"),
-          key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
+          key: "practice", note: `${activeDays} of ${activityDays} days had practice`,
+          def: PRACTICE_ROUNDS_DEF },
       ];
 
       /* Funnel tiles lead when get_practice_outcomes() is available, exactly as
@@ -1107,34 +1157,81 @@
          When the function is absent the page falls back to the volume-only
          strip it had before, so this deploys safely whether or not
          add_practice_outcomes.sql has been run yet. */
+      /* Every tile carries a `def` — the definition shown when its name or
+         number is clicked. Written out rather than left implicit because these
+         numbers are not self-explanatory: three of them count DEVICES while the
+         panel sits above tables that count ROUNDS, and two are clamped to a date
+         the rest of the page is not. A tile whose denominator is invisible is
+         how a rate goes unquestioned for weeks. Keep these in sync with the
+         dashboard's — same metric, same words. */
       const o = practiceOutcomes;
+      const n = (v) => Number(v ?? 0);
+      const fm = (v) => n(v).toLocaleString();
+      const clampLine = o && o.window_start
+        ? ` Clamped to <b>${fmtDate(o.window_start)}</b> onward, when round-level logging shipped.`
+        : "";
+
       const funnelTiles = (o && Number(o.starters)) ? [
-        /* The first and largest leak: most people who open the app never touch a
-           service at all. It leads because it is upstream of everything else —
-           fixing round content cannot reach anyone who never opened a category.
-           Absent until the add_practice_outcomes.sql that adds it is run, so it
-           is conditional rather than assumed. */
-        ...(o.opened_service_pct == null ? [] : [
-          { label: "Opened a service", cur: Number(o.opened_service_pct), plain: true, suffix: "%",
-            note: `${Number(o.viewers).toLocaleString()} of ${Number(o.active_devices).toLocaleString()} active devices opened a category` },
-        ]),
-        { label: "Started practice", cur: Number(o.starters), plain: true,
-          note: Number(o.no_outcome_devices)
-            ? `Distinct devices · ${Number(o.no_outcome_pct)}% have no recorded outcome yet`
-            : "Distinct devices that began a round" },
-        { label: "Completed a round", cur: Number(o.completed_pct), plain: true, suffix: "%",
-          note: `${Number(o.completed_devices).toLocaleString()} of ${Number(o.starters).toLocaleString()} devices finished at least one` },
-        { label: "Quit mid-round", cur: Number(o.abandoned_pct), plain: true, suffix: "%",
+        { label: "Visit Practice Page", cur: n(o.viewers), plain: true,
+          note: o.opened_service_pct == null
+            ? "Unique devices that viewed a service"
+            : `${n(o.opened_service_pct)}% of ${fm(o.active_devices)} active devices`,
+          def: `<b>Unique devices that opened a service screen</b> in this period —
+                naturalization, marriage, F-1, B1/B2, asylum, or an English section.
+                <br>Counts <b>devices</b>, not people: the same person on a phone and a
+                laptop is two. Sourced from <code>practice_activity</code> view rows.
+                ${o.opened_service_pct == null ? "" :
+                  `<br>The share is measured against every device with any activity in
+                   the period (${fm(o.active_devices)}), so the
+                   ~${Math.round((100 - n(o.opened_service_pct)) * 10) / 10}% remainder
+                   opened the app and never picked a service.`}${clampLine}` },
+
+        { label: "V2S (visit to start)", cur: n(o.v2s_pct), plain: true, suffix: "%",
+          note: `${fm(o.starters)} started of ${fm(o.viewers)} that visited`,
+          def: `<b>Of the devices that opened a service, the share that began at least
+                one practice round.</b> Formula: started ÷ visited × 100.
+                <br>Tapping one of the five main services opens a <b>menu</b>; starting a
+                round is a separate tap, so this measures whether that menu converts.
+                Sub-categories (the English sections, flagged) start a round the moment
+                they open, so they convert automatically — they are a small share of
+                views, but they lift this number slightly.${clampLine}` },
+
+        { label: "Completed a round", cur: n(o.completed_pct), plain: true, suffix: "%",
+          note: `${fm(o.completed_devices)} of ${fm(o.starters)} devices finished at least one`,
+          def: `<b>Of the devices that started a round, the share that finished at least
+                one.</b> A round counts as finished when it reaches its end screen.
+                <br>Device-level and "at least one": someone who abandons four rounds and
+                completes a fifth counts here as completed.${clampLine}` },
+
+        { label: "Abandoned rate", cur: n(o.abandoned_pct), plain: true, suffix: "%",
           // Value is DEVICES; the round-grain figure rides after it, never
           // instead of it. Different denominators, different questions.
-          note: `${Number(o.abandoned_devices).toLocaleString()} of ${Number(o.starters).toLocaleString()} devices never finished one`
-            + (Number(o.rounds_abandoned)
-                ? ` · ${Number(o.rounds_abandoned).toLocaleString()} of ${Number(o.rounds_started).toLocaleString()} rounds abandoned`
-                  + (o.median_progress_pct == null ? "" : `, median at ${Number(o.median_progress_pct)}% through`)
-                : "") },
-        { label: "Returned after", cur: Number(o.return_pct), plain: true, suffix: "%",
-          // Lagging by construction: finishing today cannot yet be a return.
-          note: `${Number(o.returners).toLocaleString()} of ${Number(o.completers).toLocaleString()} completers came back on a later day` },
+          note: `${fm(o.abandoned_devices)} of ${fm(o.starters)} devices never finished one`
+            + (n(o.rounds_abandoned)
+                ? ` · ${fm(o.rounds_abandoned)} of ${fm(o.rounds_started)} rounds abandoned`
+                  + (o.median_progress_pct == null ? "" : `, median at ${n(o.median_progress_pct)}% through`)
+                : ""),
+          def: `<b>Of the devices that started, the share that abandoned a round and never
+                completed one.</b>
+                <br>This is <b>not</b> 100 − completed. A round can end with no outcome at
+                all: leaving the tab logs a drop-off but deliberately leaves the round
+                open, and a round in progress right now has a start and nothing else.
+                That remainder is ${n(o.no_outcome_pct)}% here and is reported on its own
+                rather than folded in.
+                <br>The second figure is <b>round</b>-grain, not device-grain — what share
+                of all rounds started were abandoned, and how far in people got when they
+                left.${clampLine}` },
+
+        { label: "Return rate", cur: n(o.return_pct), plain: true, suffix: "%",
+          def: `<b>Of the devices that completed a round, the share with any activity on a
+                LATER calendar day.</b> Any activity counts — coming back to read the news
+                is still coming back.
+                <br>There is <b>no upper bound</b>: this is not the 7-day metric. That one is
+                "Active within 7 days" in the Unified Funnel, and it measures from signup,
+                not from finishing a round.
+                <br>Lagging by construction: someone who finished today cannot yet have
+                returned, so short periods always understate it.${clampLine}`,
+          note: `${fm(o.returners)} of ${fm(o.completers)} completers came back on a later day` },
       ] : [];
 
       const tiles = funnelTiles.concat((c && p) ? exactTiles() : fallbackTiles());
@@ -1143,14 +1240,36 @@
       // comparable prior period and no daily series, and a blank beats a
       // fabricated one.
       const row = document.getElementById("overviewRow");
-      row.innerHTML = tiles.map(t => `
-        <div class="kpi">
+      row.innerHTML = tiles.map((t, i) => {
+        const defId = `kpiDef${i}`;
+        const head = `
           <div class="kpi__label">${t.label}</div>
-          <div class="kpi__value">${t.cur == null ? "—" : fmtNum(t.cur) + (t.suffix || "")}</div>
+          <div class="kpi__value">${t.cur == null ? "—" : fmtNum(t.cur) + (t.suffix || "")}</div>`;
+        return `
+        <div class="kpi">
+          ${t.def
+            ? `<button class="kpi__toggle" type="button" aria-expanded="false"
+                       aria-controls="${defId}">${head}</button>`
+            : head}
           ${t.plain ? "" : deltaHTML(t.cur, t.prev, t.mode)}
           ${t.plain ? "" : `<div class="kpi__spark">${sparkFor(t.key)}</div>`}
           ${t.note ? `<div class="kpi__note">${t.note}</div>` : ""}
-        </div>`).join("");
+          ${t.def ? `<div class="kpi__def" id="${defId}" hidden>${t.def}</div>` : ""}
+        </div>`;
+      }).join("");
+
+      /* Delegated, and bound once per render rather than per tile: the row is
+         rebuilt wholesale on every range change, so per-tile listeners would be
+         re-attached three deep by the time someone had tried 14/30/90. */
+      row.onclick = (e) => {
+        const btn = e.target.closest(".kpi__toggle");
+        if (!btn || !row.contains(btn)) return;
+        const def = document.getElementById(btn.getAttribute("aria-controls"));
+        if (!def) return;
+        const open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!open));
+        def.hidden = open;
+      };
 
       /* Say so when the funnel reader is missing. Now that the volume tiles are
          gone, silence here would leave one lonely Practice rounds card and no

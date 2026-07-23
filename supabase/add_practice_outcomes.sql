@@ -44,6 +44,7 @@ returns table (
   active_devices       bigint,      -- devices with ANY event in window
   viewers              bigint,      -- devices that opened a service screen
   opened_service_pct   numeric,     -- viewers / active_devices -- the first leak
+  v2s_pct              numeric,     -- starters / viewers -- "visit to start"
   starters             bigint,      -- devices with >=1 practice_start in window
   completers           bigint,      -- devices with >=1 practice_complete in window
   completed_devices    bigint,      -- starters who completed
@@ -227,6 +228,9 @@ begin
     win_start,
     c.active_devices, c.viewers,
     coalesce(round(100.0 * c.viewers / nullif(c.active_devices, 0), 1), 0),
+    -- V2S: of the devices that opened a service, how many began a round.
+    -- Denominator is viewers, NOT active_devices -- that is the tile above.
+    coalesce(round(100.0 * c.starters / nullif(c.viewers, 0), 1), 0),
     c.starters, c.completers,
     c.completed_devices, c.abandoned_devices, c.no_outcome_devices,
     coalesce(round(100.0 * c.completed_devices  / nullif(c.starters, 0), 1), 0),
