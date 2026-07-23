@@ -1109,6 +1109,15 @@
          add_practice_outcomes.sql has been run yet. */
       const o = practiceOutcomes;
       const funnelTiles = (o && Number(o.starters)) ? [
+        /* The first and largest leak: most people who open the app never touch a
+           service at all. It leads because it is upstream of everything else —
+           fixing round content cannot reach anyone who never opened a category.
+           Absent until the add_practice_outcomes.sql that adds it is run, so it
+           is conditional rather than assumed. */
+        ...(o.opened_service_pct == null ? [] : [
+          { label: "Opened a service", cur: Number(o.opened_service_pct), plain: true, suffix: "%",
+            note: `${Number(o.viewers).toLocaleString()} of ${Number(o.active_devices).toLocaleString()} active devices opened a category` },
+        ]),
         { label: "Started practice", cur: Number(o.starters), plain: true,
           note: Number(o.no_outcome_devices)
             ? `Distinct devices · ${Number(o.no_outcome_pct)}% have no recorded outcome yet`

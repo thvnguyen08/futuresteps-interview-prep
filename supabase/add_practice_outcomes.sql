@@ -32,6 +32,9 @@
 create or replace function get_practice_outcomes(p_days int default 30)
 returns table (
   window_start         timestamptz, -- the clamped floor actually used
+  active_devices       bigint,      -- devices with ANY event in window
+  viewers              bigint,      -- devices that opened a service screen
+  opened_service_pct   numeric,     -- viewers / active_devices -- the first leak
   starters             bigint,      -- devices with >=1 practice_start in window
   completers           bigint,      -- devices with >=1 practice_complete in window
   completed_devices    bigint,      -- starters who completed
@@ -53,6 +56,15 @@ set search_path = public
 as $$
 declare
   admin_emails text[] := array['thvnguyen08@gmail.com', 'futuresteps.dallas@gmail.com'];
+  -- practice_activity carries the row's own email; _is_internal_anon covers the
+  -- persons/leads side. Both are needed, same as paClean in snapshot.mjs.
+  excluded_emails text[] := array[
+    'thvnguyen08@gmail.com',
+    'thang.nguyen.cv@gmail.com',
+    'victor.nghv@gmail.com',
+    'ngat87143@gmail.com',
+    'futuresteps.dallas@gmail.com'
+  ];
   -- Mirrors PRACTICE_START_INSTRUMENTED_AT in snapshot.mjs. Raise it, never
   -- lower it, and only to an instant where all three events are known good.
   clamp_at    timestamptz := timestamptz '2026-07-21 15:48:00+00';
@@ -100,6 +112,44 @@ begin
     from events e
     where e.event_name = 'practice_complete' and e.props->>'round_id' is not null
   ),
+  /* Devices with ANY event in the window, and devices that opened a service.
+     These read `events` directly rather than `fe`, which is already narrowed to
+     the three practice events — the denominator here is everyone active, not
+     everyone practising. Mirrors activeDevices/viewers in snapshot.mjs.
+
+     The `view` event is the app-side mirror of practice_activity's view row
+     (logActivity fires both), so this counts the same devices the dashboard's
+     funnelViews does. */
+  active_ids as (
+    -- UNION of both activity tables, not just events. viewer_ids below reads
+    -- practice_activity, and the two tables' device populations are not
+    -- identical -- a practice row can predate the events mirror logActivity()
+    -- now also writes. Counting only events made the denominator smaller than
+    -- its own numerator and produced rates over 100%.
+    select e.anon_id as id
+      from events e
+     where e.occurred_at >= win_start
+       and not _is_internal_anon(e.anon_id)
+    union
+    select a.client_id
+      from practice_activity a
+     where a.created_at >= win_start
+       and a.client_id is not null
+       and (a.email is null or lower(a.email) <> all(excluded_emails))
+       and not _is_internal_anon(a.client_id)
+  ),
+  viewer_ids as (
+    -- practice_activity, matching funnelViews in snapshot.mjs. Do NOT switch
+    -- this to the events mirror without switching the dashboard too.
+    select distinct a.client_id as id
+      from practice_activity a
+     where a.activity_type = 'view'
+       and a.created_at >= win_start
+       and a.category is not null
+       and a.client_id is not null
+       and (a.email is null or lower(a.email) <> all(excluded_emails))
+       and not _is_internal_anon(a.client_id)
+  ),
   starter_ids   as (select distinct anon_id from fe where event_name = 'practice_start'),
   completer_ids as (select distinct anon_id from fe where event_name = 'practice_complete'),
   abandoner_ids as (select distinct anon_id from fe where event_name = 'practice_abandon'),
@@ -135,6 +185,8 @@ begin
   ),
   counts as (
     select
+      (select count(*) from active_ids)                                 as active_devices,
+      (select count(*) from viewer_ids)                                 as viewers,
       (select count(*) from starter_ids)                                as starters,
       (select count(*) from completer_ids)                              as completers,
       (select count(*) from split where completed)                      as completed_devices,
@@ -164,6 +216,8 @@ begin
   )
   select
     win_start,
+    c.active_devices, c.viewers,
+    coalesce(round(100.0 * c.viewers / nullif(c.active_devices, 0), 1), 0),
     c.starters, c.completers,
     c.completed_devices, c.abandoned_devices, c.no_outcome_devices,
     coalesce(round(100.0 * c.completed_devices  / nullif(c.starters, 0), 1), 0),
