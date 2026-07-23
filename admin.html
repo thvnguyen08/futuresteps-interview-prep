@@ -973,12 +973,17 @@
         else if (r.activity_type === "practice") prac.set(r.day, r);
         else if (r.activity_type === "view")     view.set(r.day, r);
       }
+      /* questions and learners come off the PRACTICE level, not the (day) level.
+         The (day) level also carries view rows, so its `learners` counted anyone
+         who merely opened a service screen — a viewer count wearing a learner
+         label, and the single biggest reason this strip disagreed with the
+         futuresteps dashboard. */
       const build = keys => keys.map(k => ({
         day: k,
-        practice: Number(prac.get(k)?.events   || 0),
-        view:     Number(view.get(k)?.events   || 0),
-        questions:Number(all.get(k)?.questions || 0),
-        learners: Number(all.get(k)?.learners  || 0),
+        practice: Number(prac.get(k)?.events    || 0),
+        view:     Number(view.get(k)?.events    || 0),
+        questions:Number(prac.get(k)?.questions || 0),
+        learners: Number(prac.get(k)?.learners  || 0),
       }));
       return {
         cur:  build(windowDays(0, activityDays)),
@@ -1072,15 +1077,24 @@
           key: "practice", note: `${activeDays} of ${activityDays} days had practice` },
         { label: "Questions seen", cur: Number(c.questions), prev: Number(p.questions),
           key: "questions", note: "Scored answers plus unscored reviews" },
-        { label: "Accuracy", cur: c.accuracy_pct == null ? null : Number(c.accuracy_pct),
-          prev: p.accuracy_pct == null ? null : Number(p.accuracy_pct),
-          key: "questions", mode: "points", suffix: "%",
-          note: Number(c.scored) ? `Over ${Number(c.scored).toLocaleString()} scored answers`
-                                 : "No scored answers in this period" },
+        /* No Accuracy tile. It averaged over a mixed bag — scored tests,
+           self-rated mock, unscored decks — with only the scored subset in the
+           denominator, and it occupied the slot where round drop-off belongs.
+           get_overview_summary still returns accuracy_pct; nothing renders it.
+           The futuresteps dashboard dropped it at the same time; if you put it
+           back, put it back in both. */
         { label: "Learners", cur: Number(c.learners), prev: Number(p.learners),
-          key: "learners", note: "Unique devices in the period" },
+          // practice_activity rows are written in onRoundComplete() only, so
+          // this has always counted finishers — never anyone who started a
+          // round and quit. Say what it counts.
+          key: "learners", note: "Unique devices that finished a round" },
         { label: "Service views", cur: Number(c.view_events), prev: Number(p.view_events),
-          key: "view", note: "Service screens opened, practice or not" },
+          key: "view",
+          // `viewers` arrives only after align_admin_to_dashboard.sql; fall back
+          // to the old wording rather than rendering "undefined devices".
+          note: c.viewers != null
+            ? `${Number(c.viewers).toLocaleString()} devices opened a service screen`
+            : "Service screens opened, practice or not" },
       ];
 
       // Fallback: additive measures only. Accuracy is absent rather than wrong,
@@ -1109,8 +1123,12 @@
         </div>`).join("");
 
       const first = cur[0], last = cur[cur.length - 1];
+      /* Says out loud what a round is. The strip and the Daily practice table
+         disagreed for weeks because the strip counted flags and checklists and
+         nothing on the page admitted it. */
       document.getElementById("overviewSub").textContent =
-        `${dayLabel(first.day)} – ${dayLabel(last.day, true)}, compared with the ${activityDays} days before it.`;
+        `${dayLabel(first.day)} – ${dayLabel(last.day, true)}, compared with the ${activityDays} days before it. ` +
+        `Rounds exclude green flags, red flags and document checklists.`;
     }
 
     async function loadActivity() {

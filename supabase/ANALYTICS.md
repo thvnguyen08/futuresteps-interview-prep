@@ -159,6 +159,48 @@ Add new event names freely; the schema doesn't need changing. Keep
 | `get_category_breakdown()` | which categories customers engage with most: learners, rounds, questions, accuracy — ranked |
 | `get_practice_reminders(days)` | re-engagement list: people with an email who haven't practiced in ≥ `days` days (default 7), most-lapsed first — feed to the reminder-email automation |
 | `get_event_feed(limit)` | raw recent activity with the person resolved |
+| `get_overview_summary(days)` | the Overview strip: rounds, questions, accuracy, learners, viewers, active days — current vs previous period |
+| `get_activity_rollup(days)` | day × action × service rollup behind the Daily activity chart |
+| `get_practice_report(days)` | day × bucket rounds behind the Daily practice and Naturalization tables |
+
+### What counts as a practice round
+
+One row in `practice_activity` is one round, but not every row is *practice*:
+
+```
+activity_type = 'practice'
+AND content_type = 'question'              -- NULL = legacy, treated as question
+AND (mode = 'mock' OR category is one of
+     naturalization | marriage | f1 | b1b2 | asylum |
+     eng_speaking | eng_reading | eng_writing)
+```
+
+Green Flags, Red Flags and Document Checklists log as practice but are reading,
+not practice — about a third of all rows. A round in any other category has no
+column to land in on either dashboard, so counting it made the totals
+unreconcilable with the tables under them. **A learner practised; a viewer only
+opened a screen** — never count `activity_type = 'view'` toward learners.
+
+This rule lives in four places and they must move together: `get_practice_report`
+(the CASE arms), `align_admin_to_dashboard.sql` (`_is_practice_round`), and in
+futuresteps-dashboard, `scripts/snapshot.mjs` (`practiceBuckets`) plus
+`dashboard-query.sql`.
+
+### Two things that have bitten
+
+**Days are America/Chicago, everywhere.** Every reader buckets on
+`(created_at at time zone 'America/Chicago')::date`, and the windows are N whole
+calendar days, not a rolling `now() - interval`. The dashboard snapshot bucketed
+in UTC until 2026-07-23, which put anything practised after 7pm CT on the next
+day and made the two products disagree on most days.
+
+**Never cast an event prop without checking the event.** `props` is
+unconstrained jsonb, so a prop name is not a type. `question_answered` writes
+`correct` as a *boolean* while `practice_complete` writes it as a *number*; an
+unguarded `(props->>'correct')::int` over all events took out `_person_rollup()`
+and with it the whole Unified Funnel (see `fix_person_rollup_cast.sql`). Filter
+on `event_name` in the same expression, not in a WHERE the planner is free to
+reorder around.
 
 ## Channels
 
